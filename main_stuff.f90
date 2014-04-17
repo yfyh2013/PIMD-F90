@@ -48,7 +48,7 @@ double precision :: tau_P, ref_P, press, CompFac, scale_factor
 !- Variables for the paralleziation / PIMD
 double precision, dimension(:,:,:), allocatable :: RRt, PPt, dip_momIt, dip_momEt, dRRt
 double precision, dimension(:,:), allocatable :: RRc, PPc
-double precision ::  omegan, iNbeads, setNMfreq
+double precision ::  omegan, kTN, iNbeads, setNMfreq
 double precision :: radiusH, radiusO
 integer :: Nnodes, pid, Nbeads, j, k, ierr, Nbatches, counti, bat
 integer :: status2(MPI_STATUS_SIZE)
@@ -197,6 +197,7 @@ repl_nx = nx
 repl_ny = ny
 repl_nz = nz
 nidols = nx*ny*nz !not sure what this is for. it is always =1 
+
 Nwaters = Natoms/3
 volume = box(1)*box(2)*box(3)
 volume_init = volume
@@ -217,6 +218,7 @@ tt = 0
 tr = 0
 counti = 3*Natoms
 omegan = KB_amuA2ps2perK*temp*Nbeads/hbar
+kTN = KB_amuA2ps2perK*temp*Nbeads
 s = 1
 sbead = 1
 end subroutine initialize_variables
@@ -329,12 +331,35 @@ end subroutine PBCs
 
 
 !----------------------------------------------------------------------------------!
-!-------------- calling Nose-Hoover for the beads, coupling in real space (no longer used) 
+!-------------- calling Nose-Hoover for the beads --------------------------------- 
 !----------------------------------------------------------------------------------!
-!subroutine bead_NH
-! Implicit None
-! double precision :: uk_bead
-! Integer :: i, j, k 
+subroutine bead_NH
+ use NormalModes
+ Implicit None
+ double precision, dimension(3,Nbeads) :: PPtr 
+ double precision :: uk_bead, tau, imass
+ Integer :: i, j, k 
+
+ do i = 1,Natoms
+	if (mod(i+2,3) .eq. 0) then
+		imass = imassO 
+	else 
+		imass = imassH
+	endif
+	PPtr = real2NM(PPt(:,i,:),Nbeads) 
+	do j = 2, Nbeads !Skip the centroid mode!
+		tau = 1d0/omegalist(j)
+		do k = 1, 3
+			uk_bead =  .5d0*imass*PPtr(k,j)**2
+			call Nose_Hoover(sbead, uk_bead, bead_chain_length, vxi_beads(:,i,j,k), tau, delt2, 1, Nbeads*temp)
+			PPtr(k,j) = PPtr(k,j)*sbead
+		enddo
+	enddo 
+	PPt(:,i,:) = NM2real(PPtr,Nbeads) 
+enddo
+
+
+!----------------- Old Nose-Hoover scheme coupling in real space-------------------
 ! do i = 1, Natoms	
 !	do j = 1, Nbeads
 !		do k = 1, 3
@@ -348,7 +373,7 @@ end subroutine PBCs
 !		enddo
 !	enddo 
 !enddo
-!end subroutine bead_NH
+end subroutine bead_NH
 
 
 

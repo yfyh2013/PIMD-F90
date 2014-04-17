@@ -80,6 +80,7 @@ do t = 1, num_timesteps + eq_timesteps
 		
 		!Normal modes stuff
 		call MPItimer(2,'start',secondsNM)
+
 		if (Nbeads .gt. 1) then
 			do i = 1, Nwaters
 				!Evolve ring a full step 

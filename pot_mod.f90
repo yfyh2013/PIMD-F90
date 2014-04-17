@@ -50,7 +50,6 @@ double precision :: harmka, harmkb, roh0, th0, qO, qH
 !----------------------------------------------------------------------------!
 ! Auxiliary variables and arrays                                             !
 !----------------------------------------------------------------------------!
-z
 
 double precision, dimension(:,:), allocatable :: R, dR, dipt, dip, olddip, Efq, Efd
 double precision, dimension(:), allocatable :: charge, phi

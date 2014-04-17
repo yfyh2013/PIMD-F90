@@ -6,7 +6,7 @@ module NormalModes
  use consts 
  Implicit none
  double precision, dimension(:), allocatable, save   :: A11, A12, A21, A22
- double precision, dimension(:), allocatable, save   :: omegalist
+ double precision, dimension(:), allocatable, save   :: freqlist
  double precision, dimension(:,:), allocatable, save :: C
 
 contains
@@ -16,15 +16,15 @@ contains
 subroutine EvolveRing(RR, PP, Nbeads, mass)
  Implicit none
  double precision, dimension(3,Nbeads), intent(inout)  :: RR, PP
- double precision, dimension(3,Nbeads)  :: RRtr, PPtr 
+ double precision, dimension(3,Nbeads)  :: RRtr, PPtr
  double precision, dimension(3) :: temp2
  double precision, intent(in)   :: mass
  integer, intent(in) :: Nbeads
  integer              :: i, j, k
 
 !Transform into normal mode representation 
-RRtr =  real2NM(RR,Nbeads)
-PPtr =  real2NM(PP,Nbeads) 
+call real2NM(RR,RRtr,Nbeads)
+call real2NM(PP,PPtr,Nbeads) 
 
 !Propagate Normal Modes
 !j = the normal mode index. The number of normal modes always equals the number of beads
@@ -38,9 +38,10 @@ do j = 1, Nbeads
 enddo
 
 !Transform normal modes back into real space
+call NM2real(RR,RRtr,Nbeads)
+call NM2real(PP,PPtr,Nbeads)
 
-RR =  NM2real(RRtr,Nbeads)
-PP =  NM2real(PPtr,Nbeads) 
+PPtr = PPtr
 
 end subroutine EvolveRing
 
@@ -59,7 +60,7 @@ subroutine InitNormalModes(Nbeads,omegan,delta,setNMfreq)
  allocate(A12(Nbeads)) 
  allocate(A21(Nbeads)) 
  allocate(A22(Nbeads)) 
- allocate(omegalist(Nbeads))
+ allocate(freqlist(Nbeads))
  allocate(C(Nbeads,Nbeads))
 
  if (mod(Nbeads,2) .eq. 0) then
@@ -71,21 +72,19 @@ subroutine InitNormalModes(Nbeads,omegan,delta,setNMfreq)
 
 !---------------- construct matrix -------------------------------------------- 
 !The modes are stored in the following order: 
-!--zero mode
 !--negative modes 
 !--positive modes
+!--zero mode
 !--extra mode for when Nbeads is even
-! This is maybe a bit confusing to index when generating the matrix, 
-! etc, but is a nice ordering for later on.
 
  do i = 1, Nbeads  !i = column index
-	C(1,i) = Sqrt(1d0/Nbeads) !zero mode
-
  	do k = 1, l
-		C(k+1  ,i) = Sqrt(2d0/Nbeads)*Cos(k*i*2d0*PI/Nbeads) !-k modes 
-		C(k+l+1,i) = Sqrt(2d0/Nbeads)*Sin(k*i*2d0*PI/Nbeads) !+k modes
+		C(k  ,i) = Sqrt(2d0/Nbeads)*Cos(k*i*2d0*PI/Nbeads) !-k modes 
+		C(k+l,i) = Sqrt(2d0/Nbeads)*Sin(k*i*2d0*PI/Nbeads) !+k modes
 	enddo
 
+		C(2*l+1,i) = Sqrt(1d0/Nbeads) !zero mode
+	
 	!extra mode for even Nbeads case only
 	if (mod(Nbeads,2) .eq. 0) then
 		C(2*l+2,i) = Sqrt(1d0/Nbeads)*((-1)**i)
@@ -95,40 +94,39 @@ subroutine InitNormalModes(Nbeads,omegan,delta,setNMfreq)
 
 !-------------- RPMD frequencies (setNMfreq = 0) --------------------------------------
 !-------------- This case is always done for reference --------------------------------
-!correct omega=0 mode for the omega-> 0 limit
-	omegalist(1) = 0d0
-	A11(1) = 1d0
-	A12(1) = delta
-	A21(1) = 0d0
-	A22(1) = 1d0
-
 !negative k modes
  do k = 1,l
 	omega = 2*omegan*Sin(PI*( abs(k)/real(Nbeads)) )  
  	!write(*,'(a5,i3,a3,f8.3,a8,f10.2,a6)') "freq ", -k, " = ", omega/(2*PI), " 1/ps = ", 33.33333d0*omega/(2*PI), " cm^-1"	
-    	omegalist(k+1) = omega
-	A11(k+1) = Cos(omega*delta)
-	A12(k+1) = (1/omega)*Sin(omega*delta)
-	A21(k+1) = -omega*Sin(omega*delta)
-	A22(k+1) = Cos(omega*delta)	
+    	freqlist(k) = omega
+	A11(k) = Cos(omega*delta)
+	A12(k) = (1/omega)*Sin(omega*delta)
+	A21(k) = -omega*Sin(omega*delta)
+	A22(k) = Cos(omega*delta)	
  enddo
 
 !positive k modes
  do k = 1,l
 	omega = 2*omegan*Sin(PI*( abs(k)/real(Nbeads)) )  
-  	omegalist(k+l+1) = omega
-	A11(k+l+1) = Cos(omega*delta)
-	A12(k+l+1) = (1/omega)*Sin(omega*delta)
-	A21(k+l+1) = -omega*Sin(omega*delta)
-	A22(k+l+1) = Cos(omega*delta)	
+  	freqlist(k+l) = omega
+	A11(k+l) = Cos(omega*delta)
+	A12(k+l) = (1/omega)*Sin(omega*delta)
+	A21(k+l) = -omega*Sin(omega*delta)
+	A22(k+l) = Cos(omega*delta)	
  enddo
+!correct omega=0 mode for the omega-> 0 limit
+	freqlist(2*l+1) = 0d0
+	A11(2*l+1) = 1d0
+	A12(2*l+1) = delta
+	A21(2*l+1) = 0d0
+	A22(2*l+1) = 1d0	
 
 !extra mode for even Nbeads case only
  if (mod(Nbeads,2) .eq. 0) then 
 	k = l+1
 	omega = 2*omegan*Sin(PI*( abs(k)/real(Nbeads)) )  
  	!write(*,'(a5,i3,a3,f8.3,a8,f10.2,a6)') "freq ", k, " = ", omega/(2*PI), " 1/ps = ", 33.33333d0*omega/(2*PI), " cm^-1"	
-    	omegalist(2*l + 2) = omega
+    	freqlist(2*l + 2) = omega
 	A11(2*l+2) = Cos(omega*delta)
 	A12(2*l+2) = (1/omega)*Sin(omega*delta)
 	A21(2*l+2) = -omega*Sin(omega*delta)
@@ -142,11 +140,11 @@ if (setNMfreq .eq. 0) then
  	write(*,*) "Running usuing RPMD. All beads have physical mass."
  	write(*,*) "Normal mode frequencies: (cm^-1)"
  	do k = 1,l
-		omega= omegalist(k) 
+		omega= freqlist(k) 
 		write(*,'(f10.2)')  33.33333d0*omega/(2*PI) 
 	enddo
  	if (mod(Nbeads,2) .eq. 0) then 
-	    	omega = omegalist(2*l + 2)
+	    	omega = freqlist(2*l + 2)
 	 	write(*,'(f10.2)')  33.33333d0*omega/(2*PI) 
  	endif
 
@@ -157,22 +155,13 @@ endif
 if (.not. (setNMfreq .eq. 0)) then
 
 !figure out masses 
-
-!correct omega=0 mode for the omega-> 0 limit
-	omegalist(1) = 0d0
-	A11(1) = 1d0
-	A12(1) = delta
-	A21(1) = 0d0
-	A22(1) = 1d0
-
-
 	omega = (2*PI)*setNMfreq/33.33333d0 !conv. cm-1 -> 1/ps
 	
 	do i = 1,Nbeads
-		if (omegalist(i) == 0) then 
+		if (freqlist(i) == 0) then 
 			massScaleFactor(i) = 1d0
 		else
-			massScaleFactor(i) = (omegalist(i)/omega)**2
+			massScaleFactor(i) = (freqlist(i)/omega)**2
 		endif
 		write(*,*) "mass scale factor", i, " = ", massScaleFactor(i)
 	enddo
@@ -181,18 +170,22 @@ if (.not. (setNMfreq .eq. 0)) then
  	write(*,'(a,f8.3,a8,f10.2,a6)') "All normal modes scaled to ", omega/(2*PI), " 1/ps = ", 33.33333d0*omega/(2*PI), " cm^-1"
 	write(*,'(a,f8.2,a)') "Timestep should probably not be larger than ", 	(((2*PI)/omega)/4d0)*1000, " fs"
 	
-  	omegalist(2:2*l+1) = omega
-	A11(2:2*l+1) = Cos(omega*delta)
-	A12(2:2*l+1) = (1/omega)*Sin(omega*delta)
-	A21(2:2*l+1) = -omega*Sin(omega*delta)
-	A22(2:2*l+1) = Cos(omega*delta)
+  	freqlist(1:2*l) = omega
+	A11(1:2*l) = Cos(omega*delta)
+	A12(1:2*l) = (1/omega)*Sin(omega*delta)
+	A21(1:2*l) = -omega*Sin(omega*delta)
+	A22(1:2*l) = Cos(omega*delta)
 
+	!omega=0 mode for the omega-> 0 limit
+	freqlist(2*l+1) = 0d0
+	A11(2*l+1) = 1d0
+	A12(2*l+1) = delta
+	A21(2*l+1) = 0d0
+	A22(2*l+1) = 1d0
 
-
-
-!extra mode for even Nbeads case only
+ !extra mode for even Nbeads case only
  if (mod(Nbeads,2) .eq. 0) then 
-    	omegalist(2*l + 2) = omega
+    	freqlist(2*l + 2) = omega
 	A11(2*l+2) = Cos(omega*delta)
 	A12(2*l+2) = (1/omega)*Sin(omega*delta)
 	A21(2*l+2) = -omega*Sin(omega*delta)
@@ -222,7 +215,7 @@ subroutine gen_rand_ring(RR,mass,temp,Nbeads)
  omegan = KB_amuA2ps2perK*temp*real(Nbeads)/hbar
 
  do j = 1,Nbeads
-		omega = omegalist(j)
+		omega = freqlist(j)
 		if (omega .eq. 0d0) then 
 			RRtr(:,j) = 0d0
 		else 
@@ -269,37 +262,39 @@ end subroutine gen_rand_ring
 !end subroutine MakeNormalMode
 
 
-function real2NM(AA,Nbeads) 
+function real2NM(AA, AAtr, Nbeads) 
  Implicit none
  double precision, dimension(3,Nbeads), intent(in)  ::AA
- double precision, dimension(3,Nbeads)  :: real2NM
+ double precision, dimension(3,Nbeads), intent(out)  :: AAtr
  integer, intent(in) :: Nbeads
  integer :: j, k 
-	real2NM = 0 
+	AAtr = 0 
 	do j = 1,Nbeads
 		do k = 1, Nbeads
-			real2NM(1,j) = real2NM(1,j) + C(j,k)*AA(1,k)
-			real2NM(2,j) = real2NM(2,j) + C(j,k)*AA(2,k)
-			real2NM(3,j) = real2NM(3,j) + C(j,k)*AA(3,k)
+			AAtr(1,j) = AAtr(1,j) + C(j,k)*AA(1,k)
+			AAtr(2,j) = AAtr(2,j) + C(j,k)*AA(2,k)
+			AAtr(3,j) = AAtr(3,j) + C(j,k)*AA(3,k)
 		enddo
 	enddo
- end function real2NM
+return AAtr
+end subroutine real2NM
 
-function NM2real(AAtr, Nbeads) 
+subroutine NM2real(AA, AAtr, Nbeads) 
  Implicit none
  double precision, dimension(3,Nbeads), intent(in)  :: AAtr
- double precision, dimension(3,Nbeads)  :: NM2real
+ double precision, dimension(3,Nbeads), intent(out)  :: AA
  integer, intent(in) :: Nbeads
  integer :: j, k 
-	NM2real = 0 
-	do j = 1,Nbeads
-		do k = 1, Nbeads
-		NM2real(1,j) = NM2real(1,j) + C(k,j)*AAtr(1,k)
-		NM2real(2,j) = NM2real(2,j) + C(k,j)*AAtr(2,k)
-		NM2real(3,j) = NM2real(3,j) + C(k,j)*AAtr(3,k)
-		enddo
+do j = 1,Nbeads
+	AA = 0 
+	do k = 1, Nbeads
+		AA(1,j) = AA(1,j) + C(k,j)*AAtr(1,k)
+		AA(2,j) = AA(2,j) + C(k,j)*AAtr(2,k)
+		AA(3,j) = AA(3,j) + C(k,j)*AAtr(3,k)
 	enddo
-end function NM2real
+enddo
+return AA
+end subroutine NM2real
 
 
 !---------------------------------------------------------------------
