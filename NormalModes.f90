@@ -155,9 +155,6 @@ endif
 
 !------------------------- ACMD / CMD / PIMD case (adiabaticity > 1) ------------------------------------
 if (.not. (setNMfreq .eq. 0)) then
-
-!figure out masses 
-
 !correct omega=0 mode for the omega-> 0 limit
 	omegalist(1) = 0d0
 	A11(1) = 1d0
@@ -165,19 +162,18 @@ if (.not. (setNMfreq .eq. 0)) then
 	A21(1) = 0d0
 	A22(1) = 1d0
 
-
 	omega = (2*PI)*setNMfreq/33.33333d0 !conv. cm-1 -> 1/ps
 	
-	do i = 1,Nbeads
-		if (omegalist(i) == 0) then 
-			massScaleFactor(i) = 1d0
-		else
-			massScaleFactor(i) = (omegalist(i)/omega)**2
-		endif
-		write(*,*) "mass scale factor", i, " = ", massScaleFactor(i)
-	enddo
+	!do i = 1,Nbeads
+	!	if (omegalist(i) == 0) then 
+	!		massScaleFactor(i) = 1d0
+	!	else
+	!		massScaleFactor(i) = (omegalist(i)/omega)**2
+	!	endif
+	!	write(*,*) "mass scale factor", i, " = ", massScaleFactor(i)
+	!enddo
 
-	write(*,*) "Adiabaticity = ", omega/omegan
+	write(*,*) "Adiabaticity = ", omegan/omega
  	write(*,'(a,f8.3,a8,f10.2,a6)') "All normal modes scaled to ", omega/(2*PI), " 1/ps = ", 33.33333d0*omega/(2*PI), " cm^-1"
 	write(*,'(a,f8.2,a)') "Timestep should probably not be larger than ", 	(((2*PI)/omega)/4d0)*1000, " fs"
 	
@@ -186,9 +182,6 @@ if (.not. (setNMfreq .eq. 0)) then
 	A12(2:2*l+1) = (1/omega)*Sin(omega*delta)
 	A21(2:2*l+1) = -omega*Sin(omega*delta)
 	A22(2:2*l+1) = Cos(omega*delta)
-
-
-
 
 !extra mode for even Nbeads case only
  if (mod(Nbeads,2) .eq. 0) then 

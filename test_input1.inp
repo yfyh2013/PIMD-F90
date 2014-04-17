@@ -15,10 +15,11 @@
 .f. 		         ! input initial velocities? 
 ''			 ! velocity input filename 
 .f.			 ! write final velocities to seperate file?
-.t.                 	 ! Global thermostat? t/f
-.f.                      ! Bead thermostat? 
+.f.                 	 ! Global thermostat? t/f
+.t.                      ! Thermostat non-centroid modes ? 
+.t.			 ! Thermostat centroid mode ? 
 .1			 ! tau for global Nose-Hoover (ps)
-.001			 ! tau for bead Nose-Hoover (ps)
+.01			 ! tau for centroid Nose-Hoover (ps)
 5			 ! global Nose-Hoover chain length
 5			 ! bead Nose-Hoover chain length
 300	                 ! temperature (Kelvin)
@@ -27,11 +28,11 @@
 1		         ! reference pressure (bar) 
 .f.			 ! box size running average output ? 
 .f.			 ! pressure coupling during equilibration only?
-10000		         ! number of steps to equilibrate		 
-500000            	 ! number of steps to run
+100		         ! number of steps to equilibrate		 
+5000            	 ! number of steps to run
 .1                  	 ! timestep (delt) (fs)
 1			 ! Total dipole output frequency 
 1   			 ! Temp/Press output frequency
 100       		 ! Output frequency for everything else
-1	 		 ! Number of beads 
+4	 		 ! Number of beads 
 0			 ! frequency (inverse cm) to set NMs to ( or enter 0 for none/RPMD)

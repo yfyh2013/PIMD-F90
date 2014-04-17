@@ -13,6 +13,7 @@ program ttm3p
 use system_mod
 use consts
 use main_stuff
+use InputOutput
 use NormalModes
 use mpi
 implicit none
@@ -188,18 +189,7 @@ if (pid .eq. 0)  then
 	call MPItimer(1,'write',seconds) 
 	call MPItimer(2,'write',secondsNM) 
 	call MPItimer(3,'write',secondsIO) 
-
 	call print_run
-endif
-
-
-if (PRINTFINVEL) then 
-	open(30, file='out_'//TRIM(fsave)//'_fin_mom.dat', status='unknown')
-	call save_XYZ(30, PPc, Upot, read_method, t,delt) 
-	close(30)
-	open(31, file='out_'//TRIM(fsave)//'_fin_coord.xyz', status='unknown')
-	call save_XYZ(31, RRc, Upot, read_method, t,delt) 
-	close(31)
 endif
 
 !if (pid .eq. 0) then

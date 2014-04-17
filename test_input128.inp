@@ -15,13 +15,14 @@
 .f. 		         ! input initial velocities? 
 ''			 ! velocity input filename 
 .f.			 ! write final velocities to seperate file?
-.t.                 	 ! Global thermostat? t/f
-.t.                      ! Bead thermostat? 
+.f.                 	 ! Global thermostat? t/f
+.t.                      ! Thermostat non-centroid modes ? 
+.t.			 ! Thermostat centroid mode ? 
 .1			 ! tau for global Nose-Hoover (ps)
-.1			 ! tau for bead Nose-Hoover (ps)
+.01			 ! tau for centroid bead Nose-Hoover (ps)
 5			 ! global Nose-Hoover chain length
 5			 ! bead Nose-Hoover chain length
-300	                 ! temperature (Kelvin)
+700	                 ! temperature (Kelvin)
 .f.			 ! Berendson barostat ? 
 .01      		 ! tau for barostat (ps)
 1000		         ! reference pressure (bar) 
@@ -33,5 +34,5 @@
 1			 ! Total dipole output frequency 
 1   			 ! Temp/Press output frequency
 500       		 ! Output frequency for everything else
-32	 		 ! Number of beads 
+4	 		 ! Number of beads 
 0 			 ! frequency (inverse cm) to set NMs to ( or enter 0 for none/RPMD)
