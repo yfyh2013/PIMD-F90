@@ -30,7 +30,7 @@ integer, dimension(:), allocatable :: seed
 character(len=125) :: dip_file
 integer :: num_timesteps, t, t_freq, tp_freq, td_freq, m, clock, eq_timesteps, TPoutStream, tt, tr 
 logical :: dip_out, coord_out, TD_out, vel_out, TP_out, Edip_out
-logical :: BAROSTAT, PEQUIL, BOXSIZEOUT, THERMOSTAT, GENVEL, INPVEL, PRINTFINVEL
+logical :: BAROSTAT, PEQUIL, BOXSIZEOUT, THERMOSTAT, GENVEL, INPVEL,PRINTFINALIMAGE
 logical ::  BEADTHERMOSTAT, CENTROIDTHERMOSTAT, CALC_RADIUS_GYRATION
 
 !N-H variables
@@ -143,7 +143,6 @@ subroutine master_node_allocations
 	allocate(dip_momEt(3, Nwaters,Nbeads))
 	allocate(RRc(3, Natoms))
 	allocate(PPc(3, Natoms))
-	allocate(massScaleFactor(Nbeads))
 	dRRt = 0 
 end subroutine master_node_allocations
 
@@ -258,6 +257,10 @@ subroutine calc_radius_of_gyration(RRt, RRc)
 
 end subroutine calc_radius_of_gyration
 
+
+
+
+
 !----------------------------------------------------------------------------------!
 !--------------  Berendson Pressure Coupling (J. Chem. Phys. 81, 3684, 1984)-------
 !----------------------------------------------------------------------------------!
@@ -290,10 +293,12 @@ allocate(RRtemp(3,Nbeads))
  call random_seed(put = seed)  !put in the seed
 
 !predict average radius of the ring polymer
-avgrO  = 2*PI*hbar/(PI*Sqrt(24*massO*KB_amuA2ps2perK*temp))
-avgrH  = 2*PI*hbar/(PI*Sqrt(24*1d0*KB_amuA2ps2perK*temp)) 
-write(*,'(a58,f10.5,a4)') "Predicted average radius of the Oxygen ring polymer is   ", avgrO, " Ang"
-write(*,'(a58,f10.5,a4)') "Predicted average radius of the Hydrogen ring polymer is ", avgrH, " Ang"
+if (Nbeads .gt. 1) then
+	avgrO  = 2*PI*hbar/(PI*Sqrt(24*massO*KB_amuA2ps2perK*temp))
+	avgrH  = 2*PI*hbar/(PI*Sqrt(24*1d0*KB_amuA2ps2perK*temp)) 
+	write(*,'(a,f10.5,a4)') "Predicted average radius of (converged) Oxygen ring polymer is   ", avgrO, " Ang"
+	write(*,'(a,f10.5,a4)') "Predicted average radius of (converged) Hydrogen ring polymer is ", avgrH, " Ang"
+endif 
 
 do i=1, Nwaters
 		Call gen_rand_ring(RRtemp,massO,temp,Nbeads)	
@@ -381,8 +386,7 @@ if (GENVEL) then
 	endif
  enddo
 
-
- 	
+	
 else if ( (.not. GENVEL) .and. (.not. INPVEL)) then 
   PPt = 0 
   PPc = 0 
@@ -400,18 +404,31 @@ end subroutine initialize_velocities
 function rand_norm(std_dev) 
  Implicit None 
  double precision, intent(in) :: std_dev
- double precision  :: rand_norm, rand1, rand2, r
-
- r = 0
- do while ((r .eq. 0).or.(r .gt. 1)) 
- 	call random_number(rand1)
- 	call random_number(rand2)
- 	rand1 = 2d0*rand1 - 1
- 	rand2 = 2d0*rand2 - 1
-	r = rand1*rand1 + rand2*rand2
- enddo 
-
- rand_norm = std_dev*rand1*Sqrt(-2d0*Log(r)/r)
+ double precision  :: rand_norm, rand1, rand2, r, d
+ double precision, save  :: rand_cached
+ logical, save :: CACHED
+ 
+ !The Box-Muller algorithm generates 2 normally distributed random numbers
+ !For speed one is cached, so first we check if anything is in the cache. 
+ !if nothing is in the cache  generate 2 new randn 
+ if (CACHED) then 
+ 	rand_norm = std_dev*rand_cached*d ! + mean
+	CACHED = .false.
+ else
+	
+ 	r = 0
+ 	do while ((r .eq. 0).or.(r .gt. 1)) 
+ 		call random_number(rand1)
+ 		call random_number(rand2)
+ 		rand1 = 2d0*rand1 - 1
+ 		rand2 = 2d0*rand2 - 1
+		r = rand1*rand1 + rand2*rand2
+ 	enddo 
+ 		d = Sqrt(-2d0*Log(r)/r)
+ 		rand_norm = std_dev*rand1*d ! + mean
+		rand_cached = rand2*d
+ 		CACHED = .true.
+ endif
 
 end function rand_norm
 

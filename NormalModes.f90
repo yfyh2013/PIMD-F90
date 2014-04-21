@@ -137,8 +137,6 @@ subroutine InitNormalModes(Nbeads,omegan,delta,setNMfreq)
 
 if (setNMfreq .eq. 0) then
 
-	massScaleFactor = 1
-
  	write(*,*) "Running usuing RPMD. All beads have physical mass."
  	write(*,*) "Normal mode frequencies: (cm^-1)"
  	do k = 1,l
@@ -219,7 +217,7 @@ subroutine gen_rand_ring(RR,mass,temp,Nbeads)
 		if (omega .eq. 0d0) then 
 			RRtr(:,j) = 0d0
 		else 
-  			std_dev = Sqrt((omegan*hbar)/(mass*omega**2)) !removed massscalefactor
+  			std_dev = Sqrt((omegan*hbar)/(mass*omega**2))  
 			RRtr(:,j) = (/ rand_norm(std_dev), rand_norm(std_dev), rand_norm(std_dev) /)	
 		endif	
  enddo
@@ -287,9 +285,9 @@ function NM2real(AAtr, Nbeads)
 	NM2real = 0 
 	do j = 1,Nbeads
 		do k = 1, Nbeads
-		NM2real(1,j) = NM2real(1,j) + C(k,j)*AAtr(1,k)
-		NM2real(2,j) = NM2real(2,j) + C(k,j)*AAtr(2,k)
-		NM2real(3,j) = NM2real(3,j) + C(k,j)*AAtr(3,k)
+			NM2real(1,j) = NM2real(1,j) + C(k,j)*AAtr(1,k)
+			NM2real(2,j) = NM2real(2,j) + C(k,j)*AAtr(2,k)
+			NM2real(3,j) = NM2real(3,j) + C(k,j)*AAtr(3,k)
 		enddo
 	enddo
 end function NM2real

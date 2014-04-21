@@ -31,7 +31,7 @@ read(11,*)polar_maxiter, polar_sor, polar_eps, guess_initdip, print_dipiters
 read(11,*)GENVEL
 read(11,*)INPVEL
 read(11,*)fvel
-read(11,*)PRINTFINVEL
+read(11,*)PRINTFINALIMAGE
 read(11,*)THERMOSTAT
 read(11,*)BEADTHERMOSTAT
 read(11,*)CENTROIDTHERMOSTAT
@@ -62,10 +62,13 @@ end subroutine read_input_file
 !----------------------------------------------------------------------------------!
 subroutine read_coords
 
-if (BEADTHERMOSTAT .and. (Nbeads .eq. 1)) then
-	write(*,*) "ERROR: Bead thermostat does not make much sense with 1 bead."
+if (Nbeads .lt. 1) then 
+	write(*,*) "ERROR : invalid number of beads!! " 
+endif
+
+if ((CENTROIDTHERMOSTAT .or. BEADTHERMOSTAT) .and. (Nbeads .eq. 1)) then
+	write(*,*) "WARNING: Bead/centroid thermostating does not make much sense with 1 bead."
 	write(*,*) "The dynamics will be unphysical since every atomic DOF will be thermostated. "
-	stop
 endif
 
 if (BEADTHERMOSTAT .and. .not. (THERMOSTAT)) then
@@ -73,8 +76,13 @@ if (BEADTHERMOSTAT .and. .not. (THERMOSTAT)) then
 	write(*,*) "You may observe abnormally large temperature fluctuations in the system."
 endif
 
+if (CENTROIDTHERMOSTAT.and. .not. (BEADTHERMOSTAT)) then
+	write(*,*) "WARNING: You are thermostating the centroid but not thermostating the other modes."
+	write(*,*) "There is not really any good reason for doing this. Consider a different scheme." 
+endif
+
 if (.not. ( (box(1).eq.box(2)) .and. (box(2).eq.box(3)) ) ) then
-	write(*,*) 'ERROR: program can only handle square boxes'
+	write(*,*) 'ERROR: program can only handle square boxes.(it can be adapted for non-square but has not so far)'
 	stop 
 endif   
 if ( (INPVEL) .and. (GENVEL) ) then
@@ -97,21 +105,37 @@ if (rc1 .gt. Rc) then
 	stop
 endif
 
-if (read_method==0) then
-   do i=1, Nwaters
-      iO = 3*i-2 
-      read(10,*)ch2, RRc(1:3, iO)
-   enddo
-   do i=1, Nwaters
-      ih1 = 3*i-1; ih2=3*i
-      read(10,*)ch2, RRc(1:3, ih1)
-      read(10,*)ch2, RRc(1:3, ih2)
-   enddo
-else if (read_method==1) then
+if (INPVEL) then 
+   if (read_method .eq. 0) then
+	write(*,*) "Sorry this read method is not supported when inputing an image. please format as OHHOHH.."
+	stop
+   endif
+
    do i=1, Natoms
-      read(10,*)ch2, RRc(1:3, i)
+	do j = 1, Nbeads
+      		read(10,*)ch2, RRt(1:3, i, j), PPt(1:3, i, j)
+	enddo
    enddo
+   !calculate centroid positions
+   RRc = sum(RRt,3)/Nbeads
+else 
+   if (read_method .eq. 0) then
+  	 do i=1, Nwaters
+   	 	iO = 3*i-2 
+ 	 	read(10,*)ch2, RRc(1:3, iO)
+  	 enddo
+   do i=1, Nwaters
+      	 ih1 = 3*i-1; ih2=3*i
+     	 read(10,*)ch2, RRc(1:3, ih1)
+      	 read(10,*)ch2, RRc(1:3, ih2)
+   enddo
+   else if (read_method==1) then
+   	do i=1, Natoms
+     		 read(10,*)ch2, RRc(1:3, i)
+  	enddo
+   endif 
 endif
+
 
 end subroutine read_coords
 
@@ -321,13 +345,10 @@ else
         write(TPoutStream,'(a50, a4)') "Isothermal compressibility (only valid in NPT)", " n/a"
 endif
 
-if (PRINTFINVEL) then 
-	open(30, file='out_'//TRIM(fsave)//'_fin_mom.dat', status='unknown')
-	call save_XYZ(30, PPc, Upot, read_method, t,delt) 
+if (PRINTFINALIMAGE) then 
+	open(30, file='out_'//TRIM(fsave)//'_fin_image.xyz', status='unknown')
+	call save_image(30, RRt, PPt, Upot, t,delt) 
 	close(30)
-	open(31, file='out_'//TRIM(fsave)//'_fin_coord.xyz', status='unknown')
-	call save_XYZ(31, RRc, Upot, read_method, t,delt) 
-	close(31)
 endif
 
 end subroutine print_run
@@ -413,6 +434,37 @@ else if (read_method==1) then
    enddo
 endif
 end subroutine save_XYZ
+
+
+!-----------------------------------------------------------------------------------------
+!--------------Write out image ----------------------------------------------------------
+!-----------------------------------------------------------------------------------------
+subroutine save_image(iun, RRt, PPt, Upot, t, delt) 
+use system_mod
+use consts
+implicit none
+double precision, dimension(3, Natoms,Nbeads), intent(in) :: RRt, PPt
+double precision :: Upot,delt
+integer ::  i, j, iO, ih1, ih2, t
+integer :: iun 
+
+write(iun,'(i10)') Natoms*Nbeads !, angle
+write(iun,'(f12.6,2x,f12.6,3(1x,f12.6))') t*delt, Upot,  box
+   do i=1, Nwaters
+      iO = 3*i-2
+      ih1 = 3*i-1
+      ih2 = 3*i
+	do j = 1, Nbeads
+	      write(iun,'(a2,6(1x,f12.6))')'O ',RRt(1:3, iO,  j), PPt(1:3, iO,  j)*imassO
+	enddo
+	do j = 1, Nbeads
+		write(iun,'(a2,6(1x,f12.6))')'H ',RRt(1:3, ih1, j), PPt(1:3, ih1, j)*imassH
+	enddo
+	do j = 1, Nbeads
+	      write(iun,'(a2,6(1x,f12.6))')'H ',RRt(1:3, ih2, j), PPt(1:3, ih2, j)*imassH
+	enddo
+   enddo
+end subroutine save_image
 
 
 end module InputOutput
