@@ -1,14 +1,15 @@
 !------------------------------------------------------------------------------------
 subroutine PBCsmear01(drsq, a_pol12, aewald, ts0, ts1)
 use system_mod
+use math
 implicit none
 double precision, parameter :: g23=1.3541179394264d0
 double precision, parameter :: TSP= 1.12837916709551257390d0 !  2/sqrt(pi)
 
 double precision :: dd,dri,drsqi,expon,AA, a, drsq, aewald, rA,rA3,exp1,a_sqrt3, ch1,ch2,sr1,sr2,Rc_tholesq, ts0, ts1, a_pol12
 double precision :: er
-double precision, external :: gammq2_3
-double precision, external :: erfc
+!double precision, external :: gammq2_3 !changed by D. Elton. These are now in the 'math' module
+!double precision, external :: erfc
 
 dd = dsqrt(drsq)
 dri = 1.d0/dd
@@ -35,12 +36,13 @@ end subroutine PBCsmear01
 subroutine PBCsmear2(drsq, a_pol12, aewald, ts1, ts2)
 use system_mod
 use consts
+use math
 implicit none
 double precision, intent(in) :: drsq, a_pol12, aewald
 double precision, intent(out) :: ts1, ts2
 double precision :: dd,dri,drsqi,expon,AA, rA,rA3,exp1,ch1,ch2,sr1,sr2, Rc_tholesq
 double precision :: er
-double precision, external :: erfc
+!double precision, external :: erfc
 
 
 dd = dsqrt(drsq)
@@ -69,12 +71,13 @@ end subroutine PBCsmear2
 subroutine PBCsmear3(drsq, a_pol12,  aewald, ts1, ts2, ts3)
 use system_mod
 use consts
+use math
 implicit none
 double precision, intent(in) :: drsq, a_pol12,  aewald
 double precision, intent(out) :: ts1, ts2, ts3
 double precision :: dd,dri,drsqi,expon,AA,rA,rA3,exp1,ch1,ch2,ch3,sr1,sr2,sr3,Rc_tholesq
 double precision :: er
-double precision, external :: erfc
+!double precision, external :: erfc
 
 dd = dsqrt(drsq)
 dri = 1.d0/dd
@@ -107,11 +110,12 @@ end subroutine PBCsmear3
 subroutine self1(drsq, aewald, ts0, ts1)
 use system_mod
 use consts
+use math
 implicit none
 double precision, intent(in) :: drsq
 double precision, intent(out) :: ts0, ts1
 double precision :: dd, dri, expon, drsqi, kr0, kr1, ch0, ch1, aewald
-double precision, external :: erfc
+!double precision, external :: erfc
 
 dd = dsqrt(drsq)
 drsqi = 1.d0/drsq
@@ -129,11 +133,12 @@ end subroutine self1
 subroutine self2(drsq, aewald, ts1, ts2)
 use system_mod
 use consts
+use math
 implicit none
 double precision, intent(in) :: drsq, aewald
 double precision, intent(out) :: ts1, ts2
 double precision :: dd, dri, expon, drsqi, kr0, kr1, kr2, ch0, ch1, ch2
-double precision, external :: erfc
+!double precision, external :: erfc
 
 dd = dsqrt(drsq) 
 drsqi = 1.d0/drsq 

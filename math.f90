@@ -1,3 +1,45 @@
+module math 
+!converted into a module by D. Elton
+
+contains 
+!---------------------------------------------------------------------
+!------------ Generate random number from Gaussian distribution -----
+!------------ using Box_Muller sampling -----------------------------
+!----- http://en.literateprograms.org/Box-Muller_transform_%28C%29 --
+!---------------------------------------------------------------------
+function rand_norm(std_dev) 
+ Implicit None 
+ double precision, intent(in) :: std_dev
+ double precision  :: rand_norm, rand1, rand2, r, d
+ double precision, save  :: cached_value
+ logical, save :: CACHED
+ 
+ !The Box-Muller algorithm generates 2 normally distributed random numbers
+ !For speed one is cached, so first we check if anything is in the cache. 
+ !if nothing is in the cache  generate 2 new randn 
+ if (CACHED) then 
+ 	rand_norm = std_dev*cached_value ! + mean
+	CACHED = .false.
+ else
+	
+ 	r = 0
+ 	do while ((r .eq. 0).or.(r .gt. 1)) 
+ 		call random_number(rand1)
+ 		call random_number(rand2)
+ 		rand1 = 2d0*rand1 - 1
+ 		rand2 = 2d0*rand2 - 1
+		r = rand1*rand1 + rand2*rand2
+ 	enddo 
+ 		d = Sqrt(-2d0*Log(r)/r)
+ 		rand_norm   = std_dev*rand1*d ! + mean
+		cached_value = rand2*d
+ 		CACHED = .true.
+ endif
+
+end function rand_norm
+
+
+
 !*****************************************************************************
 !*** The following subroutines used for the calculation of the Gamma function
 !*** have been taken from the "Numerical Recipes"   
@@ -351,3 +393,4 @@ RETURN
 !---------- Last card of CALERF ----------
 END FUNCTION ERFC2
 
+end module 

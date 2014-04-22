@@ -200,6 +200,7 @@ end subroutine InitNormalModes
 !---------------- free ring distribution at temperature T -------------------------------
 !-----------------------------------------------------------------------------------------
 subroutine gen_rand_ring(RR,mass,temp,Nbeads)
+ use math
  Implicit None
  double precision, parameter :: hbar=6.35077993041d0 !hbar in amu*ang^2/ps
  double precision, parameter :: KB_amuA2ps2perK = .831447148d0
@@ -291,32 +292,5 @@ function NM2real(AAtr, Nbeads)
 		enddo
 	enddo
 end function NM2real
-
-
-!---------------------------------------------------------------------
-!------------ Generate random number from Gaussian distribution -----
-!------------ using Box_Muller sampling -----------------------------
-!----- http://en.literateprograms.org/Box-Muller_transform_%28C%29 --
-!---------------------------------------------------------------------
-function rand_norm(std_dev) 
- Implicit None 
- double precision, intent(in) :: std_dev
- double precision  :: rand_norm, rand1, rand2, r
-
- r = 0
- do while ((r .eq. 0).or.(r .gt. 1)) 
- 	call random_number(rand1)
- 	call random_number(rand2)
- 	rand1 = 2d0*rand1 - 1
- 	rand2 = 2d0*rand2 - 1
-	r = rand1*rand1 + rand2*rand2
- enddo 
-
- rand_norm = std_dev*rand1*Sqrt(-2d0*Log(r)/r)
-
-end function rand_norm
-
-
-
 
 end module

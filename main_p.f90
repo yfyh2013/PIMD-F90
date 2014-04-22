@@ -43,21 +43,11 @@ Nbatches = Nbeads/Nnodes
 
 !------------------Master node stuff --------------------------------------------
 if (pid .eq. 0) then
-	call master_node_allocations
-	call InitNormalModes(Nbeads,omegan,delt, setNMfreq)
+	call master_node_init
 	call read_coords           ! Read in coord data to RRc 
 	call initialize_beads      ! Initialize RRt
 	call initialize_velocities ! Initialize PPt
  	call open_files
-	if (THERMOSTAT)  then
-		allocate(vxi_global(global_chain_length))
-		vxi_global = 1 !set chain velocities to zero initially
-	endif 
-	if (BEADTHERMOSTAT)  then
-		allocate(vxi_beads(bead_chain_length,natoms,Nbeads,3))
-		vxi_beads = 0 !set chain velocities to zero initially
-	endif 
-
 	call MPItimer(1,'start',seconds)
 endif!(pid .eq. 0)
 
@@ -69,7 +59,7 @@ do t = 1, num_timesteps + eq_timesteps
 	if (pid .eq. 0) then
 
 		!Propagate NH chains 
-		if (BEADTHERMOSTAT) call bead_NH
+		if (BEADTHERMOSTAT) call bead_thermostat
 		
 		if (THERMOSTAT)  then 
 			call Nose_Hoover(s, uk, global_chain_length, vxi_global, tau, delt2, 3*Natoms, temp)
@@ -166,7 +156,7 @@ do t = 1, num_timesteps + eq_timesteps
 		uk = .5d0*uk 
 
 		!Propagate NH chains 
-		if (BEADTHERMOSTAT) call bead_NH
+		if (BEADTHERMOSTAT) call bead_thermostat
 	
 		if (THERMOSTAT)     then 
 			call Nose_Hoover(s, uk, global_chain_length, vxi_global, tau, delt2, 3*Natoms, temp)

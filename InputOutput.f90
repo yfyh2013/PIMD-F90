@@ -35,6 +35,7 @@ read(11,*)PRINTFINALIMAGE
 read(11,*)THERMOSTAT
 read(11,*)BEADTHERMOSTAT
 read(11,*)CENTROIDTHERMOSTAT
+read(11,*)bead_thermostat_type
 read(11,*)tau
 read(11,*)tau_centroid
 read(11,*)global_chain_length
@@ -64,6 +65,13 @@ subroutine read_coords
 
 if (Nbeads .lt. 1) then 
 	write(*,*) "ERROR : invalid number of beads!! " 
+endif
+
+if ( .not.( (bead_thermostat_type .eq. 'Langevin') .or. (bead_thermostat_type .eq. 'Nose-Hoover') &
+	.or. (bead_thermostat_type .eq. 'none') ) ) then
+		write(*,*) "ERROR: Invalid bead thermostat selection. Possible options: "
+		write(*,*) "		'Nose-Hoover', 'Langevin', or 'none'  " 
+	stop
 endif
 
 if ((CENTROIDTHERMOSTAT .or. BEADTHERMOSTAT) .and. (Nbeads .eq. 1)) then

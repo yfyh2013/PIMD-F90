@@ -3,6 +3,7 @@ use consts
 use system_mod
 use pot_mod
 use neigh_mod
+use math
 implicit none
 double precision, dimension(3, Natoms), intent(in) :: RR
 double precision, intent(out) :: En
@@ -26,7 +27,7 @@ double precision ::  kr0, kr1, ch0, ch1, ts0, ts1
 double precision, dimension(3,3) :: Atmp
 double precision, dimension(3) :: AxB, dij, tmp_der
 double precision, dimension(5) :: tmp_arr5
-double precision, external :: erfc
+!double precision, external :: erfc
 logical :: remove_net_force
 !type t_neigh 
 !   integer :: N

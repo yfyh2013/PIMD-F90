@@ -1,6 +1,6 @@
 module main_stuff
 use consts
-use system_mod
+use system_mod !more global variables
 use mpi
 Implicit none
 !----------------------------------------------------------------------------------!
@@ -18,7 +18,7 @@ integer :: i, iw, iat,  iO, ih1, ih2, narg, ia, read_method
 integer :: ix, iy, iz, nx, ny, nz
 integer, external :: iargc
  character(len=2) :: ch2
-character(len=125) :: finp,fconfig,fvel,fsave 
+ character(len=125) :: finp,fconfig,fvel,fsave 
 !-new variables:--------------------------------------------
 double precision, dimension(:,:), allocatable :: VV, dRRold, dRRnew
 double precision, dimension(3) :: summom, sumvel
@@ -27,7 +27,8 @@ double precision :: temp, sum_temp, sum_press,sys_temp, avg_vel, init_energy, su
 double precision :: sum_energy, sum_energy2, specific_heat, avg_temp, init_temp
 double precision :: avg_box, avg_box2, sum_box, sum_box2, isotherm_compress
 integer, dimension(:), allocatable :: seed
-character(len=125) :: dip_file
+ character(len=125) :: dip_file
+ character(len=11)  :: bead_thermostat_type
 integer :: num_timesteps, t, t_freq, tp_freq, td_freq, m, clock, eq_timesteps, TPoutStream, tt, tr 
 logical :: dip_out, coord_out, TD_out, vel_out, TP_out, Edip_out
 logical :: BAROSTAT, PEQUIL, BOXSIZEOUT, THERMOSTAT, GENVEL, INPVEL,PRINTFINALIMAGE
@@ -51,8 +52,9 @@ double precision, dimension(:,:,:), allocatable :: RRt, PPt, dip_momIt, dip_momE
 double precision, dimension(:,:), allocatable :: RRc, PPc
 double precision ::  omegan, kTN, iNbeads, setNMfreq
 double precision :: radiusH, radiusO
-integer :: Nnodes, pid, Nbeads, j, k, ierr, Nbatches, counti, bat
+integer :: Nnodes, Nbeads, pid, j, k, ierr, Nbatches, counti, bat
 integer :: status2(MPI_STATUS_SIZE)
+
 ! timing variables
 double precision :: seconds, secondsNM, secondsIO
 
@@ -111,14 +113,25 @@ omegan = KB_amuA2ps2perK*temp*Nbeads/hbar
 kTN = KB_amuA2ps2perK*temp*Nbeads
 s = 1
 sbead = 1
+
 end subroutine initialize_variables
 
 
 !----------------------------------------------------------------------------------!
 !---------- Master node allocations -----------------------------------------------
 !----------------------------------------------------------------------------------!
-subroutine master_node_allocations
-	if (Nnodes .lt. Nbeads + 1) then 
+subroutine master_node_init
+	use Langevin 
+	use NormalModes
+
+	!initialize random number generator
+ 	CALL RANDOM_SEED(size = m) !get size of seed for the system
+ 	ALLOCATE(seed(m))
+	call system_clock(count=clock) 
+	seed = clock + 357 * (/ (i - 1, i = 1, m) /)
+ 	call random_seed(put = seed)  !put in the seed
+ 	
+	if (Nnodes .lt. Nbeads) then 
 		if (.not. (mod(Nbeads,Nnodes) .eq. 0)) then
 	           write(*,*) "ERROR: the number of beads must be a multiple of the number of nodes."
 	           write(*,'(a,i4,a,i4,a)') "To run on ", Nnodes, " nodes I suggest using ", Nbeads - mod(Nbeads,Nnodes), " beads"
@@ -144,7 +157,21 @@ subroutine master_node_allocations
 	allocate(RRc(3, Natoms))
 	allocate(PPc(3, Natoms))
 	dRRt = 0 
-end subroutine master_node_allocations
+
+	call InitNormalModes(Nbeads, omegan, delt, setNMfreq)
+
+	if (THERMOSTAT)  then
+		allocate(vxi_global(global_chain_length))
+		vxi_global = 1 !set chain velocities to zero initially
+	endif 
+	if (BEADTHERMOSTAT)  then
+		allocate(vxi_beads(bead_chain_length,natoms,Nbeads,3))
+		vxi_beads = 0 !set chain velocities to zero initially
+	endif
+	if (bead_thermostat_type .eq. 'Langevin') call Init_Langevin_NM(delt2, CENTROIDTHERMOSTAT, tau_centroid, Nbeads, temp)
+
+
+end subroutine master_node_init
 
 
 !----------------------------------------------------------------------------------!
@@ -176,16 +203,22 @@ end subroutine PBCs
 
 
 !----------------------------------------------------------------------------------!
-!-------------- calling Nose-Hoover for the beads --------------------------------- 
+!-------------- calling thermostat for the beads ---------------------------------- 
 !----------------------------------------------------------------------------------!
-subroutine bead_NH
+subroutine bead_thermostat
  use NormalModes
+ use Langevin 
  Implicit None
  double precision, dimension(3,Nbeads) :: PPtr 
  double precision :: uk_bead, tau, imass
  Integer :: i, j, k 
-
- do i = 1,Natoms
+! Calling Langevin thermostat 
+ if (bead_thermostat_type .eq. 'Langevin') then
+	call Langevin_NM(PPt, Nbeads)
+ endif
+! Nose-Hoover coupling in normal mode space ---------------------------------------
+ if (bead_thermostat_type .eq. 'Nose-Hoover') then
+   do i = 1,Natoms
 	if (mod(i+2,3) .eq. 0) then
 		imass = imassO 
 	else 
@@ -209,7 +242,8 @@ subroutine bead_NH
 		enddo
 	enddo 
 	PPt(:,i,:) = NM2real(PPtr,Nbeads) 
-enddo
+   enddo
+ endif
 
 
 !----------------- Old Nose-Hoover scheme coupling in real space-------------------
@@ -226,7 +260,7 @@ enddo
 !		enddo
 !	enddo 
 !enddo
-end subroutine bead_NH
+end subroutine bead_thermostat
 
 
 
@@ -286,12 +320,6 @@ double precision, dimension(:,:), allocatable :: RRtemp
 double precision :: avgrO, avgrH
 allocate(RRtemp(3,Nbeads))
 
- CALL RANDOM_SEED(size = m) !get size of seed for the system
- ALLOCATE(seed(m))
- call system_clock(count=clock) 
-	seed = clock + 357 * (/ (i - 1, i = 1, m) /)
- call random_seed(put = seed)  !put in the seed
-
 !predict average radius of the ring polymer
 if (Nbeads .gt. 1) then
 	avgrO  = 2*PI*hbar/(PI*Sqrt(24*massO*KB_amuA2ps2perK*temp))
@@ -326,6 +354,7 @@ end subroutine initialize_beads
 !---------------- Generate initial bead *momentum* ------------------------------
 !---------------------------------------------------------------------------------
 subroutine initialize_velocities
+use math
 summom = 0
 if (INPVEL) then
  write(*,*) "ERROR: Parallel version does not support inputting velocities at this time"
@@ -333,14 +362,6 @@ if (INPVEL) then
  stop 
 endif
 if (GENVEL) then
-
- if (allocated(seed) .eqv. .false.) then
- 	CALL RANDOM_SEED(size = m) !get size of seed for the system
- 	ALLOCATE(seed(m))
-	call system_clock(count=clock) 
-	seed = clock + 357 * (/ (i - 1, i = 1, m) /)
- 	call random_seed(put = seed)  !put in the seed
- endif
 
 !The program will generate Maxwell-Boltzmann velocities . With a small number of molecules,
 !the initial temperature will never be exactly what is inputted
@@ -396,41 +417,6 @@ end subroutine initialize_velocities
 
 
 
-!---------------------------------------------------------------------
-!------------ Generate random number from Gaussian distribution -----
-!------------ using Box_Muller sampling -----------------------------
-!----- http://en.literateprograms.org/Box-Muller_transform_%28C%29 --
-!---------------------------------------------------------------------
-function rand_norm(std_dev) 
- Implicit None 
- double precision, intent(in) :: std_dev
- double precision  :: rand_norm, rand1, rand2, r, d
- double precision, save  :: rand_cached
- logical, save :: CACHED
- 
- !The Box-Muller algorithm generates 2 normally distributed random numbers
- !For speed one is cached, so first we check if anything is in the cache. 
- !if nothing is in the cache  generate 2 new randn 
- if (CACHED) then 
- 	rand_norm = std_dev*rand_cached*d ! + mean
-	CACHED = .false.
- else
-	
- 	r = 0
- 	do while ((r .eq. 0).or.(r .gt. 1)) 
- 		call random_number(rand1)
- 		call random_number(rand2)
- 		rand1 = 2d0*rand1 - 1
- 		rand2 = 2d0*rand2 - 1
-		r = rand1*rand1 + rand2*rand2
- 	enddo 
- 		d = Sqrt(-2d0*Log(r)/r)
- 		rand_norm = std_dev*rand1*d ! + mean
-		rand_cached = rand2*d
- 		CACHED = .true.
- endif
-
-end function rand_norm
 
 
 end module main_stuff
