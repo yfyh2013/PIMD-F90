@@ -20,6 +20,7 @@ read(11,*)fconfig
 read(11,*)fsave
 read(11,*)coord_out
 read(11,*)vel_out
+read(11,*)OUTPUTIMAGES
 read(11,*)dip_out
 read(11,*)Edip_out
 read(11,*)TD_out
@@ -158,6 +159,9 @@ endif
 if (vel_out) then 	
 	open(21, file='out_'//TRIM(fsave)//'_mom.dat', status='unknown')
 endif
+if (OUTPUTIMAGES) then
+	open(27, file='out_'//TRIM(fsave)//'_images_coord.xyz', status='unknown')
+endif
 if  (dip_out) then
 	open(22, file='out_'//TRIM(fsave)//'_dip.dat', status='unknown')
 endif
@@ -248,6 +252,11 @@ endif
 !write out data during run 
 if  (t .gt. eq_timesteps) then
 	if (mod(t,t_freq)  == 0 ) then 
+		if (OUTPUTIMAGES) then 
+			do i = 1, Nbeads
+				call save_XYZ(27, RRt(:,:,i), Upot, read_method, t, delt) 
+			enddo
+		endif 
 		if (coord_out) then
 		     call save_XYZ(20, RRc, Upot, read_method, t, delt) 
 	  	endif
@@ -354,9 +363,9 @@ else
 endif
 
 if (PRINTFINALIMAGE) then 
-	open(30, file='out_'//TRIM(fsave)//'_fin_image.xyz', status='unknown')
-	call save_image(30, RRt, PPt, Upot, t,delt) 
-	close(30)
+	open(40, file='out_'//TRIM(fsave)//'_fin_image.xyz', status='unknown')
+	call save_image(40, RRt, PPt, Upot, t,delt) 
+	close(40)
 endif
 
 end subroutine print_run

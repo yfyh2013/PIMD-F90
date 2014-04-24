@@ -32,7 +32,7 @@ integer, dimension(:), allocatable :: seed
 integer :: num_timesteps, t, t_freq, tp_freq, td_freq, m, clock, eq_timesteps, TPoutStream, tt, tr 
 logical :: dip_out, coord_out, TD_out, vel_out, TP_out, Edip_out
 logical :: BAROSTAT, PEQUIL, BOXSIZEOUT, THERMOSTAT, GENVEL, INPVEL,PRINTFINALIMAGE
-logical ::  BEADTHERMOSTAT, CENTROIDTHERMOSTAT, CALC_RADIUS_GYRATION
+logical ::  BEADTHERMOSTAT, CENTROIDTHERMOSTAT, CALC_RADIUS_GYRATION, OUTPUTIMAGES
 
 !N-H variables
 double precision, save :: tau, tau_centroid, s, sbead

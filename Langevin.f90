@@ -76,7 +76,7 @@ subroutine Init_Langevin_NM(delt2, CENTROIDTHERMOSTAT, tau_bead, Nbeads, temp)
 
 	c1(i) = dexp(-delt2*gammak)
 	c2(i) = dsqrt(1 - c1(i)**2) 
-	c2(i) = dsqrt(KB_amuA2ps2perK*temp*Nbeads)*c2(i) !include sqrt(kT_n) factor here
+	c2(i) = dsqrt(KB_amuA2ps2perK*temp*Nbeads)*c2(i) !include sqrt(kTN_b) factor here
 
  enddo
 	
