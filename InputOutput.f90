@@ -26,13 +26,12 @@ read(11,*)Edip_out
 read(11,*)TD_out
 read(11,*)TP_out
 read(11,*)CALC_RADIUS_GYRATION
+read(11,*)PRINTFINALCONFIGURATION
 read(11,*)pot_model 
 read(11,*)Rc, rc1, eps_ewald
 read(11,*)polar_maxiter, polar_sor, polar_eps, guess_initdip, print_dipiters
 read(11,*)GENVEL
-read(11,*)INPVEL
-read(11,*)fvel
-read(11,*)PRINTFINALIMAGE
+read(11,*)INPCONFIGURATION
 read(11,*)THERMOSTAT
 read(11,*)BEADTHERMOSTAT
 read(11,*)CENTROIDTHERMOSTAT
@@ -52,12 +51,150 @@ read(11,*)num_timesteps
 read(11,*)delt
 read(11,*)td_freq
 read(11,*)tp_freq
+read(11,*)ti_freq
 read(11,*)t_freq
 read(11,*)Nbeads
 read(11,*)setNMfreq
+read(11,*)massO
+read(11,*)massH
 
 close(11)  
 end subroutine read_input_file 
+
+
+!----------------------------------------------------------------------------------!
+!---------------- Initialize some variables for all nodes -------------------------
+!----------------------------------------------------------------------------------!
+subroutine initialize_all_node_variables
+
+!---  read the number of atoms, dimension of box and atomic coordinates --------- 
+ open(10,file=fconfig,status='old')
+
+ if (INPCONFIGURATION) then
+	read(10,*) Natoms 
+	read(10,*,IOSTAT=ierr) Upot, box(1:3)
+	if (ierr .ne. 0) then 
+		rewind(10)
+		read(10,*) Natoms 
+		read(10,*,IOSTAT=ierr) box(1:3)
+		if (ierr .ne. 0) then 
+			write(*,*) "ERROR: could not read box size from input file. Trying to continue anyway"
+		endif 
+	endif 
+
+	Natoms = Natoms/Nbeads
+ else 
+	!usually the box size is in the first line of a raw .xyz
+	!but it might be in the second line. 
+	read(10,*,IOSTAT=ierr) Natoms, box(1:3)
+	read(10,* ) 
+	if (ierr .ne. 0) then 
+		rewind(10)
+		read(10,*) Natoms 
+		read(10,*,IOSTAT=ierr) box(1:3)
+		if (ierr .ne. 0) then 
+			write(*,*) "ERROR: could not read box size from input file. Trying to continue anyway"
+		endif
+	endif 
+ endif 
+
+!--- Slave-node-only allocations ---- 
+if (pid .ne. 0) then
+	allocate(RR(3, Natoms))
+	allocate(VV(3, Natoms))
+	allocate(dRR(3, Natoms))
+endif
+
+!--- All-node allocations ------ 
+allocate(dip_momI(3, Nwaters))
+allocate(dip_momE(3, Nwaters))
+allocate(chg (Natoms))
+allocate(tx_dip(3,4*Nwaters, 4))
+
+!These parameters are used later on  
+Rc2 = Rc * Rc
+Nwaters = Natoms/3
+volume = box(1)*box(2)*box(3)
+volume_init = volume
+delt = delt/1000d0 !***CONVERT fs - > ps ***
+delt2 = delt/2d0
+boxi = 1.d0 / box
+!inverse masses
+imassO = DBLE(1/massO) 
+imassH = DBLE(1/massH)
+iNbeads = 1d0/DBLE(Nbeads)
+CompFac = (.4477d-5*delt)/(tau_P) !Barostat var. (contains compressibility of H2O)
+sum_temp = 0 
+sum_press = 0 
+sum_energy = 0
+sum_energy2 = 0
+sum_RMSenergy = 0
+tt = 0 
+tr = 0
+counti = 3*Natoms
+omegan = KB_amuA2ps2perK*temp*Nbeads/hbar
+kTN = KB_amuA2ps2perK*temp*Nbeads
+s = 1
+sbead = 1
+
+end subroutine initialize_all_node_variables
+
+
+!----------------------------------------------------------------------------------!
+!---------- Master node allocations -----------------------------------------------
+!----------------------------------------------------------------------------------!
+subroutine master_node_init
+	use Langevin 
+	use NormalModes
+
+	!initialize random number generator
+ 	CALL RANDOM_SEED(size = m) !get size of seed for the system
+ 	ALLOCATE(seed(m))
+	call system_clock(count=clock) 
+	seed = clock + 357 * (/ (i - 1, i = 1, m) /)
+ 	call random_seed(put = seed)  !put in the seed
+ 	
+	if (Nnodes .lt. Nbeads) then 
+		if (.not. (mod(Nbeads,Nnodes) .eq. 0)) then
+	           write(*,*) "ERROR: the number of beads must be a multiple of the number of nodes."
+	           write(*,'(a,i4,a,i4,a)') "To run on ", Nnodes, " nodes I suggest using ", Nbeads - mod(Nbeads,Nnodes), " beads"
+		stop
+		endif
+	else
+		write(*,*) "WARNING : The number of processors is greater &
+		than the number of beads!! \n Setting the number of beads to the number of processors (", Nnodes, ") "
+		
+		Nbeads = Nnodes
+	endif
+	
+	write(*,'(a,i4,a,i4,a)') "Running with ", Nbeads, " beads on ", Nnodes, " nodes"
+
+	!Master node allocations
+	!only the master node (pid = 0) stores a fully copy of the
+	! coords / vel for all beads and the centroid
+	allocate(RRt(3, Natoms,Nbeads))
+	allocate(PPt(3, Natoms,Nbeads))
+	allocate(dRRt(3, Natoms,Nbeads))
+	allocate(dip_momIt(3, Nwaters,Nbeads))
+	allocate(dip_momEt(3, Nwaters,Nbeads))
+	allocate(RRc(3, Natoms))
+	allocate(PPc(3, Natoms))
+	dRRt = 0 
+
+	call InitNormalModes(Nbeads, omegan, delt, setNMfreq)
+
+	if (THERMOSTAT)  then
+		allocate(vxi_global(global_chain_length))
+		vxi_global = 1 !set chain velocities to zero initially
+	endif 
+	if (BEADTHERMOSTAT)  then
+		allocate(vxi_beads(bead_chain_length,natoms,Nbeads,3))
+		vxi_beads = 0 !set chain velocities to zero initially
+	endif
+	if (bead_thermostat_type .eq. 'Langevin') call Init_Langevin_NM(delt2, CENTROIDTHERMOSTAT, tau_centroid, Nbeads, temp)
+
+
+end subroutine master_node_init
 
 !----------------------------------------------------------------------------------!
 !---------------- Read in coordinate data to RRc ----------------------------------
@@ -94,10 +231,7 @@ if (.not. ( (box(1).eq.box(2)) .and. (box(2).eq.box(3)) ) ) then
 	write(*,*) 'ERROR: program can only handle square boxes.(it can be adapted for non-square but has not so far)'
 	stop 
 endif   
-if ( (INPVEL) .and. (GENVEL) ) then
-	write(*,*) 'ERROR: You selected both to input velocities and generate velocities. Please choose one or the other'
-	stop 
-endif   
+
 if ( Rc .gt. box(1)/2 ) then
 	write(*,*) 'WARNING: cutoff radius is larger than half box size'
 endif  
@@ -113,39 +247,36 @@ if (rc1 .gt. Rc) then
  	write(*,*) "ERROR: start of shifted cutoff cannot be greater than Coloumb cuttoff!!"
 	stop
 endif
-
-if (INPVEL) then 
-   if (read_method .eq. 0) then
-	write(*,*) "Sorry this read method is not supported when inputing an image. please format as OHHOHH.."
+if ( (massH .lt. 0) .or. (massO .lt. 0)) then
+ 	write(*,*) "Invalid mass!!"
 	stop
-   endif
-
-   do i=1, Natoms
-	do j = 1, Nbeads
-      		read(10,*)ch2, RRt(1:3, i, j), PPt(1:3, i, j)
-	enddo
-   enddo
-   !calculate centroid positions
-   RRc = sum(RRt,3)/Nbeads
-else 
-   if (read_method .eq. 0) then
-  	 do i=1, Nwaters
-   	 	iO = 3*i-2 
- 	 	read(10,*)ch2, RRc(1:3, iO)
-  	 enddo
-   do i=1, Nwaters
-      	 ih1 = 3*i-1; ih2=3*i
-     	 read(10,*)ch2, RRc(1:3, ih1)
-      	 read(10,*)ch2, RRc(1:3, ih2)
-   enddo
-   else if (read_method==1) then
-   	do i=1, Natoms
-     		 read(10,*)ch2, RRc(1:3, i)
-  	enddo
-   endif 
 endif
+ 
+!-----------------------------   reading in of configuration ---------------------------------------
+ if (INPCONFIGURATION) then 
+	call load_configuration(10, RRt, PPt) 
+ else 
+ 	if (read_method .eq. 0) then
+        	do i=1, Nwaters
+   		 	iO = 3*i-2 
+ 		 	read(10,*)ch2, RRc(1:3, iO)
+  		enddo
+   	 	do i=1, Nwaters
+      			 ih1 = 3*i-1; ih2=3*i
+     			 read(10,*)ch2, RRc(1:3, ih1)
+      			 read(10,*)ch2, RRc(1:3, ih2)
+  		 enddo
+  	else if (read_method==1) then
+   		do i=1, Natoms
+     			 read(10,*)ch2, RRc(1:3, i)
+  		enddo
+	else 
+		write(*,*) "Invalid read method!!"
+		stop
+	endif 
+ endif
 
-
+ close(10)
 end subroutine read_coords
 
 
@@ -252,11 +383,6 @@ endif
 !write out data during run 
 if  (t .gt. eq_timesteps) then
 	if (mod(t,t_freq)  == 0 ) then 
-		if (OUTPUTIMAGES) then 
-			do i = 1, Nbeads
-				call save_XYZ(27, RRt(:,:,i), Upot, read_method, t, delt) 
-			enddo
-		endif 
 		if (coord_out) then
 		     call save_XYZ(20, RRc, Upot, read_method, t, delt) 
 	  	endif
@@ -269,8 +395,8 @@ if  (t .gt. eq_timesteps) then
 			 do j = 1, 3
 			 	dip_momI(j,iw) = sum(dip_momIt(j,iw,:))/Nbeads
 			 enddo
-			 !dsqrt(dot_product(dip_momI(:,iw), dip_momI(:, iw)))*DEBYE/CHARGECON
-			 write(22,'(3(1x,f12.4))') dip_momI(:,iw)*DEBYE/CHARGECON 
+
+			 write(22,'(4(1x,f12.4))') dip_momI(:,iw)*DEBYE/CHARGECON , dsqrt(dot_product(dip_momI(:,iw), dip_momI(:, iw)))*DEBYE/CHARGECON
  		     enddo
 	   	endif
 		if (Edip_out) then
@@ -283,6 +409,13 @@ if  (t .gt. eq_timesteps) then
  		     enddo
 	   	endif 
  
+	endif
+	if (mod(t,ti_freq)  == 0 ) then 
+		if (OUTPUTIMAGES) then 
+			do i = 1, Nbeads
+				call save_XYZ(27, RRt(:,:,i), Upot, read_method, t, delt) 
+			enddo
+		endif 
 	endif
 	if (mod(t,td_freq)  == 0 ) then 
    		if (TD_out) then
@@ -317,8 +450,12 @@ subroutine print_run
 write(TPoutStream,'(a50, f10.3,a3)') "timestep = ", delt*1000, " fs"
 if (THERMOSTAT) write(TPoutStream,'(a50, f10.3,a3)') "Nose-Hoover tau = ", tau, " ps"
 if (.not. THERMOSTAT) write(TPoutStream,'(a50, a3)') "Nose-Hoover tau = ", "n/a"
-if (BEADTHERMOSTAT) write(TPoutStream,'(a50, f10.3,a3)')  "Nose-Hoover tau for beads= ", tau_centroid, " ps"
-if (.not. BEADTHERMOSTAT) write(TPoutStream,'(a50, a3)') "Nose-Hoover tau for beads= ", "n/a"
+if (BEADTHERMOSTAT) write(TPoutStream,'(a50, a )')  " type of bead thermostat = ", bead_thermostat_type
+if (CENTROIDTHERMOSTAT) write(TPoutStream,'(a50, a )')  " centroid thermostating = ", "yes"
+if (.not. CENTROIDTHERMOSTAT) write(TPoutStream,'(a50, a )')  " centroid thermostating = ", "no"
+if (.not. BEADTHERMOSTAT) write(TPoutStream,'(a50, a )')  " type of bead thermostat = ", "none"
+if (BEADTHERMOSTAT) write(TPoutStream,'(a50, f10.3,a3)')  " centroid thermostat tau = ", tau_centroid, " ps"
+if (.not. BEADTHERMOSTAT) write(TPoutStream,'(a50, a3)') " centroid thermostat tau = ", "n/a"
 if (BAROSTAT) write(TPoutStream,'(a50, f10.3,a3)') "Barostat tau = ", tau_p, " ps"
 if (.not. BAROSTAT) write(TPoutStream,'(a50, a3)') "Barostat tau = ", "n/a"
 
@@ -357,15 +494,15 @@ if (BAROSTAT .and. THERMOSTAT) then
         avg_box  = avg_box /(floor(real(tr/t_freq)))
 
         isotherm_compress = (avg_box2**3 - avg_box**3)*(10d-7)/(1.38*avg_temp*avg_box)
-        write(TPoutStream,'(a50, f10.2)') "Isothermal compressibility (only valid in NPT)", isotherm_compress
+        write(TPoutStream,'(a50, f10.2)') "Isothermal compressibility (only valid in NPT)=", isotherm_compress
 else 
-        write(TPoutStream,'(a50, a4)') "Isothermal compressibility (only valid in NPT)", " n/a"
+        write(TPoutStream,'(a50, a4)') "Isothermal compressibility (only valid in NPT)=", " n/a"
 endif
 
-if (PRINTFINALIMAGE) then 
-	open(40, file='out_'//TRIM(fsave)//'_fin_image.xyz', status='unknown')
-	call save_image(40, RRt, PPt, Upot, t,delt) 
-	close(40)
+if (PRINTFINALCONFIGURATION) then 
+	open(41, file='out_'//TRIM(fsave)//'_fin_image.xyz', status='unknown')
+		call save_configuration(40, RRt, PPt, Upot, t,delt) 
+	close(41)
 endif
 
 end subroutine print_run
@@ -428,7 +565,7 @@ integer ::  i, iO, ih1, ih2, t
 integer :: iun, read_method
 
 write(iun,'(i10)') Natoms !, angle
-write(iun,'(f12.6,2x,f12.6,3(1x,f12.6))') t*delt, Upot,  box
+write(iun,'(f12.6,2x,f12.6,3(1x,f12.6))') t*delt, box
 if (read_method==0) then
    do i=1, Nwaters
       iO = 3*i-2
@@ -454,19 +591,19 @@ end subroutine save_XYZ
 
 
 !-----------------------------------------------------------------------------------------
-!--------------Write out image ----------------------------------------------------------
+!--------------Write out configuration --------------------------------------------------
 !-----------------------------------------------------------------------------------------
-subroutine save_image(iun, RRt, PPt, Upot, t, delt) 
+subroutine save_configuration(iun, RRt, PPt, Upot, t, delt) 
 use system_mod
 use consts
 implicit none
 double precision, dimension(3, Natoms,Nbeads), intent(in) :: RRt, PPt
 double precision :: Upot,delt
 integer ::  i, j, iO, ih1, ih2, t
-integer :: iun 
+integer, intent(in) :: iun 
 
 write(iun,'(i10)') Natoms*Nbeads !, angle
-write(iun,'(f12.6,2x,f12.6,3(1x,f12.6))') t*delt, Upot,  box
+write(iun,'(f12.6,2x,f12.6,3(1x,f12.6))') t*delt,  box  
    do i=1, Nwaters
       iO = 3*i-2
       ih1 = 3*i-1
@@ -475,13 +612,46 @@ write(iun,'(f12.6,2x,f12.6,3(1x,f12.6))') t*delt, Upot,  box
 	      write(iun,'(a2,6(1x,f12.6))')'O ',RRt(1:3, iO,  j), PPt(1:3, iO,  j)*imassO
 	enddo
 	do j = 1, Nbeads
-		write(iun,'(a2,6(1x,f12.6))')'H ',RRt(1:3, ih1, j), PPt(1:3, ih1, j)*imassH
+	 	write(iun,'(a2,6(1x,f12.6))')'H ',RRt(1:3, ih1, j), PPt(1:3, ih1, j)*imassH
 	enddo
 	do j = 1, Nbeads
 	      write(iun,'(a2,6(1x,f12.6))')'H ',RRt(1:3, ih2, j), PPt(1:3, ih2, j)*imassH
 	enddo
    enddo
-end subroutine save_image
+end subroutine save_configuration
+
+
+!-----------------------------------------------------------------------------------------
+!--------------load configuration -------------------------------------------------------
+!-----------------------------------------------------------------------------------------
+subroutine load_configuration(iun, RRt, PPt) 
+use system_mod
+use consts
+implicit none
+double precision, dimension(3, Natoms,Nbeads), intent(out) :: RRt, PPt
+integer ::  i, j, iO, ih1, ih2, t
+integer, intent(in) :: iun 
+
+ do i=1, Nwaters
+      iO = 3*i-2
+      ih1 = 3*i-1
+      ih2 = 3*i
+	do j = 1, Nbeads
+	      read(iun,'(a2,6(1x,f12.6))')  ch2, RRt(1:3, iO,  j), PPt(1:3, iO,  j) 
+	      PPt(1:3, iO, j) =  PPt(1:3, iO,  j)*massO
+	enddo
+	do j = 1, Nbeads
+		read(iun,'(a2,6(1x,f12.6))') ch2 ,RRt(1:3, ih1, j), PPt(1:3, ih1, j) 
+		PPt(1:3, ih1, j) = PPt(1:3, ih1, j)*massH 
+	enddo
+	do j = 1, Nbeads
+	        read(iun,'(a2,6(1x,f12.6))') ch2 ,RRt(1:3, ih2, j), PPt(1:3, ih2, j) 
+		PPt(1:3, ih2, j) =  PPt(1:3, ih2, j)*massH 
+	enddo
+ enddo
+end subroutine load_configuration
+
+
 
 
 end module InputOutput

@@ -15,10 +15,10 @@ double precision, dimension(:,:), allocatable :: dip_momI, dip_momE
 double precision :: Upot, sys_press
 double precision :: tolg, tolx, stpmx
 integer :: i, iw, iat,  iO, ih1, ih2, narg, ia, read_method
-integer :: ix, iy, iz, nx, ny, nz
+integer :: ix, iy, iz 
 integer, external :: iargc
  character(len=2) :: ch2
- character(len=125) :: finp,fconfig,fvel,fsave 
+ character(len=125) :: finp, fconfig, fsave 
 !-new variables:--------------------------------------------
 double precision, dimension(:,:), allocatable :: VV, dRRold, dRRnew
 double precision, dimension(3) :: summom, sumvel
@@ -29,9 +29,9 @@ double precision :: avg_box, avg_box2, sum_box, sum_box2, isotherm_compress
 integer, dimension(:), allocatable :: seed
  character(len=125) :: dip_file
  character(len=11)  :: bead_thermostat_type
-integer :: num_timesteps, t, t_freq, tp_freq, td_freq, m, clock, eq_timesteps, TPoutStream, tt, tr 
-logical :: dip_out, coord_out, TD_out, vel_out, TP_out, Edip_out
-logical :: BAROSTAT, PEQUIL, BOXSIZEOUT, THERMOSTAT, GENVEL, INPVEL,PRINTFINALIMAGE
+integer :: num_timesteps, t, t_freq, tp_freq, td_freq, ti_freq, m, clock, eq_timesteps, TPoutStream, tt, tr 
+logical :: dip_out, coord_out, TD_out, vel_out, TP_out, Edip_out 
+logical :: BAROSTAT, PEQUIL, BOXSIZEOUT, THERMOSTAT, GENVEL, INPCONFIGURATION, PRINTFINALCONFIGURATION 
 logical ::  BEADTHERMOSTAT, CENTROIDTHERMOSTAT, CALC_RADIUS_GYRATION, OUTPUTIMAGES
 
 !N-H variables
@@ -60,118 +60,6 @@ double precision :: seconds, secondsNM, secondsIO
 
 contains
 
-
-
-!----------------------------------------------------------------------------------!
-!---------------- Initialize some variables ---------------------------------------
-!----------------------------------------------------------------------------------!
-subroutine initialize_variables
-
-!--- Slave-node allocations ---- 
-if (pid .ne. 0) then
-	allocate(RR(3, Natoms))
-	allocate(VV(3, Natoms))
-	allocate(dRR(3, Natoms))
-endif
-
-!--- All-node allocations ------ 
-allocate(dip_momI(3, Nwaters))
-allocate(dip_momE(3, Nwaters))
-allocate(chg (Natoms))
-allocate(tx_dip(3,4*Nwaters, 4))
-
-!These parameters are used later on --------
-Rc2 = Rc * Rc
-nx = (1.d0*Rc) / box(1) + 1 !These are integers!
-ny = (1.d0*Rc) / box(2) + 1 !it will round to 1 assuming Rc = boxlength/2
-nz = (1.d0*Rc) / box(3) + 1 !they are used in find_neigh.f90
-repl_nx = nx 
-repl_ny = ny
-repl_nz = nz
-nidols = nx*ny*nz !not sure what this is for. it is always =1 
-
-Nwaters = Natoms/3
-volume = box(1)*box(2)*box(3)
-volume_init = volume
-delt = delt/1000d0 !***CONVERT fs - > ps ***
-delt2 = delt/2d0
-boxi = 1.d0 / box
-!inverse masses
-imassO = DBLE(1/massO) 
-imassH = DBLE(1/massH)
-iNbeads = 1d0/DBLE(Nbeads)
-CompFac = (.4477d-5*delt)/(tau_P) !Barostat var. (contains compressibility of H2O)
-sum_temp = 0 
-sum_press = 0 
-sum_energy = 0
-sum_energy2 = 0
-sum_RMSenergy = 0
-tt = 0 
-tr = 0
-counti = 3*Natoms
-omegan = KB_amuA2ps2perK*temp*Nbeads/hbar
-kTN = KB_amuA2ps2perK*temp*Nbeads
-s = 1
-sbead = 1
-
-end subroutine initialize_variables
-
-
-!----------------------------------------------------------------------------------!
-!---------- Master node allocations -----------------------------------------------
-!----------------------------------------------------------------------------------!
-subroutine master_node_init
-	use Langevin 
-	use NormalModes
-
-	!initialize random number generator
- 	CALL RANDOM_SEED(size = m) !get size of seed for the system
- 	ALLOCATE(seed(m))
-	call system_clock(count=clock) 
-	seed = clock + 357 * (/ (i - 1, i = 1, m) /)
- 	call random_seed(put = seed)  !put in the seed
- 	
-	if (Nnodes .lt. Nbeads) then 
-		if (.not. (mod(Nbeads,Nnodes) .eq. 0)) then
-	           write(*,*) "ERROR: the number of beads must be a multiple of the number of nodes."
-	           write(*,'(a,i4,a,i4,a)') "To run on ", Nnodes, " nodes I suggest using ", Nbeads - mod(Nbeads,Nnodes), " beads"
-		stop
-		endif
-	else
-		write(*,*) "WARNING : The number of processors is greater &
-		than the number of beads!! \n Setting the number of beads to the number of processors (", Nnodes, ") "
-		
-		Nbeads = Nnodes
-	endif
-	
-	write(*,'(a,i4,a,i4,a)') "Running with ", Nbeads, " beads on ", Nnodes, " nodes"
-
-	!Master node allocations
-	!only the master node (pid = 0) stores a fully copy of the
-	! coords / vel for all beads and the centroid
-	allocate(RRt(3, Natoms,Nbeads))
-	allocate(PPt(3, Natoms,Nbeads))
-	allocate(dRRt(3, Natoms,Nbeads))
-	allocate(dip_momIt(3, Nwaters,Nbeads))
-	allocate(dip_momEt(3, Nwaters,Nbeads))
-	allocate(RRc(3, Natoms))
-	allocate(PPc(3, Natoms))
-	dRRt = 0 
-
-	call InitNormalModes(Nbeads, omegan, delt, setNMfreq)
-
-	if (THERMOSTAT)  then
-		allocate(vxi_global(global_chain_length))
-		vxi_global = 1 !set chain velocities to zero initially
-	endif 
-	if (BEADTHERMOSTAT)  then
-		allocate(vxi_beads(bead_chain_length,natoms,Nbeads,3))
-		vxi_beads = 0 !set chain velocities to zero initially
-	endif
-	if (bead_thermostat_type .eq. 'Langevin') call Init_Langevin_NM(delt2, CENTROIDTHERMOSTAT, tau_centroid, Nbeads, temp)
-
-
-end subroutine master_node_init
 
 
 !----------------------------------------------------------------------------------!
@@ -356,11 +244,14 @@ end subroutine initialize_beads
 subroutine initialize_velocities
 use math
 summom = 0
-if (INPVEL) then
- write(*,*) "ERROR: Parallel version does not support inputting velocities at this time"
- write(*,*) "       Please select a different option!"
- stop 
-endif
+if (INPCONFIGURATION .and. .not. GENVEL) then
+ write(*,*) "using velocities from configuration file"
+endif 
+if ( (INPCONFIGURATION) .and. (GENVEL) ) then
+	write(*,*) 'WARNING: You selected to input a configuration file and generate velocites.'
+	write(*,*) '		the velocities in the configuration file will be overwritten.'
+endif  
+
 if (GENVEL) then
 
 !The program will generate Maxwell-Boltzmann velocities . With a small number of molecules,
@@ -407,12 +298,12 @@ if (GENVEL) then
 	endif
  enddo
 
-	
-else if ( (.not. GENVEL) .and. (.not. INPVEL)) then 
+else if ( (.not. GENVEL) .and. (.not. INPCONFIGURATION)) then 
   PPt = 0 
   PPc = 0 
   write(*,*) "Initial velocities set to zero." 
 endif 
+
 end subroutine initialize_velocities
 
 

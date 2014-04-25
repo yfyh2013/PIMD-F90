@@ -30,16 +30,9 @@ call MPI_Comm_rank(MPI_COMM_WORLD, pid, ierr)
 
 !write(*,*) "hello from", pid, "of", Nnodes
 
-!---  read the number of atoms, dimension of box and atomic coordinates --------- 
-open(10,file=fconfig,status='old')
-read(10,*) Natoms, box(1:3)
-read(10,*) 
-
 !---------------- Initialize / allocate some variables -------------------------
-call initialize_variables
+call initialize_all_node_variables
 call init_pot
-
-Nbatches = Nbeads/Nnodes 
 
 !------------------Master node stuff --------------------------------------------
 if (pid .eq. 0) then

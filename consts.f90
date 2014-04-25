@@ -21,8 +21,8 @@ module consts
    double precision, parameter ::   SQPI= 1.77245385090551602729d0 !  sqrt(pi)
    double precision, parameter :: RADIAN= 57.29577951308232087721d0
 
-   double precision, parameter :: massO=15.994d0
-   double precision, parameter :: massH=1.008d0
+   double precision :: massO=15.994d0
+   double precision :: massH=1.008d0
 
    double precision, dimension(:), allocatable  ::  massScaleFactor
 end module consts

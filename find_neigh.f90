@@ -24,7 +24,7 @@ contains
 !The old code first finds the neighbors which are in the cell and not 
 !in periodic images and stores the number of them in N0. It does not appear that this variable is used at all. 
 !The new method uses the ANINT() function to handle PBCs. With 128 molecules the code is about 10% faster with this change 
-!To use this older scheme the following variables would need to be reintroduced: 
+!To use this older scheme the following variables would need to be reintroduced into the system module: 
 !nx = (1.d0*Rc) / box(1) + 1 !These are integers!
 !ny = (1.d0*Rc) / box(2) + 1 !it will round to 1 assuming Rc = boxlength/2
 !nz = (1.d0*Rc) / box(3) + 1 !they are used in find_neigh.f90
