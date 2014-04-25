@@ -1,20 +1,20 @@
 1                        ! read_method(=0,1) (0 for OOOO....HHHHH and 1 for OHHOHHOHH...)
-'input_128.xyz'          ! input filename
-'TTM3F_langevin_128_8beads'    ! run name - this will be appended to all the output files
+'input_1.xyz'          ! input filename - either a centroid .xyz or a full bead configuration
+'TTM3F'    ! run name - this will be appended to all the output files
 .t.       		 ! coordinates output?
 .f.			 ! velocities output? 
+.t.			 ! output coordinates for all images?
 .f.		         ! dipoles output? (prints dipoles in system)  
 .f.			 ! polarization (Edip) dipole out?
 .f.			 ! total dipole output?
 .t.			 ! Temp/Press output? (.t. = to file, .f. = to terminal) 
 .t.			 ! output avg. radius of gyration? (for testing/ debugging)
+.t.			 ! write final image of all beads to seperate file? 
 5                        ! 2=ttm21f 3=ttm3f 4= qspcfw 5=spcf
 7d0 3d0  1.d-6           ! realspace cutoff (Ang), start of VdW force switch (Ang), eps for aewald
 25 0.7 1.d-5 .f. .f.     ! params for dipole iterative procedure: Max iterations, pol factor, accuracy, guess initial?, debug output
 .t.			 ! generate initial velocities? 
-.f. 		         ! input initial image? 
-''			 ! velocity input filename 
-.t.			 ! write final image of all beads to seperate file? 
+.f. 		         ! input initial configuration? 
 .t.                 	 ! Global thermostat? t/f
 .t.                      ! Thermostat non-centroid modes ? 
 .t.			 ! Thermostat centroid mode ?
@@ -30,10 +30,13 @@
 .f.			 ! box size running average output ? 
 .f.			 ! pressure coupling during equilibration only?
 4000		         ! number of steps to equilibrate		 
-40000	            	 ! number of steps to run
+4000	            	 ! number of steps to run
 .5                  	 ! timestep (delt) (fs)
 1			 ! Total dipole output frequency 
 200   			 ! Temp/Press output frequency
+40			 ! Full image output frequency 
 20       		 ! Output frequency for everything else
-8	 		 ! Number of beads 
+1	 		 ! Number of beads 
 0			 ! frequency (inverse cm) to set NMs to ( or enter 0 for none/RPMD)
+15.994			 ! mass of Oxygen (au)
+1.008d			 ! mass of Hyrdrogen
