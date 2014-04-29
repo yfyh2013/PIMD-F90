@@ -83,14 +83,16 @@ do t = 1, num_timesteps + eq_timesteps
 		endif
 
 		call MPItimer(2, 'stop ', secondsNM)
-		
+
 	
 	endif!if (pid .eq. 0) 
+				
 	!---------------------------------- Start MPI Force calculation ----------------------------
 	!we want to send a (3 x Natoms) array to each processor 
 	do bat = 0, Nbatches - 1 !batch index
 
 	if (pid .eq. 0) then
+
 		do i = 1, Nnodes - 1 !node index
 			k = bat*Nnodes + i  !bead index
 			Call MPI_Send(RRt(:,:,k), counti, MPI_DOUBLE_PRECISION, i, 0, MPI_COMM_WORLD, ierr)   

@@ -24,6 +24,5 @@ module consts
    double precision :: massO=15.994d0
    double precision :: massH=1.008d0
 
-   double precision, dimension(:), allocatable  ::  massScaleFactor
 end module consts
 

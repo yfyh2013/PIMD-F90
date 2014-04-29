@@ -6,8 +6,8 @@ module NormalModes
  use consts 
  Implicit none
  double precision, dimension(:), allocatable, save   :: A11, A12, A21, A22
- double precision, dimension(:), allocatable, save   :: omegalist
- double precision, dimension(:,:), allocatable, save :: C
+ double precision, dimension(:), allocatable, save   :: omegalist, MassScaleFactor
+ double precision, dimension(:,:), allocatable, save :: C 
 
 contains
 !---------------------------------------------------------------------
@@ -32,8 +32,8 @@ do j = 1, Nbeads
 	!The normal mode evolution is simply the evolution of a harmonic oscillator
 	!The matrix elements of the propagation matrix are stored in Aij(j) (minus the mass terms)
 	!this may not be the best way to do this , but ... I wanted to avoid matrix multiplication	
-	temp2     =  A11(j)*RRtr(:,j)      + A12(j)*PPtr(:,j)/mass
-	PPtr(:,j) =  A21(j)*mass*RRtr(:,j) + A22(j)*PPtr(:,j)  
+	temp2     =  A11(j)*RRtr(:,j)     		     + A12(j)*PPtr(:,j)/(mass*MassScaleFactor(j))
+	PPtr(:,j) =  A21(j)*mass*MassScaleFactor(j)*RRtr(:,j) + A22(j)*PPtr(:,j)  
  	RRtr(:,j) = temp2
 enddo
 
@@ -60,6 +60,7 @@ subroutine InitNormalModes(Nbeads,omegan,delta,setNMfreq)
  allocate(A21(Nbeads)) 
  allocate(A22(Nbeads)) 
  allocate(omegalist(Nbeads))
+ allocate(MassScaleFactor(Nbeads))
  allocate(C(Nbeads,Nbeads))
 
  if (mod(Nbeads,2) .eq. 0) then
@@ -135,8 +136,9 @@ subroutine InitNormalModes(Nbeads,omegan,delta,setNMfreq)
 	A22(2*l+2) = Cos(omega*delta)	
  endif 
 
-if (setNMfreq .eq. 0) then
+ MassScaleFactor = 1
 
+if (setNMfreq .eq. 0) then
  	write(*,*) "Running usuing RPMD. All beads have physical mass."
  	write(*,*) "Normal mode frequencies: (cm^-1)"
  	do k = 1,l
@@ -147,7 +149,6 @@ if (setNMfreq .eq. 0) then
 	    	omega = omegalist(2*l + 2)
 	 	write(*,'(f10.2)')  33.33333d0*omega/(2*PI) 
  	endif
-
 endif 
 
 
@@ -162,16 +163,16 @@ if (.not. (setNMfreq .eq. 0)) then
 
 	omega = (2*PI)*setNMfreq/33.33333d0 !conv. cm-1 -> 1/ps
 	
-	!do i = 1,Nbeads
-	!	if (omegalist(i) == 0) then 
-	!		massScaleFactor(i) = 1d0
-	!	else
-	!		massScaleFactor(i) = (omegalist(i)/omega)**2
-	!	endif
-	!	write(*,*) "mass scale factor", i, " = ", massScaleFactor(i)
-	!enddo
+	do i = 1,Nbeads
+		if (omegalist(i) == 0) then 
+			MassScaleFactor(i) = 1d0
+		else
+			MassScaleFactor(i) = (omegalist(i)/omega)**2
+		endif
+		!write(*,*) "mass scale factor", i, " = ", massScaleFactor(i)
+	enddo
 
-	write(*,*) "Adiabaticity = ", omegan/omega
+	write(*,*) "Adiabaticity = ", omegan/omega 
  	write(*,'(a,f8.3,a8,f10.2,a6)') "All normal modes scaled to ", omega/(2*PI), " 1/ps = ", 33.33333d0*omega/(2*PI), " cm^-1"
 	write(*,'(a,f8.2,a)') "Timestep should probably not be larger than ", 	(((2*PI)/omega)/4d0)*1000, " fs"
 	
@@ -196,7 +197,7 @@ endif
 end subroutine InitNormalModes
 
 !-----------------------------------------------------------------------------------------
-!---------------- generage one ring polymer sampled from the-----------------------------
+!---------------- generate one ring polymer sampled from the-----------------------------
 !---------------- free ring distribution at temperature T -------------------------------
 !-----------------------------------------------------------------------------------------
 subroutine gen_rand_ring(RR,mass,temp,Nbeads)
@@ -211,28 +212,56 @@ subroutine gen_rand_ring(RR,mass,temp,Nbeads)
  integer 			 		 :: j, k, l
  integer, intent(in) 		 :: Nbeads
 
- omegan = KB_amuA2ps2perK*temp*real(Nbeads)/hbar
+ omegan = KB_amuA2ps2perK*temp*Nbeads/hbar
 
  do j = 1,Nbeads
 		omega = omegalist(j)
 		if (omega .eq. 0d0) then 
 			RRtr(:,j) = 0d0
 		else 
-  			std_dev = Sqrt((omegan*hbar)/(mass*omega**2))  
+  			std_dev = Sqrt((omegan*hbar)/(mass*MassScaleFactor(j)*omega**2))  
 			RRtr(:,j) = (/ rand_norm(std_dev), rand_norm(std_dev), rand_norm(std_dev) /)	
 		endif	
  enddo
 
- RR = 0
- do j = 1,Nbeads 
-	do k = 1, Nbeads
-		RR(1,j) = RR(1,j) + C(k,j)*RRtr(1,k)
-		RR(2,j) = RR(2,j) + C(k,j)*RRtr(2,k)
-		RR(3,j) = RR(3,j) + C(k,j)*RRtr(3,k)
+ RR = NM2real(RRtr, Nbeads) 
+
+end subroutine gen_rand_ring
+
+
+!-----------------------------------------------------------------------------------------
+!---------------- generage one ring polymer momenta from the-----------------------------
+!---------------- free ring distribution at temperature T -------------------------------
+!-----------------------------------------------------------------------------------------
+subroutine gen_rand_ring_momenta(PP,mass,temp,Nbeads)
+ use math
+ Implicit None
+ double precision, parameter :: hbar=6.35077993041d0 !hbar in amu*ang^2/ps
+ double precision, parameter :: KB_amuA2ps2perK = .831447148d0
+ double precision, dimension(3,Nbeads), intent(out) :: PP
+ double precision, dimension(3,Nbeads)	         :: PPtr
+ double precision, intent(in) :: mass, temp
+ double precision 		 :: std_dev, omega, omegan
+ integer 			 		 :: j, k, l
+ integer, intent(in) 		 :: Nbeads
+
+ omegan = KB_amuA2ps2perK*temp*Nbeads/hbar
+
+
+ do j = 1,Nbeads
+	do k = 1, 3
+		PPtr(k,j) = rand_norm(Sqrt(KB_amuA2ps2perK*mass*MassScaleFactor(j)*Nbeads*temp))
 	enddo
  enddo
 
-end subroutine gen_rand_ring
+ PP = NM2real(PPtr, Nbeads) 
+
+end subroutine gen_rand_ring_momenta
+
+
+
+
+				
 
 
 !---------------------------------------------------------------------
@@ -259,8 +288,9 @@ end subroutine gen_rand_ring
 ! enddo
 !
 !end subroutine MakeNormalMode
-
-
+!---------------------------------------------------------------------
+!-------------------- convert real to normal mode coordinates -------- 
+!---------------------------------------------------------------------
 function real2NM(AA,Nbeads) 
  Implicit none
  double precision, dimension(3,Nbeads), intent(in)  ::AA
@@ -277,6 +307,9 @@ function real2NM(AA,Nbeads)
 	enddo
  end function real2NM
 
+!---------------------------------------------------------------------
+!-------------------- normal mode to real coordinates ----------------
+!---------------------------------------------------------------------
 function NM2real(AAtr, Nbeads) 
  Implicit none
  double precision, dimension(3,Nbeads), intent(in)  :: AAtr

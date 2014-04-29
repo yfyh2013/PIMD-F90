@@ -98,19 +98,6 @@ subroutine initialize_all_node_variables
 	endif 
  endif 
 
-!--- Slave-node-only allocations ---- 
-if (pid .ne. 0) then
-	allocate(RR(3, Natoms))
-	allocate(VV(3, Natoms))
-	allocate(dRR(3, Natoms))
-endif
-
-!--- All-node allocations ------ 
-allocate(dip_momI(3, Nwaters))
-allocate(dip_momE(3, Nwaters))
-allocate(chg (Natoms))
-allocate(tx_dip(3,4*Nwaters, 4))
-
 !These parameters are used later on  
 Rc2 = Rc * Rc
 Nwaters = Natoms/3
@@ -136,6 +123,21 @@ omegan = KB_amuA2ps2perK*temp*Nbeads/hbar
 kTN = KB_amuA2ps2perK*temp*Nbeads
 s = 1
 sbead = 1
+
+Nbatches = Nbeads/Nnodes
+
+!--- Slave-node-only allocations ---- 
+if (pid .ne. 0) then
+	allocate(RR(3, Natoms))
+	allocate(VV(3, Natoms))
+	allocate(dRR(3, Natoms))
+endif
+
+!--- All-node allocations ------ 
+allocate(dip_momI(3, Nwaters))
+allocate(dip_momE(3, Nwaters))
+allocate(chg (Natoms))
+allocate(tx_dip(3,4*Nwaters, 4))
 
 end subroutine initialize_all_node_variables
 

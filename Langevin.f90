@@ -28,12 +28,12 @@ subroutine Langevin_NM(PPt, Nbeads)
 	!convert into normal mode space
 	PPtr = real2NM(PPt(:,i2,:),Nbeads) 
 
-	if (mod(i2+2,3) .eq. 0) then
-		sqrtmass = sqrt(massO) 
-	else 
-		sqrtmass = sqrt(massH)
-	endif
 	do j = 1, Nbeads 
+		if (mod(i2+2,3) .eq. 0) then
+			sqrtmass = sqrt(massO*MassScaleFactor(j)) 
+		else 
+			sqrtmass = sqrt(massH*MassScaleFactor(j))
+		endif
 		do k = 1, 3
 			PPtr(k, j) = c1(j)*PPtr(k, j) + c2(j)*rand_norm(sqrtmass)
  		enddo 

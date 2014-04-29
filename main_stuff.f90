@@ -124,7 +124,7 @@ subroutine bead_thermostat
 	do j = 2, Nbeads 
 		tau = 1d0/omegalist(j)
 		do k = 1, 3
-			uk_bead =  .5d0*imass*PPtr(k,j)**2
+			uk_bead =  .5d0*imass*PPtr(k,j)**2/MassScaleFactor(j)
 			call Nose_Hoover(sbead, uk_bead, bead_chain_length, vxi_beads(:,i,j,k), tau, delt2, 1, Nbeads*temp)
 			PPtr(k,j) = PPtr(k,j)*sbead
 		enddo
@@ -242,6 +242,7 @@ end subroutine initialize_beads
 !---------------- Generate initial bead *momentum* ------------------------------
 !---------------------------------------------------------------------------------
 subroutine initialize_velocities
+use NormalModes
 use math
 summom = 0
 if (INPCONFIGURATION .and. .not. GENVEL) then
@@ -260,16 +261,18 @@ if (GENVEL) then
 !the velocities until the temperature is within 1 K of what was specified. 
    do   
 	summom = 0 
+
 	do i=1, Nwaters
-		do j = 1, Nbeads
-			do k = 1, 3
-				PPt(k,3*i-2,j) = rand_norm(Sqrt(KB_amuA2ps2perK*massO*Nbeads*temp))
-				PPt(k,3*i-1,j) = rand_norm(Sqrt(KB_amuA2ps2perK*massH*Nbeads*temp))
-				PPt(k,3*i,j)   = rand_norm(Sqrt(KB_amuA2ps2perK*massH*Nbeads*temp))
-			enddo
+		!generate the bead momenta from the canonical distribution for a free ring polymer
+		Call gen_rand_ring_momenta(PPt(:,3*i-2,:),massO,temp,Nbeads)	
+		Call gen_rand_ring_momenta(PPt(:,3*i-1,:),massH,temp,Nbeads)	
+		Call gen_rand_ring_momenta(PPt(:,3*i-0,:),massH,temp,Nbeads)
+		!sum up the bead momenta		
+		do j = 1, Nbeads	
 			summom = summom + PPt(:,3*i-2,j) + PPt(:,3*i-1,j) + PPt(:,3*i-0,j)
 		enddo
 	enddo
+	
 	!remove center of momentum from system
 	do i = 1, Natoms
 		do j = 1, Nbeads
