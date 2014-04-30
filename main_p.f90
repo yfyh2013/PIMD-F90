@@ -28,8 +28,6 @@ if (.not. (ierr .eq. 0))	write(*,*) "WARNING: MPI did not intialize correctly"
 call MPI_Comm_size(MPI_COMM_WORLD, Nnodes, ierr)
 call MPI_Comm_rank(MPI_COMM_WORLD, pid, ierr)
 
-!write(*,*) "hello from", pid, "of", Nnodes
-
 !---------------- Initialize / allocate some variables -------------------------
 call initialize_all_node_variables
 call init_pot
@@ -100,26 +98,31 @@ do t = 1, num_timesteps + eq_timesteps
 		!masternode force calculation
 		k = bat*Nnodes + Nnodes  
 
-		call potential(RRt(:,:,k), Upot, dRRt(:,:,k), virt, dip_momIt(:,:,k), dip_momEt(:,:,k), chg, t, BAROSTAT)
+		call potential(RRt(:,:,k), Upott(k), dRRt(:,:,k), virt, dip_momIt(:,:,k), dip_momEt(:,:,k), chg, t, BAROSTAT)
 
 		!recieve stuff from nodes
 		do i = 1, Nnodes - 1
 			k = bat*Nnodes + i  
-			Call MPI_Recv(dRRt(:,:,k), counti, MPI_DOUBLE_PRECISION, i, 0, MPI_COMM_WORLD, status2, ierr)
-
-			Call MPI_Recv(dip_momIt(:,:,k), 3*Nwaters, MPI_DOUBLE_PRECISION, i, 0, MPI_COMM_WORLD, status2, ierr)
-			if (Edip_out) Call MPI_Recv(dip_momEt(:,:,k), 3*Nwaters, MPI_DOUBLE_PRECISION, i, 0, MPI_COMM_WORLD, status2, ierr)
+			!masternode receive derivatives
+			call MPI_Recv(dRRt(:,:,k), counti, MPI_DOUBLE_PRECISION, i, 0, MPI_COMM_WORLD, status2, ierr)
+			!masternode recieve energies
+ 			call MPI_Recv(Upott(k), 1, MPI_DOUBLE_PRECISION, i, 0, MPI_COMM_WORLD, status2, ierr)	
+			!masternode recieve dipole moments		
+			if (dip_out .or. TD_out) call MPI_Recv(dip_momIt(:,:,k), 3*Nwaters, MPI_DOUBLE_PRECISION, i, 0, MPI_COMM_WORLD, status2, ierr)
+			if (Edip_out) call MPI_Recv(dip_momEt(:,:,k), 3*Nwaters, MPI_DOUBLE_PRECISION, i, 0, MPI_COMM_WORLD, status2, ierr)
 		enddo
 	else
 		!slavenode recieve coords from master node
-		Call MPI_Recv(RR, counti, MPI_DOUBLE_PRECISION, 0, 0, MPI_COMM_WORLD, status2, ierr)
+		call MPI_Recv(RR, counti, MPI_DOUBLE_PRECISION, 0, 0, MPI_COMM_WORLD, status2, ierr)
 		!slavenode force calculation
 		call potential(RR, Upot, dRR, virt, dip_momI, dip_momE, chg, t, BAROSTAT)
 		!slavenode send back derivatives
-		Call MPI_Send(dRR, counti, MPI_DOUBLE_PRECISION, 0, 0, MPI_COMM_WORLD, ierr) 
-		!slavenode send back dipole momemnts  
-		Call MPI_Send(dip_momI, 3*Nwaters, MPI_DOUBLE_PRECISION, 0, 0, MPI_COMM_WORLD, ierr)
-		if (Edip_out) Call MPI_Send(dip_momE, 3*Nwaters, MPI_DOUBLE_PRECISION, 0, 0, MPI_COMM_WORLD, ierr)
+		call MPI_Send(dRR, counti, MPI_DOUBLE_PRECISION, 0, 0, MPI_COMM_WORLD, ierr) 
+		!slavenode send back energies
+		call MPI_Send(Upot, 1, MPI_DOUBLE_PRECISION, 0, 0, MPI_COMM_WORLD, ierr) 
+		!slavenode send back dipole moments  
+		if (dip_out .or. TD_out) call MPI_Send(dip_momI, 3*Nwaters, MPI_DOUBLE_PRECISION, 0, 0, MPI_COMM_WORLD, ierr)
+		if (Edip_out) call MPI_Send(dip_momE, 3*Nwaters, MPI_DOUBLE_PRECISION, 0, 0, MPI_COMM_WORLD, ierr)
 	endif
 	Call MPI_Barrier(MPI_COMM_WORLD, ierr)
 

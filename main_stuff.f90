@@ -23,8 +23,9 @@ integer, external :: iargc
 double precision, dimension(:,:), allocatable :: VV, dRRold, dRRnew
 double precision, dimension(3) :: summom, sumvel
 double precision :: delt, delt2,  uk,  imassO, imassH
-double precision :: temp, sum_temp, sum_press,sys_temp, avg_vel, init_energy, sum_RMSenergy
-double precision :: sum_energy, sum_energy2, specific_heat, avg_temp, init_temp
+double precision :: temp, sum_temp, sum_press, sys_temp, avg_vel, init_energy, sum_RMSenergy
+double precision :: tot_energy, sum_tot_energy, sum_energy, sum_energy2, sum_simple_energy, simple_energy
+double precision :: specific_heat, avg_temp, init_temp
 double precision :: avg_box, avg_box2, sum_box, sum_box2, isotherm_compress
 integer, dimension(:), allocatable :: seed
  character(len=125) :: dip_file
@@ -32,7 +33,7 @@ integer, dimension(:), allocatable :: seed
 integer :: num_timesteps, t, t_freq, tp_freq, td_freq, ti_freq, m, clock, eq_timesteps, TPoutStream, tt, tr 
 logical :: dip_out, coord_out, TD_out, vel_out, TP_out, Edip_out 
 logical :: BAROSTAT, PEQUIL, BOXSIZEOUT, THERMOSTAT, GENVEL, INPCONFIGURATION, PRINTFINALCONFIGURATION 
-logical ::  BEADTHERMOSTAT, CENTROIDTHERMOSTAT, CALC_RADIUS_GYRATION, OUTPUTIMAGES
+logical ::  BEADTHERMOSTAT, CENTROIDTHERMOSTAT, CALC_RADIUS_GYRATION, OUTPUTIMAGES, SIMPLE_ENERGY_ESTIMATOR
 
 !N-H variables
 double precision, save :: tau, tau_centroid, s, sbead
@@ -50,6 +51,7 @@ double precision :: tau_P, ref_P, press, CompFac, scale_factor
 !- Variables for the paralleziation / PIMD
 double precision, dimension(:,:,:), allocatable :: RRt, PPt, dip_momIt, dip_momEt, dRRt
 double precision, dimension(:,:), allocatable :: RRc, PPc
+double precision, dimension(:), allocatable :: Upott
 double precision ::  omegan, kTN, iNbeads, setNMfreq
 double precision :: radiusH, radiusO
 integer :: Nnodes, Nbeads, pid, j, k, ierr, Nbatches, counti, bat

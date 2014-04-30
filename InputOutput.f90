@@ -1,6 +1,7 @@
 module InputOutput
 use consts
 use main_stuff
+Implicit none 
 
 contains
 !----------------------------------------------------------------------------------!
@@ -58,6 +59,8 @@ read(11,*)setNMfreq
 read(11,*)massO
 read(11,*)massH
 
+SIMPLE_ENERGY_ESTIMATOR = .true.
+
 close(11)  
 end subroutine read_input_file 
 
@@ -98,6 +101,7 @@ subroutine initialize_all_node_variables
 	endif 
  endif 
 
+
 !These parameters are used later on  
 Rc2 = Rc * Rc
 Nwaters = Natoms/3
@@ -113,6 +117,8 @@ iNbeads = 1d0/DBLE(Nbeads)
 CompFac = (.4477d-5*delt)/(tau_P) !Barostat var. (contains compressibility of H2O)
 sum_temp = 0 
 sum_press = 0 
+sum_tot_energy = 0 
+sum_simple_energy = 0 
 sum_energy = 0
 sum_energy2 = 0
 sum_RMSenergy = 0
@@ -149,60 +155,6 @@ subroutine master_node_init
 	use Langevin 
 	use NormalModes
 
-	!initialize random number generator
- 	CALL RANDOM_SEED(size = m) !get size of seed for the system
- 	ALLOCATE(seed(m))
-	call system_clock(count=clock) 
-	seed = clock + 357 * (/ (i - 1, i = 1, m) /)
- 	call random_seed(put = seed)  !put in the seed
- 	
-	if (Nnodes .lt. Nbeads) then 
-		if (.not. (mod(Nbeads,Nnodes) .eq. 0)) then
-	           write(*,*) "ERROR: the number of beads must be a multiple of the number of nodes."
-	           write(*,'(a,i4,a,i4,a)') "To run on ", Nnodes, " nodes I suggest using ", Nbeads - mod(Nbeads,Nnodes), " beads"
-		stop
-		endif
-	else
-		write(*,*) "WARNING : The number of processors is greater &
-		than the number of beads!! \n Setting the number of beads to the number of processors (", Nnodes, ") "
-		
-		Nbeads = Nnodes
-	endif
-	
-	write(*,'(a,i4,a,i4,a)') "Running with ", Nbeads, " beads on ", Nnodes, " nodes"
-
-	!Master node allocations
-	!only the master node (pid = 0) stores a fully copy of the
-	! coords / vel for all beads and the centroid
-	allocate(RRt(3, Natoms,Nbeads))
-	allocate(PPt(3, Natoms,Nbeads))
-	allocate(dRRt(3, Natoms,Nbeads))
-	allocate(dip_momIt(3, Nwaters,Nbeads))
-	allocate(dip_momEt(3, Nwaters,Nbeads))
-	allocate(RRc(3, Natoms))
-	allocate(PPc(3, Natoms))
-	dRRt = 0 
-
-	call InitNormalModes(Nbeads, omegan, delt, setNMfreq)
-
-	if (THERMOSTAT)  then
-		allocate(vxi_global(global_chain_length))
-		vxi_global = 1 !set chain velocities to zero initially
-	endif 
-	if (BEADTHERMOSTAT)  then
-		allocate(vxi_beads(bead_chain_length,natoms,Nbeads,3))
-		vxi_beads = 0 !set chain velocities to zero initially
-	endif
-	if (bead_thermostat_type .eq. 'Langevin') call Init_Langevin_NM(delt2, CENTROIDTHERMOSTAT, tau_centroid, Nbeads, temp)
-
-
-end subroutine master_node_init
-
-!----------------------------------------------------------------------------------!
-!---------------- Read in coordinate data to RRc ----------------------------------
-!----------------------------------------------------------------------------------!
-subroutine read_coords
-
 if (Nbeads .lt. 1) then 
 	write(*,*) "ERROR : invalid number of beads!! " 
 endif
@@ -236,7 +188,9 @@ endif
 
 if ( Rc .gt. box(1)/2 ) then
 	write(*,*) 'WARNING: cutoff radius is larger than half box size'
+	stop
 endif  
+
 if (rc1 .lt. 0) then
  	write(*,*) "ERROR: start of shifted cutoff cannot be less than zero!!"
 	stop
@@ -253,8 +207,62 @@ if ( (massH .lt. 0) .or. (massO .lt. 0)) then
  	write(*,*) "Invalid mass!!"
 	stop
 endif
+
+if ( Nnodes .gt. Nbeads) then 
+	write(*,*) "ERROR : The number of processors is greater than the number of beads! Assuming this is an error! "
+	stop
+endif
+
+if (.not. (mod(Nbeads,Nnodes) .eq. 0)) then
+	write(*,*) "ERROR: the number of beads must be a multiple of the number of nodes."
+        write(*,'(a,i4,a,i4,a)') "To run on ", Nnodes, " nodes I suggest using ", Nbeads - mod(Nbeads,Nnodes), " beads"
+	stop
+endif
+
+
  
-!-----------------------------   reading in of configuration ---------------------------------------
+	!initialize random number generator
+ 	CALL RANDOM_SEED(size = m) !get size of seed for the system
+ 	ALLOCATE(seed(m))
+	call system_clock(count=clock) 
+	seed = clock + 357 * (/ (i - 1, i = 1, m) /)
+ 	call random_seed(put = seed)  !put in the seed
+ 		
+	write(*,'(a,i4,a,i4,a)') "Running with ", Nbeads, " beads on ", Nnodes, " nodes"
+
+	!Master node allocations
+	!only the master node (pid = 0) stores a fully copy of the
+	! coords / vel for all beads and the centroid
+	allocate(RRt(3, Natoms,Nbeads))
+	allocate(PPt(3, Natoms,Nbeads))
+	allocate(dRRt(3, Natoms,Nbeads))
+	allocate(dip_momIt(3, Nwaters,Nbeads))
+	allocate(dip_momEt(3, Nwaters,Nbeads))
+	allocate(Upott(Nbeads))
+	allocate(RRc(3, Natoms))
+	allocate(PPc(3, Natoms))
+	dRRt = 0 
+
+	call InitNormalModes(Nbeads, omegan, delt, setNMfreq)
+
+	if (THERMOSTAT)  then
+		allocate(vxi_global(global_chain_length))
+		vxi_global = 1 !set chain velocities to zero initially
+	endif 
+	if (BEADTHERMOSTAT)  then
+		allocate(vxi_beads(bead_chain_length,natoms,Nbeads,3))
+		vxi_beads = 0 !set chain velocities to zero initially
+	endif
+	if (bead_thermostat_type .eq. 'Langevin') call Init_Langevin_NM(delt2, CENTROIDTHERMOSTAT, tau_centroid, Nbeads, temp)
+
+
+end subroutine master_node_init
+
+!----------------------------------------------------------------------------------!
+!---------------- Read in coordinate data to RRc ----------------------------------
+!----------------------------------------------------------------------------------!
+subroutine read_coords
+
  if (INPCONFIGURATION) then 
 	call load_configuration(10, RRt, PPt) 
  else 
@@ -286,61 +294,91 @@ end subroutine read_coords
 !--------------Open write out files -----------------------------------------------------
 !-----------------------------------------------------------------------------------------
 subroutine open_files
-if (coord_out) then
+ if (coord_out) then
 	open(20, file='out_'//TRIM(fsave)//'_coord.xyz', status='unknown')
-endif
-if (vel_out) then 	
+ endif
+ if (vel_out) then 	
 	open(21, file='out_'//TRIM(fsave)//'_mom.dat', status='unknown')
-endif
-if (OUTPUTIMAGES) then
+ endif
+ if (OUTPUTIMAGES) then
 	open(27, file='out_'//TRIM(fsave)//'_images_coord.xyz', status='unknown')
-endif
-if  (dip_out) then
+ endif
+ if  (dip_out) then
 	open(22, file='out_'//TRIM(fsave)//'_dip.dat', status='unknown')
-endif
-if  (Edip_out) then
+ endif
+ if  (Edip_out) then
 	open(26, file='out_'//TRIM(fsave)//'_Edip.dat', status='unknown')
-endif
-if (TD_out) then 
+ endif
+ if (TD_out) then 
 	open(23, file='out_'//TRIM(fsave)//'_tot_dip.dat', status='unknown')
-endif
-if (BOXSIZEOUT) then 
+ endif
+ if (BOXSIZEOUT) then 
 	open(25, file='out_'//TRIM(fsave)//'_box.dat', status='unknown')
-endif
-if (TP_out) then 
+ endif
+ if (TP_out) then 
 	TPoutStream = 24
 	open(TPoutStream, file='out_'//TRIM(fsave)//'_TempPress.dat', status='unknown')
 	write(*,*) "Supressing further terminal output to file"
-else 
+ else 
 	 TPoutStream = 6
-endif 
+ endif 
 
-!write header
-if (CALC_RADIUS_GYRATION) then 
-	write(TPoutStream,'(a15,a10,a13,a11,a11,a23,a12,a7,a7)') "time (ps) ","temp (K) ", & 
-	"press.(bar) ", "avg temp ","avg press ", "Pot. energy (kcal/mol)", &
-	" Tot. energy", " Oxy r ", " Hyd r "
-else
-	write(TPoutStream,'(a15,a10,a13,a11,a11,a23,a12)') "time (ps) ","temp (K) ", & 
-	"press.(bar) ", "avg temp ","avg press ", "Pot. energy (kcal/mol)"," Tot. energy"
-endif
+ !write header
+ write(TPoutStream,'(a)') "all energies are in kcal/(mole H2O)"
+
+ write(TPoutStream,'(a,a,a,a,a,a,a,a)',advance='no') " time (ps) ","  temp (K) ", "  press.(bar)  ", & 
+		 "  avg temp  ","   avg press   ", "  Pot E   ","   Tot E   ","   avg Tot E   " 
+
+ if (SIMPLE_ENERGY_ESTIMATOR) write(TPoutStream,'(a,a)',advance='no')  " Tot E (simple) ", " Avg tot E (simple) "
+ if (CALC_RADIUS_GYRATION)    write(TPoutStream,'(a,a)',advance='no')  " r_O ", " r_H "
+
+ write(TPoutStream,'(a)')  ""
+
 
 end subroutine open_files
 
 
 
 !----------------------------------------------------------------------------------!
-!-------------- Write out info to file(s) -----------------------------------------
+!-------------- Calculate thermodynamic info and write out to file(s) -------------
 !----------------------------------------------------------------------------------!
 subroutine write_out 
+ Implicit none 
 !for accuracy, pressure is computed at every timestep, since P fluctuations are large
-	sys_press = (1/(3*volume))*( 2*uk - MASSCON*( virt(1,1)+virt(2,2)+virt(3,3) )   )!sign is important
-	sys_press = PRESSCON*sys_press !convert to bar
-	sum_press = sum_press + sys_press 
+!total energy is also calculated every timestep
+!in some cases, slight speedups were sacrificed for code readability 
+
+	sys_temp = TEMPFACTOR*uk/(Natoms)
+
+	!pressure / total energy calculation : classical case
+	if (Nbeads .eq. 1) then
+
+		sys_press = (1/(3*volume))*( 2*uk - MASSCON*( virt(1,1)+virt(2,2)+virt(3,3) )   )
+		sys_press = PRESSCON*sys_press !convert to bar
+		sum_press = sum_press + sys_press
+
+		Upot = Upott(1)
+		tot_energy = (Upot +  uk*MASSCONi)/Nwaters !we want kcal / mol H2O 
+		sum_tot_energy = sum_tot_energy + tot_energy
+
+	!pressure / energy calculation : quantum case
+	else 
+		Upot = iNbeads*sum(Upott)
+
+		call quantum_estimators(RRt, dRRt, sys_press, tot_energy, sys_temp, Upot)
+		sum_press = sum_press + sys_press
+
+		sum_tot_energy = sum_tot_energy + tot_energy
+
+	endif
+
+	if (SIMPLE_ENERGY_ESTIMATOR) then
+		call simple_quantum_energy_estimator(RRt, dRRt, simple_energy, sys_temp, Upot) 
+		sum_simple_energy = sum_simple_energy + simple_energy
+	endif 
 
 !print out temperature, pressure, average press & energies
 if (mod(t,tp_freq) == 0) then
-	sys_temp = TEMPFACTOR*uk/(Natoms)
 
 	tt = tt + 1
 
@@ -349,18 +387,21 @@ if (mod(t,tp_freq) == 0) then
 	sum_energy2   = sum_energy2 + (Upot + uk*MASSCONi)**2
 	sum_RMSenergy = sum_RMSenergy + (Upot + uk*MASSCONi - sum_energy/tt)**2
 
-	!dip_mom(:) = sum(dip_momI(:, 1:Nwaters), dim=2) *DEBYE/CHARGECON
- 	!write(*,'(3f12.4)') dip_mom
+
+	write(TPoutStream,'(1f10.4,7f12.2)',advance='no') tr*delt, sys_temp ,sys_press, & 
+		sum_temp/tt, sum_press/tr, Upot, tot_energy , sum_tot_energy/tr
+
+  	if (SIMPLE_ENERGY_ESTIMATOR) write(TPoutStream,'(2f12.2)',advance='no') simple_energy, sum_simple_energy/tr
 
 	if (CALC_RADIUS_GYRATION) then
 		call calc_radius_of_gyration(RRt,RRc) 
-		write(TPoutStream,'(1f10.4,6f12.2,2x,f6.4,2x,f6.4)') tr*delt, sys_temp ,sys_press, & 
-		sum_temp/tt, sum_press/tr, Upot, Upot+uk*MASSCONi, radiusO, radiusH
+		write(TPoutStream,'(1x,f6.4,1x,f6.4)',advance='no')  radiusO, radiusH
+	endif
 
-	else	
-		write(TPoutStream,'(1f10.4,6f12.2)') tr*delt, sys_temp ,sys_press, & 
-			sum_temp/tt, sum_press/tr, Upot, Upot+uk*MASSCONi
-	endif 
+	!advance to next line
+	write(TPoutStream,'(a)') ""
+
+
 
 endif 
 	tr = tr + 1
@@ -369,7 +410,7 @@ endif
 if  (t .eq. eq_timesteps) then
  	write(TPoutStream,*) "#----end of equilibration---restarting averages----------------------------------"
 	!store average temp during equil and final energy after equil
-	init_energy = Upot + uk*MASSCONi
+	init_energy = tot_energy 
 	init_temp = sum_temp/tt
 
 	!start new averaging of temp & energy
@@ -377,6 +418,7 @@ if  (t .eq. eq_timesteps) then
 	tr     = 1
 	sum_temp = 0 
 	sum_press = 0 
+	sum_tot_energy = 0 
 	sum_energy = 0
 	sum_energy2 = 0
 	sum_RMSenergy = 0
@@ -442,6 +484,85 @@ if (BAROSTAT .and. BOXSIZEOUT) then
 endif 
 
 end subroutine write_out
+
+
+!----------------------------------------------------------------------------------!
+!- Quantum estimators for energy & pressure (ref: Tuckerman, "Statistical Mechanics.." 2008 pg 485)
+!----------------------------------------------------------------------------------!
+subroutine quantum_estimators(RRt, dRRt, qPress, qEnergy, sys_temp, Upot) 
+ use consts 
+ Implicit none
+ double precision, dimension(3,Natoms,Nbeads),intent(in)  :: RRt, dRRt
+ double precision, intent(in)      :: sys_temp, Upot
+ double precision, intent(out)     :: qPress, qEnergy 
+ double precision 		      :: part, qVirial, qVirial2, KE
+ integer :: i, j, k 
+
+ !Note on units : it is assumed that dRRt is in (in kcal/(mol*Ang))
+ !and that Upot is in kcal/mol and that sys_temp is in Kelvin 
+
+ !The pressure estimator assumes that the potential energy does not have volume dependence
+
+ qVirial = 0 
+ qVirial2 = 0 
+ do k = 1,Nbeads
+	do j = 1, Natoms
+		do i = 1, 3
+			part = RRc(i,j)*dRRt(i,j,k)
+			qVirial2 = qVirial2 - part
+			qVirial  = qVirial  + RRt(i,j,k)*dRRt(i,j,k) - part
+		enddo
+	enddo
+ enddo
+ qVirial =  iNbeads*.5*qVirial 
+ qVirial2 = iNbeads*(1/volume)*qVirial2
+
+ KE = 1.5*Natoms*kb*sys_temp !kinetic energy in kcal/mol
+
+ qEnergy = (KE + qVirial + Upot)/Nwaters !kcal/(mole of mol)
+ qPress  = (KE  + qVirial2)/volume
+
+end subroutine quantum_estimators
+
+
+!----------------------------------------------------------------------------------!
+!- Simple 'naive' quantum estimator for the energy (JCP 128, 074506) --------------
+!----------------------------------------------------------------------------------!
+subroutine simple_quantum_energy_estimator(RRt, dRRt, qEnergy, sys_temp, Upot) 
+ use consts 
+ Implicit none
+ double precision, dimension(3,Natoms,Nbeads),intent(in)  :: RRt, dRRt
+ double precision, intent(in)      :: sys_temp, Upot
+ double precision, intent(out)     :: qEnergy 
+ double precision 		      :: KE, K0, mass
+ integer :: i, j, k 
+
+ !Note on units : it is assumed that dRRt is in (in kcal/(mol*Ang))
+ !and that Upot is in kcal/mol and that sys_temp is in Kelvin 
+
+ !The pressure estimator assumes that the potential energy does not have volume dependence
+
+ K0 = 0
+ do i = 1, 3
+	do j = 1, Natoms
+		if (mod(j+2,3) .eq. 0) then
+			mass = massO 
+		else 
+			mass = massH
+		endif
+		do k = 2, Nbeads
+			K0 = K0 + mass*( RRt(i,j,k) - RRt(i,j,k-1) )**2
+		enddo
+	enddo
+ enddo
+
+ K0 = .5*K0*omegan**2*MASSCONi
+
+ KE = 1.5*Natoms*kb*sys_temp !kinetic energy in kcal/mol
+
+ qEnergy = (KE*Nbeads + Upot - K0)/Nwaters !kcal/(mole of mol)
+
+end subroutine simple_quantum_energy_estimator
 
 
 !----------------------------------------------------------------------------------!

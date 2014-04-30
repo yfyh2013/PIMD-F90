@@ -106,7 +106,6 @@ subroutine InitNormalModes(Nbeads,omegan,delta,setNMfreq)
 !negative k modes
  do k = 1,l
 	omega = 2*omegan*Sin(PI*( abs(k)/real(Nbeads)) )  
- 	!write(*,'(a5,i3,a3,f8.3,a8,f10.2,a6)') "freq ", -k, " = ", omega/(2*PI), " 1/ps = ", 33.33333d0*omega/(2*PI), " cm^-1"	
     	omegalist(k+1) = omega
 	A11(k+1) = Cos(omega*delta)
 	A12(k+1) = (1/omega)*Sin(omega*delta)
@@ -128,7 +127,6 @@ subroutine InitNormalModes(Nbeads,omegan,delta,setNMfreq)
  if (mod(Nbeads,2) .eq. 0) then 
 	k = l+1
 	omega = 2*omegan*Sin(PI*( abs(k)/real(Nbeads)) )  
- 	!write(*,'(a5,i3,a3,f8.3,a8,f10.2,a6)') "freq ", k, " = ", omega/(2*PI), " 1/ps = ", 33.33333d0*omega/(2*PI), " cm^-1"	
     	omegalist(2*l + 2) = omega
 	A11(2*l+2) = Cos(omega*delta)
 	A12(2*l+2) = (1/omega)*Sin(omega*delta)
@@ -141,14 +139,10 @@ subroutine InitNormalModes(Nbeads,omegan,delta,setNMfreq)
 if (setNMfreq .eq. 0) then
  	write(*,*) "Running usuing RPMD. All beads have physical mass."
  	write(*,*) "Normal mode frequencies: (cm^-1)"
- 	do k = 1,l
-		omega= omegalist(k) 
+ 	do k = 1,Nbeads
+		omega = omegalist(k) 
 		write(*,'(f10.2)')  33.33333d0*omega/(2*PI) 
 	enddo
- 	if (mod(Nbeads,2) .eq. 0) then 
-	    	omega = omegalist(2*l + 2)
-	 	write(*,'(f10.2)')  33.33333d0*omega/(2*PI) 
- 	endif
 endif 
 
 
@@ -259,9 +253,7 @@ subroutine gen_rand_ring_momenta(PP,mass,temp,Nbeads)
 end subroutine gen_rand_ring_momenta
 
 
-
-
-				
+	
 
 
 !---------------------------------------------------------------------

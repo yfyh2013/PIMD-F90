@@ -510,6 +510,7 @@ do iw=1, Nwaters
    enddo
 enddo
 En = Umon + Uvdw + Uelec + Uind + Uvdw_lrc
+
 end subroutine pot_ttm
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
