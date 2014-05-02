@@ -190,7 +190,8 @@ end subroutine calc_radius_of_gyration
 !----------------------------------------------------------------------------------!
 subroutine Pcouple 
 	scale_factor = ( 1 - CompFac*(press - sys_press)  )**.333333
-	RR = RR*scale_factor
+	RRt = RRt*scale_factor
+	RRc = RRc*scale_factor
 	box = box*scale_factor	
 	volume = box(1)*box(2)*box(3)
 	boxi = 1d0/box

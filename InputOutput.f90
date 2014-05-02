@@ -388,7 +388,7 @@ if (mod(t,tp_freq) == 0) then
 	sum_RMSenergy = sum_RMSenergy + (Upot + uk*MASSCONi - sum_energy/tt)**2
 
 
-	write(TPoutStream,'(1f10.4,7f12.2)',advance='no') tr*delt, sys_temp ,sys_press, & 
+	write(TPoutStream,'(1f10.4,7f12.2)',advance='no') tr*delt, sys_temp , sys_press, & 
 		sum_temp/tt, sum_press/tr, Upot, tot_energy , sum_tot_energy/tr
 
   	if (SIMPLE_ENERGY_ESTIMATOR) write(TPoutStream,'(2f12.2)',advance='no') simple_energy, sum_simple_energy/tr
@@ -419,6 +419,7 @@ if  (t .eq. eq_timesteps) then
 	sum_temp = 0 
 	sum_press = 0 
 	sum_tot_energy = 0 
+	sum_simple_energy = 0 
 	sum_energy = 0
 	sum_energy2 = 0
 	sum_RMSenergy = 0
@@ -487,7 +488,8 @@ end subroutine write_out
 
 
 !----------------------------------------------------------------------------------!
-!- Quantum estimators for energy & pressure (ref: Tuckerman, "Statistical Mechanics.." 2008 pg 485)
+!- Quantum virial estimator for the energy (ref: Tuckerman, "Statistical Mechanics.." 2008 pg 485)
+!- And simple virial pressure estimator 
 !----------------------------------------------------------------------------------!
 subroutine quantum_estimators(RRt, dRRt, qPress, qEnergy, sys_temp, Upot) 
  use consts 
@@ -502,31 +504,32 @@ subroutine quantum_estimators(RRt, dRRt, qPress, qEnergy, sys_temp, Upot)
  !and that Upot is in kcal/mol and that sys_temp is in Kelvin 
 
  !The pressure estimator assumes that the potential energy does not have volume dependence
-
  qVirial = 0 
  qVirial2 = 0 
  do k = 1,Nbeads
 	do j = 1, Natoms
 		do i = 1, 3
-			part = RRc(i,j)*dRRt(i,j,k)
-			qVirial2 = qVirial2 - part
-			qVirial  = qVirial  + RRt(i,j,k)*dRRt(i,j,k) - part
+			part     = RRt(i,j,k)*dRRt(i,j,k) 
+			qVirial2 = qVirial2 + part
+			qVirial  = qVirial  + part  - RRc(i,j)*dRRt(i,j,k)
 		enddo
 	enddo
  enddo
- qVirial =  iNbeads*.5*qVirial 
- qVirial2 = iNbeads*(1/volume)*qVirial2
+ qVirial  = iNbeads*.5*qVirial 
+ qVirial2 = iNbeads*qVirial2
 
  KE = 1.5*Natoms*kb*sys_temp !kinetic energy in kcal/mol
 
- qEnergy = (KE + qVirial + Upot)/Nwaters !kcal/(mole of mol)
- qPress  = (KE  + qVirial2)/volume
+ !convert to kcal/(mole of mol H2O) by dividing by Nwaters
+ qEnergy = (KE + qVirial + Upot)/Nwaters 
+
+ qPress  =  PRESSCON2*(2*KE - qVirial2)/(volume*Nwaters)
 
 end subroutine quantum_estimators
-
+	
 
 !----------------------------------------------------------------------------------!
-!- Simple 'naive' quantum estimator for the energy (JCP 128, 074506) --------------
+!- Simple quantum estimator for the energy ----------------------------------------
 !----------------------------------------------------------------------------------!
 subroutine simple_quantum_energy_estimator(RRt, dRRt, qEnergy, sys_temp, Upot) 
  use consts 

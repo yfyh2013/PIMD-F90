@@ -131,7 +131,6 @@ do t = 1, num_timesteps + eq_timesteps
 	!---------------------------------- End MPI force calculation ----------------------------
 	if (pid .eq. 0) then
 
-
 		!calculate centroid positions
 		RRc = sum(RRt,3)/Nbeads
 
@@ -167,6 +166,8 @@ do t = 1, num_timesteps + eq_timesteps
 		call write_out
 
 		call MPItimer(3,'stop ',secondsIO)
+
+		if (BAROSTAT) call Pcouple
 
 
 	endif!(pid .eq. 0) 
