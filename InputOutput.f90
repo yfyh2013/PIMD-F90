@@ -337,6 +337,8 @@ subroutine open_files
  endif 
 
  !write Temp/Press file header
+ call print_basic_run_info
+
  write(TPoutStream,'(a)') "all energies are in kcal/(mole H2O)"
 
  write(TPoutStream,'(a,a,a,a,a,a,a,a)',advance='no') " time (ps) ","  temp (K) ", "  press.(bar)  ", & 
@@ -416,9 +418,9 @@ subroutine write_out
  endif 
 
  !caculate dipole moments only if necessary 
- if (  (DIELECTRICOUT .and. ( mod(t,10) .eq. 0 )  )  .or. &
-	 ( (t .gt. eq_timesteps) .and. &
- ( ( (mod(t,td_freq) .eq. 0) .and. TD_out) .or. (dip_out .and. (mod(t,t_freq) .eq. 0))))) then 
+ !if (  (DIELECTRICOUT .and. ( mod(t,10) .eq. 0 )  )  .or. &
+!	 ( (t .gt. eq_timesteps) .and. &
+ !( ( (mod(t,td_freq) .eq. 0) .and. TD_out) .or. (dip_out .and. (mod(t,t_freq) .eq. 0))))) then 
       	!calculate dipole moment by averaging over all beads
  	do iw=1,Nwaters
 		do j = 1, 3
@@ -429,7 +431,7 @@ subroutine write_out
 	dip_momI = dip_momI*DEBYE/CHARGECON   
 	!caculate total dipole moment (in Debye)
 	dip_mom(1:3) = sum(dip_momI(1:3, 1:Nwaters), dim=2)
- endif 
+ !endif 
 
  !update quantities for dielectric constant 
  !it really isn't necessary to do this every timestep, so we do it every 10 steps
@@ -458,6 +460,10 @@ subroutine write_out
 		dielectric_constant = diel_prefac*(  sum_dip2/ttt - sum( (sum_dip/ttt)**2 )  )/volume/(sum_temp/tr)
 		write(TPoutStream,'(1x,f18.2)',advance='no') dielectric_constant
 	endif 
+
+	!feature to output the current density (for debugging the barostat) 
+	write(TPoutStream,'(1x,f18.6)',advance='no') Nwaters*(massO+2*massH)*amu2grams/((a2m*box(1)*100)**3)
+
 	!advance to next line
 	write(TPoutStream,'(a)') ""
 
@@ -603,21 +609,9 @@ end subroutine simple_quantum_energy_estimator
 subroutine print_run
 Implicit none
 
-write(TPoutStream,'(a50, f10.3,a3)') "timestep = ", delt*1000, " fs"
-if (THERMOSTAT) write(TPoutStream,'(a50, f10.3,a3)') "Nose-Hoover tau = ", tau, " ps"
-if (.not. THERMOSTAT) write(TPoutStream,'(a50, a3)') "Nose-Hoover tau = ", "n/a"
-if (BEADTHERMOSTAT) write(TPoutStream,'(a50, a )')  " type of bead thermostat = ", bead_thermostat_type
-if (CENTROIDTHERMOSTAT) write(TPoutStream,'(a50, a )')  " centroid thermostating = ", "yes"
-if (.not. CENTROIDTHERMOSTAT) write(TPoutStream,'(a50, a )')  " centroid thermostating = ", "no"
-if (.not. BEADTHERMOSTAT) write(TPoutStream,'(a50, a )')  " type of bead thermostat = ", "none"
-if (BEADTHERMOSTAT) write(TPoutStream,'(a50, f10.3,a3)')  " centroid thermostat tau = ", tau_centroid, " ps"
-if (.not. BEADTHERMOSTAT) write(TPoutStream,'(a50, a3)') " centroid thermostat tau = ", "n/a"
-if (BAROSTAT) write(TPoutStream,'(a50, f10.3,a3)') "Barostat tau = ", tau_p, " ps"
-if (.not. BAROSTAT) write(TPoutStream,'(a50, a3)') "Barostat tau = ", "n/a"
-
+call print_basic_run_info
 
 write(TPoutStream,*) "#-----------  timing report ----------------------------"
-write(TPoutStream,'(a50,i4,a,i4,a)') "Ran with ", Nbeads, " beads on ", Nnodes, " nodes"
 write(TPoutStream,'(a50, i5, a7, i3, a9, i3, a8)') "Total elapsed time = ", int(real(seconds)/3600), " hours ",  & 
 			int(mod(seconds,3600d0)/60), " minutes ", int(mod(seconds,60d0)), " seconds" 
 write(TPoutStream,'(a50, i5, a7, i3, a9, i3, a9, i3, a3)') "Time spent on normal modes = ", int(real(secondsNM)/3600), " hours ", & 
@@ -643,26 +637,26 @@ write(TPoutStream,'(a50, 3f10.2)') "RMS energy fluctuation  (kcal/mol) = ", dsqr
  
 specific_heat = dsqrt(  sum_energy2/tr - (sum_tot_energy/tr)**2  ) /( kb*avg_temp )
 
-write(TPoutStream,'(a50, f10.2)') "Specific heat C_V (only valid in NVT) (cal/g) = ", specific_heat/(1000*(massO+2*massH))
+!write(TPoutStream,'(a50, f10.2)') "Specific heat C_V (only valid in NVT) (cal/g) = ", specific_heat/(1000*(massO+2*massH))
 
 if (BAROSTAT) then
         avg_box2 = sum_box2/t
         avg_box  = sum_box/t 
 
         isotherm_compress = (avg_box2**3 - (avg_box**3)**2 )*(10d-7)/(1.38d0*avg_temp*avg_box)
-	write(TPoutStream,'(a50, f10.2)') "average box size (over entire run) (Ang) = ", avg_box
-        write(TPoutStream,'(a50, f10.2)') "Isothermal compressibility (only valid in NPT)=", isotherm_compress
+	write(TPoutStream,'(a50, f10.6)') "average box size (over entire run) (Ang) = ", avg_box
+  !      write(TPoutStream,'(a50, f10.2)') "Isothermal compressibility (only valid in NPT)=", isotherm_compress
 else 
-        write(TPoutStream,'(a50, a4)') "Isothermal compressibility (only valid in NPT)=", " n/a"
+!        write(TPoutStream,'(a50, a4)') "Isothermal compressibility (only valid in NPT)=", " n/a"
 endif
-	write(TPoutStream,'(a50, f10.2)') "average density (g/cm^3) = ", Nwaters*(massO+2*massH)*amu2grams/((a2m*avg_box/100)**3)
+	write(TPoutStream,'(a50, f10.2)') "average density (g/cm^3) = ", Nwaters*(massO+2*massH)*amu2grams/((a2m*avg_box*100)**3)
  
 if (DIELECTRICOUT) then 
 	write(TPoutStream,'(a50, f10.2)') " dielectric constant ", dielectric_constant
-	write(TPoutStream,'(a50, f10.2)') " sum <M^2> (Debye^2) ", sum_dip2**2
-	write(TPoutStream,'(a50, f10.2)') " sum <M>^2 (Debye^2) ", sum(sum_dip**2)
-	write(TPoutStream,'(a50, f10.2)') " average <M^2> (Debye^2) ", sum_dip2**2/ttt
-	write(TPoutStream,'(a50, f10.2)') " average <M>^2 (Debye^2) ", sum(sum_dip**2)/ttt
+	write(TPoutStream,'(a50, f16.2)') " sum <M^2> (Debye^2) ", sum_dip2**2
+	write(TPoutStream,'(a50, f16.2)') " sum <M>^2 (Debye^2) ", sum(sum_dip**2)
+	write(TPoutStream,'(a50, f16.2)') " average <M^2> (Debye^2) ", sum_dip2**2/ttt
+	write(TPoutStream,'(a50, f16.2)') " average <M>^2 (Debye^2) ", sum(sum_dip**2)/ttt
 	write(TPoutStream,'(a50, i5)') " points used to compute dielectric constant: ", ttt
 endif
 
@@ -675,8 +669,25 @@ endif
 
 end subroutine print_run
 
+!----------------------------------------------------------------------------------!
+!----------Print basic information about the run ----------------------------------
+!----------------------------------------------------------------------------------!
+subroutine print_basic_run_info
 
+ write(TPoutStream,'(a50,i4,a,i4,a)') "Running with ", Nbeads, " beads on ", Nnodes, " nodes"
+ write(TPoutStream,'(a50, f10.3,a3)') "timestep = ", delt*1000, " fs"
+ if (THERMOSTAT) write(TPoutStream,'(a50, f10.3,a3)') "Nose-Hoover tau = ", tau, " ps"
+ if (.not. THERMOSTAT) write(TPoutStream,'(a50, a3)') "Nose-Hoover tau = ", "n/a"
+ if (BEADTHERMOSTAT) write(TPoutStream,'(a50, a )')  " type of bead thermostat = ", bead_thermostat_type
+ if (CENTROIDTHERMOSTAT) write(TPoutStream,'(a50, a )')  " centroid thermostating = ", "yes"
+ if (.not. CENTROIDTHERMOSTAT) write(TPoutStream,'(a50, a )')  " centroid thermostating = ", "no"
+ if (.not. BEADTHERMOSTAT) write(TPoutStream,'(a50, a )')  " type of bead thermostat = ", "none"
+ if (BEADTHERMOSTAT) write(TPoutStream,'(a50, f10.3,a3)')  " centroid thermostat tau = ", tau_centroid, " ps"
+ if (.not. BEADTHERMOSTAT) write(TPoutStream,'(a50, a3)') " centroid thermostat tau = ", "n/a"
+ if (BAROSTAT) write(TPoutStream,'(a50, f10.3,a3)') "Barostat tau = ", tau_p, " ps"
+ if (.not. BAROSTAT) write(TPoutStream,'(a50, a3)') "Barostat tau = ", "n/a"
 
+end subroutine print_basic_run_info
 !----------------------------------------------------------------------------------!
 !----------Print information about the potential-----------------------------------
 !----------------------------------------------------------------------------------!
