@@ -21,19 +21,21 @@ integer, external :: iargc
  character(len=125) :: finp, fconfig, fsave 
 !-new variables:--------------------------------------------
 double precision, dimension(:,:), allocatable :: VV, dRRold, dRRnew
-double precision, dimension(3) :: summom, sumvel
+double precision, dimension(3) :: summom, sumvel, sum_dip
 double precision :: delt, delt2,  uk,  imassO, imassH
 double precision :: temp, sum_temp, sum_press, sys_temp, avg_vel, init_energy, sum_RMSenergy
-double precision :: tot_energy, sum_tot_energy, sum_energy, sum_energy2, sum_simple_energy, simple_energy
-double precision :: specific_heat, avg_temp, init_temp
+double precision :: tot_energy, sum_tot_energy, sum_energy2, sum_simple_energy, simple_energy
+double precision :: specific_heat, avg_temp, init_temp, sum_dip2
+double precision :: dielectric_constant, diel_prefac
 double precision :: avg_box, avg_box2, sum_box, sum_box2, isotherm_compress
 integer, dimension(:), allocatable :: seed
  character(len=125) :: dip_file
  character(len=11)  :: bead_thermostat_type
-integer :: num_timesteps, t, t_freq, tp_freq, td_freq, ti_freq, m, clock, eq_timesteps, TPoutStream, tt, tr 
+integer :: num_timesteps, t, t_freq, tp_freq, td_freq, ti_freq, m, clock, eq_timesteps, TPoutStream,  ttt, tr 
 logical :: dip_out, coord_out, TD_out, vel_out, TP_out, Edip_out 
-logical :: BAROSTAT, PEQUIL, BOXSIZEOUT, THERMOSTAT, GENVEL, INPCONFIGURATION, PRINTFINALCONFIGURATION 
-logical ::  BEADTHERMOSTAT, CENTROIDTHERMOSTAT, CALC_RADIUS_GYRATION, OUTPUTIMAGES, SIMPLE_ENERGY_ESTIMATOR
+logical :: BAROSTAT, PEQUIL, BOXSIZEOUT, THERMOSTAT, GENVEL, INPCONFIGURATION
+logical :: DIELECTRICOUT, PRINTFINALCONFIGURATION, OUTPUTIMAGES, SIMPLE_ENERGY_ESTIMATOR
+logical ::  BEADTHERMOSTAT, CENTROIDTHERMOSTAT, CALC_RADIUS_GYRATION
 
 !N-H variables
 double precision, save :: tau, tau_centroid, s, sbead
@@ -214,9 +216,9 @@ allocate(RRtemp(3,Nbeads))
 !predict average radius of the ring polymer
 if (Nbeads .gt. 1) then
 	avgrO  = 2*PI*hbar/(PI*Sqrt(24*massO*KB_amuA2ps2perK*temp))
-	avgrH  = 2*PI*hbar/(PI*Sqrt(24*1d0*KB_amuA2ps2perK*temp)) 
-	write(*,'(a,f10.5,a4)') "Predicted average radius of (converged) Oxygen ring polymer is   ", avgrO, " Ang"
-	write(*,'(a,f10.5,a4)') "Predicted average radius of (converged) Hydrogen ring polymer is ", avgrH, " Ang"
+	avgrH  = 2*PI*hbar/(PI*Sqrt(24*massH*KB_amuA2ps2perK*temp)) 
+	write(*,'(a,f10.5,a4)') "Predicted average radius of (N_beads -> infinity) Oxygen ring polymer is   ", avgrO, " Ang"
+	write(*,'(a,f10.5,a4)') "Predicted average radius of (N_beads -> infinity) Hydrogen ring polymer is ", avgrH, " Ang"
 endif 
 
 do i=1, Nwaters

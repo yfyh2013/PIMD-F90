@@ -2,26 +2,25 @@
 
 BASIC INFO
 'input_128.xyz'          ! input filename - either a centroid .xyz or a full bead configuration
-'test1mol'   	         ! run name - this will be appended to all the output files
-1	 		 ! Number of beads 
-1000		         ! number of steps to equilibrate		 
-2000	            	 ! number of steps to run
+'TTM3F_langevin_128_1beads'    ! run name - this will be appended to all the output files
+32	 		 ! Number of beads 
+200		         ! number of steps to equilibrate		 
+200	            	 ! number of steps to run
 .5                  	 ! timestep (delt) (fs)
 
 OUTPUT OPTIONS 
 .f.       		 ! centroid coordinates 
 .f.			 ! centroid momenta  
-.f.			 ! all images
+.t.			 ! all images
 .f.		         ! all dipoles 
 .f.			 ! all polarization dipoles 
 .f.			 ! total dipole 
-.f.			 ! box size running average  
-.f.			 ! Temp/Press (.t. = to file, .f. = to terminal) 
+.t.			 ! Temp/Press (.t. = to file, .f. = to terminal) 
 .t.			 ! avg. radius of gyration (in Temp/Press file) 
-.t.			 ! output dielectric constant (running average in Temp/Press file)
+.t.			 ! output dielectric constant (running average in Temp/Press file) 
 .t.			 ! write final configuration of all beads to seperate file? 
 1			 ! Total dipole output frequency 
-10   			 ! Temp/Press output frequency
+200   			 ! Temp/Press output frequency
 40			 ! all images output frequency 
 20       		 ! Output frequency for everything else
 
@@ -31,7 +30,7 @@ MD OPTIONS
 25 0.7 1.d-5 .f. .f.     ! params for dipole iterative procedure: Max iterations, pol factor, accuracy, guess initial?, debug output
 .f.			 ! generate initial velocities? 
 .f. 		         ! input initial configuration? 
-.t.                 	 ! Global thermostat? t/f
+.f.                 	 ! Global thermostat? t/f
 .t.                      ! Thermostat non-centroid modes ? 
 .t.			 ! Thermostat centroid mode ?
 'Langevin'               ! type of bead thermostat - 'Nose-Hoover', 'Langevin' or 'none'
@@ -39,10 +38,11 @@ MD OPTIONS
 .1			 ! tau for centroid thermostat (ps)
 5			 ! global Nose-Hoover chain length
 5			 ! bead Nose-Hoover chain length
-300	                 ! temperature (Kelvin)
-.t.			 ! Berendson barostat ? 
-.4      		 ! tau for barostat (ps)
+100	                 ! temperature (Kelvin)
+.f.			 ! Berendson barostat ? 
+.01      		 ! tau for barostat (ps)
 1		         ! reference pressure (bar) 
+.f.			 ! box size running average output ? 
 .f.			 ! pressure coupling during equilibration only?
 
 MORE RUN OPTIONS

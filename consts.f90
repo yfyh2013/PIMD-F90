@@ -21,6 +21,12 @@ module consts
    double precision, parameter ::   SQPI= 1.77245385090551602729d0 !  sqrt(pi)
    double precision, parameter :: RADIAN= 57.29577951308232087721d0
 
+   double precision, parameter :: kbSI = 1.3806488d-23 ! J/Kelvin
+   double precision, parameter :: vac_permSI = 8.854187817620d-12 ! F/m = C^2/J/m
+   double precision, parameter :: a2m=1e-10 ! ang -> meters
+   double precision, parameter :: amu2grams = 1.66053892d-24 ! amu -> grams
+   double precision, parameter :: debyeSI=3.33564e-30  ! Debye -> SI
+
    double precision :: massO=15.994d0
    double precision :: massH=1.008d0
 

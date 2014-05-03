@@ -16,18 +16,35 @@ if (narg .eq. 0) then
 	stop
 endif 
 open(11, file=finp, status='old')
-read(11,*)read_method
+
+read(11,*) 
+read(11,*)
+read(11,*)
 read(11,*)fconfig
 read(11,*)fsave
+read(11,*)Nbeads
+read(11,*)eq_timesteps
+read(11,*)num_timesteps
+read(11,*)delt
+read(11,*) 
+read(11,*)
 read(11,*)coord_out
 read(11,*)vel_out
 read(11,*)OUTPUTIMAGES
 read(11,*)dip_out
 read(11,*)Edip_out
 read(11,*)TD_out
+read(11,*)BOXSIZEOUT		
 read(11,*)TP_out
 read(11,*)CALC_RADIUS_GYRATION
+read(11,*)DIELECTRICOUT
 read(11,*)PRINTFINALCONFIGURATION
+read(11,*)td_freq
+read(11,*)tp_freq
+read(11,*)ti_freq
+read(11,*)t_freq
+read(11,*) 
+read(11,*)
 read(11,*)pot_model 
 read(11,*)Rc, rc1, eps_ewald
 read(11,*)polar_maxiter, polar_sor, polar_eps, guess_initdip, print_dipiters
@@ -45,21 +62,16 @@ read(11,*)temp
 read(11,*)BAROSTAT
 read(11,*)tau_P
 read(11,*)press 
-read(11,*)BOXSIZEOUT		
 read(11,*)PEQUIL
-read(11,*)eq_timesteps
-read(11,*)num_timesteps
-read(11,*)delt
-read(11,*)td_freq
-read(11,*)tp_freq
-read(11,*)ti_freq
-read(11,*)t_freq
-read(11,*)Nbeads
+read(11,*) 
+read(11,*)
 read(11,*)setNMfreq
 read(11,*)massO
 read(11,*)massH
 
-SIMPLE_ENERGY_ESTIMATOR = .true.
+read_method = 1 !read_method(=0,1) (0 for OOOO....HHHHH and 1 for OHHOHHOHH...)
+SIMPLE_ENERGY_ESTIMATOR = .true. !setting this to true will output the simple energy to temp/press file
+!this quantity will take a long, long time to converge with 4+ beads 
 
 close(11)  
 end subroutine read_input_file 
@@ -114,16 +126,6 @@ boxi = 1.d0 / box
 imassO = DBLE(1/massO) 
 imassH = DBLE(1/massH)
 iNbeads = 1d0/DBLE(Nbeads)
-CompFac = (.4477d-5*delt)/(tau_P) !Barostat var. (contains compressibility of H2O)
-sum_temp = 0 
-sum_press = 0 
-sum_tot_energy = 0 
-sum_simple_energy = 0 
-sum_energy = 0
-sum_energy2 = 0
-sum_RMSenergy = 0
-tt = 0 
-tr = 0
 counti = 3*Natoms
 omegan = KB_amuA2ps2perK*temp*Nbeads/hbar
 kTN = KB_amuA2ps2perK*temp*Nbeads
@@ -149,7 +151,7 @@ end subroutine initialize_all_node_variables
 
 
 !----------------------------------------------------------------------------------!
-!---------- Master node allocations -----------------------------------------------
+!---------- Error handling  / master node allocations ----------------------------- 
 !----------------------------------------------------------------------------------!
 subroutine master_node_init
 	use Langevin 
@@ -219,8 +221,19 @@ if (.not. (mod(Nbeads,Nnodes) .eq. 0)) then
 	stop
 endif
 
+	CompFac = (.4477d-5*delt)/(tau_P) !Barostat var. (contains compressibility of H2O)
+	sum_temp = 0 
+	sum_press = 0 
+	sum_tot_energy = 0 
+	sum_simple_energy = 0 
+	sum_energy2 = 0
+	sum_RMSenergy = 0
+	sum_box = 0 
+	sum_box2 = 0 
+	tr = 0
+	ttt = 0
+	diel_prefac =  debyeSI**2 / (3 * kbSI * vac_permSI * a2m**3) 
 
- 
 	!initialize random number generator
  	CALL RANDOM_SEED(size = m) !get size of seed for the system
  	ALLOCATE(seed(m))
@@ -323,15 +336,15 @@ subroutine open_files
 	 TPoutStream = 6
  endif 
 
- !write header
+ !write Temp/Press file header
  write(TPoutStream,'(a)') "all energies are in kcal/(mole H2O)"
 
  write(TPoutStream,'(a,a,a,a,a,a,a,a)',advance='no') " time (ps) ","  temp (K) ", "  press.(bar)  ", & 
-		 "  avg temp  ","   avg press   ", "  Pot E   ","   Tot E   ","   avg Tot E   " 
+		 " avg temp "," avg press ", " Pot E  "," Tot E "," avg Tot E  " 
 
  if (SIMPLE_ENERGY_ESTIMATOR) write(TPoutStream,'(a,a)',advance='no')  " Tot E (simple) ", " Avg tot E (simple) "
  if (CALC_RADIUS_GYRATION)    write(TPoutStream,'(a,a)',advance='no')  " r_O ", " r_H "
-
+ if (DIELECTRICOUT)           write(TPoutStream,'(a)',advance='no') " eps(0) "
  write(TPoutStream,'(a)')  ""
 
 
@@ -344,144 +357,160 @@ end subroutine open_files
 !----------------------------------------------------------------------------------!
 subroutine write_out 
  Implicit none 
-!for accuracy, pressure is computed at every timestep, since P fluctuations are large
-!total energy is also calculated every timestep
-!in some cases, slight speedups were sacrificed for code readability 
 
-	sys_temp = TEMPFACTOR*uk/(Natoms)
+ !reset averaging after equilbration ends
+ if  (t .eq. eq_timesteps) then
+ 	write(TPoutStream,*) "#----end of equilibration---restarting averages----------------------------------"
+	!store average temp during equil and final energy after equil
+	init_energy = tot_energy 
+	init_temp = sum_temp/tr
 
-	!pressure / total energy calculation : classical case
-	if (Nbeads .eq. 1) then
+	!start new averaging  
+	tr     = 0
+	ttt    = 0
+	sum_temp = 0 
+	sum_press = 0 
+	sum_dip = 0 
+	sum_dip2 = 0 
+	sum_tot_energy = 0 
+	sum_simple_energy = 0 
+	sum_energy2 = 0
+	sum_RMSenergy = 0
+ endif 
 
-		sys_press = (1/(3*volume))*( 2*uk - MASSCON*( virt(1,1)+virt(2,2)+virt(3,3) )   )
-		sys_press = PRESSCON*sys_press !convert to bar
-		sum_press = sum_press + sys_press
+ tr = tr + 1
 
-		Upot = Upott(1)
-		tot_energy = (Upot +  uk*MASSCONi)/Nwaters !we want kcal / mol H2O 
-		sum_tot_energy = sum_tot_energy + tot_energy
+ !for accuracy, pressure is computed at every timestep, since P fluctuations are large
+ !total energy and temperature is also calculated every timestep
+ !in some instances, slight speedups were sacrificed for code readability 
 
-	!pressure / energy calculation : quantum case
-	else 
-		Upot = iNbeads*sum(Upott)
+ sys_temp = TEMPFACTOR*uk/(Natoms)
 
-		call quantum_estimators(RRt, dRRt, sys_press, tot_energy, sys_temp, Upot)
-		sum_press = sum_press + sys_press
+ !pressure / total energy calculation : classical case
+ if (Nbeads .eq. 1) then
 
-		sum_tot_energy = sum_tot_energy + tot_energy
+	sys_press = (1/(3*volume))*( 2*uk - MASSCON*( virt(1,1)+virt(2,2)+virt(3,3) )   )
+	sys_press = PRESSCON*sys_press !convert to bar
 
-	endif
+	Upot = Upott(1)
+	tot_energy = (Upot +  uk*MASSCONi)/Nwaters !we want kcal / mol H2O 
 
-	if (SIMPLE_ENERGY_ESTIMATOR) then
-		call simple_quantum_energy_estimator(RRt, dRRt, simple_energy, sys_temp, Upot) 
-		sum_simple_energy = sum_simple_energy + simple_energy
-	endif 
+ !pressure / energy calculation : quantum case
+ else 
+	Upot = iNbeads*sum(Upott)
 
-!print out temperature, pressure, average press & energies
-if (mod(t,tp_freq) == 0) then
-
-	tt = tt + 1
-
-	sum_temp      = sum_temp + sys_temp
-	sum_energy    = sum_energy + Upot + uk*MASSCONi
-	sum_energy2   = sum_energy2 + (Upot + uk*MASSCONi)**2
-	sum_RMSenergy = sum_RMSenergy + (Upot + uk*MASSCONi - sum_energy/tt)**2
+	call quantum_estimators(RRt, dRRt, sys_press, tot_energy, sys_temp, Upot)
+ endif
+ 
+ sum_press      = sum_press + sys_press
+ sum_tot_energy = sum_tot_energy + tot_energy
+ sum_temp       = sum_temp + sys_temp
+ sum_energy2    = sum_energy2 + tot_energy**2
+ sum_RMSenergy  = sum_RMSenergy + (tot_energy - sum_tot_energy/tr)**2
 
 
-	write(TPoutStream,'(1f10.4,7f12.2)',advance='no') tr*delt, sys_temp , sys_press, & 
-		sum_temp/tt, sum_press/tr, Upot, tot_energy , sum_tot_energy/tr
+ !simple quantum energy (converges very slow) 
+ if (SIMPLE_ENERGY_ESTIMATOR) then
+	call simple_quantum_energy_estimator(RRt, dRRt, simple_energy, sys_temp, Upot) 
+ 	sum_simple_energy = sum_simple_energy + simple_energy
+ endif 
 
-  	if (SIMPLE_ENERGY_ESTIMATOR) write(TPoutStream,'(2f12.2)',advance='no') simple_energy, sum_simple_energy/tr
+ !caculate dipole moments only if necessary 
+ if (  (DIELECTRICOUT .and. ( mod(t,10) .eq. 0 )  )  .or. &
+	 ( (t .gt. eq_timesteps) .and. &
+ ( ( (mod(t,td_freq) .eq. 0) .and. TD_out) .or. (dip_out .and. (mod(t,t_freq) .eq. 0))))) then 
+      	!calculate dipole moment by averaging over all beads
+ 	do iw=1,Nwaters
+		do j = 1, 3
+			dip_momI(j,iw) = sum(dip_momIt(j,iw,:))/Nbeads
+		enddo
+	enddo
+	!convert into Debye here
+	dip_momI = dip_momI*DEBYE/CHARGECON   
+	!caculate total dipole moment (in Debye)
+	dip_mom(1:3) = sum(dip_momI(1:3, 1:Nwaters), dim=2)
+ endif 
+
+ !update quantities for dielectric constant 
+ !it really isn't necessary to do this every timestep, so we do it every 10 steps
+ if (DIELECTRICOUT .and. ( mod(t,10) .eq. 0 )  ) then 
+	sum_dip  = sum_dip  + dip_mom
+	sum_dip2 = sum_dip2 + sum(dip_mom**2)
+	ttt = ttt + 1
+ endif
+
+
+ !print out temperature, pressure, average press, energies & dielectric constant
+ if (mod(t,tp_freq) == 0) then
+
+	write(TPoutStream,'(1f10.4,f10.2,f11.2,5f10.2)',advance='no') tr*delt, sys_temp , sys_press, & 
+		sum_temp/tr, sum_press/tr, Upot, tot_energy , sum_tot_energy/tr
+
+  	if (SIMPLE_ENERGY_ESTIMATOR) write(TPoutStream,'(2f10.2)',advance='no') simple_energy, sum_simple_energy/tr
 
 	if (CALC_RADIUS_GYRATION) then
 		call calc_radius_of_gyration(RRt,RRc) 
 		write(TPoutStream,'(1x,f6.4,1x,f6.4)',advance='no')  radiusO, radiusH
 	endif
 
+	!calculate dielectric constant using current volume and average temperature of the run
+	if (DIELECTRICOUT) then 
+		dielectric_constant = diel_prefac*(  sum_dip2/ttt - sum( (sum_dip/ttt)**2 )  )/volume/(sum_temp/tr)
+		write(TPoutStream,'(1x,f18.2)',advance='no') dielectric_constant
+	endif 
 	!advance to next line
 	write(TPoutStream,'(a)') ""
 
+ endif 
 
 
-endif 
-	tr = tr + 1
-
-!reset averaging after equilbration ends
-if  (t .eq. eq_timesteps) then
- 	write(TPoutStream,*) "#----end of equilibration---restarting averages----------------------------------"
-	!store average temp during equil and final energy after equil
-	init_energy = tot_energy 
-	init_temp = sum_temp/tt
-
-	!start new averaging of temp & energy
-	tt     = 0
-	tr     = 1
-	sum_temp = 0 
-	sum_press = 0 
-	sum_tot_energy = 0 
-	sum_simple_energy = 0 
-	sum_energy = 0
-	sum_energy2 = 0
-	sum_RMSenergy = 0
-endif 
-
-!write out data during run 
-if  (t .gt. eq_timesteps) then
+ !write out data during run 
+ if  (t .gt. eq_timesteps) then
+	
 	if (mod(t,t_freq)  == 0 ) then 
+		!coordinate output
 		if (coord_out) then
 		     call save_XYZ(20, RRc, Upot, read_method, t, delt) 
 	  	endif
+		!velocity output
 	  	if (vel_out) then
 	   	     call save_XYZ(21, PPc, Upot, read_method, t, delt) 
 	   	endif
+		!dipoles output
 	   	if (dip_out) then
 		     do iw=1,Nwaters
-			 !calculate average dipole moment over all beads
-			 do j = 1, 3
-			 	dip_momI(j,iw) = sum(dip_momIt(j,iw,:))/Nbeads
-			 enddo
-
-			 write(22,'(4(1x,f12.4))') dip_momI(:,iw)*DEBYE/CHARGECON , dsqrt(dot_product(dip_momI(:,iw), dip_momI(:, iw)))*DEBYE/CHARGECON
+			 write(22,'(4(1x,f12.4))') dip_momI(:,iw) , & 
+				 dsqrt(dot_product(dip_momI(:,iw), dip_momI(:, iw))) 
  		     enddo
 	   	endif
+		!electronic dipoles output
 		if (Edip_out) then
 		     do iw=1,Nwaters
-		     	!calculate average dipole moment over all beads
  			do j = 1, 3
 				dip_momE(j,iw) = sum(dip_momEt(j,iw,:))/Nbeads
 			enddo
 			write(26,'(3(1x,f12.4))') dip_momE(:,iw)*DEBYE/CHARGECON 
  		     enddo
 	   	endif 
- 
 	endif
-	if (mod(t,ti_freq)  == 0 ) then 
-		if (OUTPUTIMAGES) then 
-			do i = 1, Nbeads
-				call save_XYZ(27, RRt(:,:,i), Upot, read_method, t, delt) 
-			enddo
-		endif 
+	!images output
+	if (mod(t,ti_freq)  == 0 .and. OUTPUTIMAGES) then 
+		do i = 1, Nbeads
+			call save_XYZ(27, RRt(:,:,i), Upot, read_method, t, delt) 
+		enddo
 	endif
-	if (mod(t,td_freq)  == 0 ) then 
-   		if (TD_out) then
-			!calculate average dipole moment over all beads
-			do iw=1,Nwaters
-				do j = 1, 3
-					dip_momI(j,iw) = sum(dip_momIt(j,iw,:))/Nbeads
-				enddo
-			enddo
-    	   		dip_mom(1:3) = sum(dip_momI(1:3, 1:Nwaters), dim=2) *DEBYE/CHARGECON
-			write(23,'(3f12.4)') dip_mom
-		endif
+	!total dipole moment output 
+	if (mod(t,td_freq)  == 0 .and. TD_out ) then 
+		write(23,'(3f12.4)') dip_mom
   	endif
 endif
 
 !box size output stuff 
-if (BAROSTAT .and. BOXSIZEOUT) then 
+if (BAROSTAT) then 
         !for accuracy, box size computed at every timestep
         sum_box  = sum_box + box(1)
         sum_box2 = sum_box2 + box(1)**2
-        if (mod(t,t_freq) == 0) write(25,*) sum_box/t
+        if (BOXSIZEOUT .and. (mod(t,t_freq) .eq. 0) ) write(25,*) sum_box/t
 endif 
 
 end subroutine write_out
@@ -559,9 +588,9 @@ subroutine simple_quantum_energy_estimator(RRt, dRRt, qEnergy, sys_temp, Upot)
 	enddo
  enddo
 
- K0 = .5*K0*omegan**2*MASSCONi
+ K0 = .5*K0*(omegan**2)*MASSCONi !convert from Ang,amu,ps to kcal/mol
 
- KE = 1.5*Natoms*kb*sys_temp !kinetic energy in kcal/mol
+ KE = 1.5*Natoms*kb*sys_temp*Nbeads !kinetic energy of the beads in kcal/mol
 
  qEnergy = (KE*Nbeads + Upot - K0)/Nwaters !kcal/(mole of mol)
 
@@ -572,6 +601,7 @@ end subroutine simple_quantum_energy_estimator
 !----------Print information about the run ----------------------------------------
 !----------------------------------------------------------------------------------!
 subroutine print_run
+Implicit none
 
 write(TPoutStream,'(a50, f10.3,a3)') "timestep = ", delt*1000, " fs"
 if (THERMOSTAT) write(TPoutStream,'(a50, f10.3,a3)') "Nose-Hoover tau = ", tau, " ps"
@@ -602,28 +632,40 @@ write(TPoutStream,'(a50, f10.2)') "ps/day = ",  (  (num_timesteps + eq_timesteps
 
 
 write(TPoutStream,*) "#------------------------------------------------------"
-avg_temp =  sum_temp/tt
+avg_temp =  sum_temp/tr
 
 write(TPoutStream,'(a50, 3f10.2)') "Average temperature during run (K) = ", avg_temp
 write(TPoutStream,'(a50, 3f10.2)') "Average pressure during run (bar) = ", sum_press/tr
-write(TPoutStream,'(a50, 3f10.2)') "Average total energy during run (kcal/mol) = ", sum_energy/tt
-write(TPoutStream,'(a50, 3f10.2)') "estimated energy drift (kcal/mol/ps) = ",(Upot+uk*MASSCONi - init_energy)/(num_timesteps*delt)
+write(TPoutStream,'(a50, 3f10.2)') "Average total energy during run (kcal/mole) = ", sum_tot_energy/tr
+write(TPoutStream,'(a50, 3f10.2)') "Estimated energy drift (kcal/mole/ps) = ",(tot_energy - init_energy)/(num_timesteps*delt)
 write(TPoutStream,'(a50, 3f10.2)') "Temp drift (K/ps) = ", (avg_temp - init_temp)/(num_timesteps*delt)
-write(TPoutStream,'(a50, 3f10.2)') "RMS energy fluctuation  (kcal/mol) = ", dsqrt( sum_RMSenergy/tt )
+write(TPoutStream,'(a50, 3f10.2)') "RMS energy fluctuation  (kcal/mol) = ", dsqrt( sum_RMSenergy/tr )
+ 
+specific_heat = dsqrt(  sum_energy2/tr - (sum_tot_energy/tr)**2  ) /( kb*avg_temp )
 
-specific_heat = sqrt(   ( sum_energy2/tt - (sum_energy/tt)**2 )/( avg_temp * Kb )  )
+write(TPoutStream,'(a50, f10.2)') "Specific heat C_V (only valid in NVT) (cal/g) = ", specific_heat/(1000*(massO+2*massH))
 
-write(TPoutStream,'(a50, f10.2)') "Specific heat C_V (only valid in NVT) (cal/g) = ", 1000*specific_heat/18
+if (BAROSTAT) then
+        avg_box2 = sum_box2/t
+        avg_box  = sum_box/t 
 
-if (BAROSTAT .and. THERMOSTAT) then
-        avg_box2 = sum_box2/(floor(real(tr/t_freq)))
-        avg_box  = avg_box /(floor(real(tr/t_freq)))
-
-        isotherm_compress = (avg_box2**3 - avg_box**3)*(10d-7)/(1.38*avg_temp*avg_box)
+        isotherm_compress = (avg_box2**3 - (avg_box**3)**2 )*(10d-7)/(1.38d0*avg_temp*avg_box)
+	write(TPoutStream,'(a50, f10.2)') "average box size (over entire run) (Ang) = ", avg_box
         write(TPoutStream,'(a50, f10.2)') "Isothermal compressibility (only valid in NPT)=", isotherm_compress
 else 
         write(TPoutStream,'(a50, a4)') "Isothermal compressibility (only valid in NPT)=", " n/a"
 endif
+	write(TPoutStream,'(a50, f10.2)') "average density (g/cm^3) = ", Nwaters*(massO+2*massH)*amu2grams/((a2m*avg_box/100)**3)
+ 
+if (DIELECTRICOUT) then 
+	write(TPoutStream,'(a50, f10.2)') " dielectric constant ", dielectric_constant
+	write(TPoutStream,'(a50, f10.2)') " sum <M^2> (Debye^2) ", sum_dip2**2
+	write(TPoutStream,'(a50, f10.2)') " sum <M>^2 (Debye^2) ", sum(sum_dip**2)
+	write(TPoutStream,'(a50, f10.2)') " average <M^2> (Debye^2) ", sum_dip2**2/ttt
+	write(TPoutStream,'(a50, f10.2)') " average <M>^2 (Debye^2) ", sum(sum_dip**2)/ttt
+	write(TPoutStream,'(a50, i5)') " points used to compute dielectric constant: ", ttt
+endif
+
 
 if (PRINTFINALCONFIGURATION) then 
 	open(41, file='out_'//TRIM(fsave)//'_fin_image.xyz', status='unknown')
