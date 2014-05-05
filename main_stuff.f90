@@ -26,7 +26,9 @@ double precision :: delt, delt2,  uk,  imassO, imassH
 double precision :: temp, sum_temp, sum_press, sys_temp, avg_vel, init_energy, sum_RMSenergy
 double precision :: tot_energy, sum_tot_energy, sum_energy2, sum_simple_energy, simple_energy
 double precision :: specific_heat, avg_temp, init_temp, sum_dip2
-double precision :: dielectric_constant, diel_prefac
+double precision :: dielectric_constant, diel_prefac, dielectric_error
+double precision, dimension(1000)  :: dielectric_running
+integer                    :: dielectric_index = 1
 double precision :: avg_box, avg_box2, sum_box, sum_box2, isotherm_compress
 integer, dimension(:), allocatable :: seed
  character(len=125) :: dip_file

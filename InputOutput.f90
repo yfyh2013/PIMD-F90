@@ -358,7 +358,7 @@ end subroutine open_files
 !-------------- Calculate thermodynamic info and write out to file(s) -------------
 !----------------------------------------------------------------------------------!
 subroutine write_out 
- Implicit none 
+ Implicit none
 
  !reset averaging after equilbration ends
  if  (t .eq. eq_timesteps) then
@@ -458,11 +458,15 @@ subroutine write_out
 	!calculate dielectric constant using current volume and average temperature of the run
 	if (DIELECTRICOUT) then 
 		dielectric_constant = diel_prefac*(  sum_dip2/ttt - sum( (sum_dip/ttt)**2 )  )/volume/(sum_temp/tr)
-		write(TPoutStream,'(1x,f18.2)',advance='no') dielectric_constant
+		write(TPoutStream,'(1x,f6.2)',advance='no') dielectric_constant
+		if (mod(t,num_timesteps/1000) .eq. 0) then
+			dielectric_running(dielectric_index) = dielectric_constant
+			dielectric_index = dielectric_index + 1
+		endif 
 	endif 
 
 	!feature to output the current density (for debugging the barostat) 
-	write(TPoutStream,'(1x,f18.6)',advance='no') Nwaters*(massO+2*massH)*amu2grams/((a2m*box(1)*100)**3)
+	write(TPoutStream,'(1x,f10.6)',advance='no') Nwaters*(massO+2*massH)*amu2grams/((a2m*box(1)*100)**3)
 
 	!advance to next line
 	write(TPoutStream,'(a)') ""
@@ -625,47 +629,52 @@ write(TPoutStream,'(a50, f10.2)') "ps/day = ",  (  (num_timesteps + eq_timesteps
 
 
 
-write(TPoutStream,*) "#------------------------------------------------------"
-avg_temp =  sum_temp/tr
+ write(TPoutStream,*) "#------------------------------------------------------"
+ avg_temp =  sum_temp/tr
 
-write(TPoutStream,'(a50, 3f10.2)') "Average temperature during run (K) = ", avg_temp
-write(TPoutStream,'(a50, 3f10.2)') "Average pressure during run (bar) = ", sum_press/tr
-write(TPoutStream,'(a50, 3f10.2)') "Average total energy during run (kcal/mole) = ", sum_tot_energy/tr
-write(TPoutStream,'(a50, 3f10.2)') "Estimated energy drift (kcal/mole/ps) = ",(tot_energy - init_energy)/(num_timesteps*delt)
-write(TPoutStream,'(a50, 3f10.2)') "Temp drift (K/ps) = ", (avg_temp - init_temp)/(num_timesteps*delt)
-write(TPoutStream,'(a50, 3f10.2)') "RMS energy fluctuation  (kcal/mol) = ", dsqrt( sum_RMSenergy/tr )
+ write(TPoutStream,'(a50, 3f10.2)') "Average temperature during run (K) = ", avg_temp
+ write(TPoutStream,'(a50, 3f10.2)') "Average pressure during run (bar) = ", sum_press/tr
+ write(TPoutStream,'(a50, 3f10.2)') "Average total energy during run (kcal/mole) = ", sum_tot_energy/tr
+ write(TPoutStream,'(a50, 3f10.2)') "Estimated energy drift (kcal/mole/ps) = ",(tot_energy - init_energy)/(num_timesteps*delt)
+ write(TPoutStream,'(a50, 3f10.2)') "Temp drift (K/ps) = ", (avg_temp - init_temp)/(num_timesteps*delt)
+ write(TPoutStream,'(a50, 3f10.2)') "RMS energy fluctuation  (kcal/mol) = ", dsqrt( sum_RMSenergy/tr )
  
-specific_heat = dsqrt(  sum_energy2/tr - (sum_tot_energy/tr)**2  ) /( kb*avg_temp )
+ specific_heat = dsqrt(  sum_energy2/tr - (sum_tot_energy/tr)**2  ) /( kb*avg_temp )
 
 !write(TPoutStream,'(a50, f10.2)') "Specific heat C_V (only valid in NVT) (cal/g) = ", specific_heat/(1000*(massO+2*massH))
 
-if (BAROSTAT) then
+ if (BAROSTAT) then
         avg_box2 = sum_box2/t
         avg_box  = sum_box/t 
 
         isotherm_compress = (avg_box2**3 - (avg_box**3)**2 )*(10d-7)/(1.38d0*avg_temp*avg_box)
 	write(TPoutStream,'(a50, f10.6)') "average box size (over entire run) (Ang) = ", avg_box
-  !      write(TPoutStream,'(a50, f10.2)') "Isothermal compressibility (only valid in NPT)=", isotherm_compress
-else 
-!        write(TPoutStream,'(a50, a4)') "Isothermal compressibility (only valid in NPT)=", " n/a"
-endif
-	write(TPoutStream,'(a50, f10.2)') "average density (g/cm^3) = ", Nwaters*(massO+2*massH)*amu2grams/((a2m*avg_box*100)**3)
+ !      write(TPoutStream,'(a50, f10.2)') "Isothermal compressibility (only valid in NPT)=", isotherm_compress
+ else 
+!       write(TPoutStream,'(a50, a4)') "Isothermal compressibility (only valid in NPT)=", " n/a"
+ endif
+	
+ write(TPoutStream,'(a50, f10.2)') "average density (g/cm^3) = ", Nwaters*(massO+2*massH)*amu2grams/(volume*(a2m*100)**3)
  
-if (DIELECTRICOUT) then 
+ if (DIELECTRICOUT) then 
 	write(TPoutStream,'(a50, f10.2)') " dielectric constant ", dielectric_constant
-	write(TPoutStream,'(a50, f16.2)') " sum <M^2> (Debye^2) ", sum_dip2**2
-	write(TPoutStream,'(a50, f16.2)') " sum <M>^2 (Debye^2) ", sum(sum_dip**2)
-	write(TPoutStream,'(a50, f16.2)') " average <M^2> (Debye^2) ", sum_dip2**2/ttt
+	if (num_timesteps .gt. 1000) then 
+		dielectric_error = sum( (dielectric_running(500:1000) - dielectric_constant)**2 ) /500
+	  	write(TPoutStream,'(a50, f16.2)') "estimated error = +/-", dielectric_error
+	endif	
+	write(TPoutStream,'(a50, f16.2)') " sum M^2 (Debye^2) ", sum_dip2 
+	write(TPoutStream,'(a50, f16.2)') " sum M (Debye^2) ", sum_dip
+	write(TPoutStream,'(a50, f16.2)') " average <M^2> (Debye^2) ", sum_dip2/ttt
 	write(TPoutStream,'(a50, f16.2)') " average <M>^2 (Debye^2) ", sum(sum_dip**2)/ttt
 	write(TPoutStream,'(a50, i5)') " points used to compute dielectric constant: ", ttt
-endif
+ endif
 
 
-if (PRINTFINALCONFIGURATION) then 
+ if (PRINTFINALCONFIGURATION) then 
 	open(41, file='out_'//TRIM(fsave)//'_fin_image.xyz', status='unknown')
 		call save_configuration(40, RRt, PPt, Upot, t,delt) 
 	close(41)
-endif
+ endif
 
 end subroutine print_run
 
