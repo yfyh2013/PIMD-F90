@@ -221,7 +221,7 @@ if (.not. (mod(Nbeads,Nnodes) .eq. 0)) then
 	stop
 endif
 
-	CompFac = (.4477d-5*delt)/(tau_P) !Barostat var. (contains compressibility of H2O)
+	CompFac = (.4477d-5*delt)/(3*tau_P) !Barostat var. (contains compressibility of H2O)
 	sum_temp = 0 
 	sum_press = 0 
 	sum_tot_energy = 0 
@@ -459,10 +459,10 @@ subroutine write_out
 	if (DIELECTRICOUT) then 
 		dielectric_constant = diel_prefac*(  sum_dip2/ttt - sum( (sum_dip/ttt)**2 )  )/volume/(sum_temp/tr)
 		write(TPoutStream,'(1x,f6.2)',advance='no') dielectric_constant
-		if (mod(t,num_timesteps/1000) .eq. 0) then
-			dielectric_running(dielectric_index) = dielectric_constant
-			dielectric_index = dielectric_index + 1
-		endif 
+		!if (mod(t,num_timesteps/1000) .eq. 0) then
+		!	dielectric_running(dielectric_index) = dielectric_constant
+		!	dielectric_index = dielectric_index + 1
+		!endif 
 	endif 
 
 	!feature to output the current density (for debugging the barostat) 
@@ -682,7 +682,10 @@ end subroutine print_run
 !----------Print basic information about the run ----------------------------------
 !----------------------------------------------------------------------------------!
 subroutine print_basic_run_info
-
+ if (pot_model .eq. 2) write(TPoutStream,'(a)') "Model is TTM2F"
+ if (pot_model .eq. 3) write(TPoutStream,'(a)') "Model is TTM3F"
+ if (pot_model .eq. 4) write(TPoutStream,'(a)') "Model is qSPCfw"
+ if (pot_model .eq. 5) write(TPoutStream,'(a)') "Model is  SPCf"
  write(TPoutStream,'(a50,i4,a,i4,a)') "Running with ", Nbeads, " beads on ", Nnodes, " nodes"
  write(TPoutStream,'(a50, f10.3,a3)') "timestep = ", delt*1000, " fs"
  if (THERMOSTAT) write(TPoutStream,'(a50, f10.3,a3)') "Nose-Hoover tau = ", tau, " ps"
