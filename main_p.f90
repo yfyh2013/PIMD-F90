@@ -16,6 +16,7 @@ use main_stuff
 use InputOutput
 use NormalModes
 use mpi
+use force_calc
 implicit none
 !Variables for main can be found in main_stuff.f90
 
@@ -82,63 +83,8 @@ do t = 1, num_timesteps + eq_timesteps
 
 		call MPItimer(2, 'stop ', secondsNM)
 
-	
-	endif!if (pid .eq. 0) 
-				
-	!---------------------------------- Start MPI Force calculation ----------------------------
-	!we want to send a (3 x Natoms) array to each processor 
-	do bat = 0, Nbatches - 1 !batch index
-
-	if (pid .eq. 0) then
-
-		do i = 1, Nnodes - 1 !node index
-			k = bat*Nnodes + i  !bead index
-			Call MPI_Send(RRt(:,:,k), counti, MPI_DOUBLE_PRECISION, i, 0, MPI_COMM_WORLD, ierr)   
-		enddo
-		!masternode force calculation
-		k = bat*Nnodes + Nnodes  
-
-		call potential(RRt(:,:,k), Upott(k), dRRt(:,:,k), virt, dip_momIt(:,:,k), dip_momEt(:,:,k), chg, t, BAROSTAT)
-
-		!recieve stuff from nodes
-		do i = 1, Nnodes - 1
-			k = bat*Nnodes + i  
-			!masternode receive derivatives
-			call MPI_Recv(dRRt(:,:,k), counti, MPI_DOUBLE_PRECISION, i, 0, MPI_COMM_WORLD, status2, ierr)
-			!masternode recieve energies
- 			call MPI_Recv(Upott(k), 1, MPI_DOUBLE_PRECISION, i, 0, MPI_COMM_WORLD, status2, ierr)	
-			!masternode recieve dipole moments		
-			if (dip_out .or. TD_out) call MPI_Recv(dip_momIt(:,:,k), 3*Nwaters, MPI_DOUBLE_PRECISION, i, 0, MPI_COMM_WORLD, status2, ierr)
-			if (Edip_out) call MPI_Recv(dip_momEt(:,:,k), 3*Nwaters, MPI_DOUBLE_PRECISION, i, 0, MPI_COMM_WORLD, status2, ierr)
-		enddo
-	else
-		!slavenode recieve coords from master node
-		call MPI_Recv(RR, counti, MPI_DOUBLE_PRECISION, 0, 0, MPI_COMM_WORLD, status2, ierr)
-		!slavenode force calculation
-		call potential(RR, Upot, dRR, virt, dip_momI, dip_momE, chg, t, BAROSTAT)
-		!slavenode send back derivatives
-		call MPI_Send(dRR, counti, MPI_DOUBLE_PRECISION, 0, 0, MPI_COMM_WORLD, ierr) 
-		!slavenode send back energies
-		call MPI_Send(Upot, 1, MPI_DOUBLE_PRECISION, 0, 0, MPI_COMM_WORLD, ierr) 
-		!slavenode send back dipole moments  
-		if (dip_out .or. TD_out) call MPI_Send(dip_momI, 3*Nwaters, MPI_DOUBLE_PRECISION, 0, 0, MPI_COMM_WORLD, ierr)
-		if (Edip_out) call MPI_Send(dip_momE, 3*Nwaters, MPI_DOUBLE_PRECISION, 0, 0, MPI_COMM_WORLD, ierr)
-	endif
-	Call MPI_Barrier(MPI_COMM_WORLD, ierr)
-
-
-	enddo! j = 0, Nbatches - 1 !batch index
-	!---------------------------------- End MPI force calculation ----------------------------
-	if (pid .eq. 0) then
-
 		!calculate centroid positions
 		RRc = sum(RRt,3)/Nbeads
-
-		!check PBCs
-		call PBCs(RRt, RRc)
-
-		!update momenta a half step w/ new forces
-		PPt = PPt - MASSCON*dRRt*delt2
 
 		!calculate centroid momenta
 		PPc = sum(PPt,3)/Nbeads 
@@ -152,13 +98,6 @@ do t = 1, num_timesteps + eq_timesteps
 		enddo	
 		uk = .5d0*uk 
 
-		!Propagate NH chains 
-		if (BEADTHERMOSTAT) call bead_thermostat
-	
-		if (THERMOSTAT)     then 
-			call Nose_Hoover(s, uk, global_chain_length, vxi_global, tau, delt2, 3*Natoms, temp)
-			PPt = PPt*s
-		endif
 
 		call MPItimer(3, 'start', secondsIO)
 		
@@ -167,12 +106,37 @@ do t = 1, num_timesteps + eq_timesteps
 
 		call MPItimer(3,'stop ',secondsIO)
 
+		!check PBCs
+		call PBCs(RRt, RRc)
+	
+	endif!if (pid .eq. 0) 
+	
+	!call force routine
+	if (CONTRACTION .eqv. .false.) then	
+		call full_bead_forces
+	else 	
+		call contracted_forces
+	endif 
+
+	if (pid .eq. 0) then
+
+		!update momenta a half step w/ new forces
+		PPt = PPt - MASSCON*dRRt*delt2
+
+		!Propagate NH chains 
+		if (BEADTHERMOSTAT) call bead_thermostat
+	
+		if (THERMOSTAT)     then 
+			call Nose_Hoover(s, uk, global_chain_length, vxi_global, tau, delt2, 3*Natoms, temp)
+			PPt = PPt*s
+		endif
+
 		if (BAROSTAT) call Pcouple
 
 
 	endif!(pid .eq. 0) 
-enddo!t = 1, num_timesteps + eq_timesteps
 
+enddo!t = 1, num_timesteps + eq_timesteps
 
 if (pid .eq. 0)  then
 	call MPItimer(1,'write',seconds) 

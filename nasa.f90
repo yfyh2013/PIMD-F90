@@ -29,7 +29,6 @@ double precision, dimension(3) :: box, boxi
 ROH1(:) = r1(1:3, 2) - r1(1:3,1) 
 ROH1(:) = ROH1(:) - box(1)*anint(ROH1*boxi)!PBC 
 
-
 ROH2(:) = r1(1:3, 3) - r1(1:3,1) 
 ROH2(:) = ROH2(:) - box(1)*anint(ROH2*boxi)!PBC
 

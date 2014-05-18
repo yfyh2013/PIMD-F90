@@ -1,4 +1,6 @@
 module system_mod
+   !storage space for global variables
+
    logical :: guess_initdip
    logical :: print_dipiters
 
@@ -18,5 +20,6 @@ module system_mod
   double precision :: const_ts1, const_ts2, const_ts3
 
   double precision, dimension(:,:,:), allocatable :: tx_dip !moved here by Dan Elton
+  logical :: CONTRACTION 
 
 end module system_mod

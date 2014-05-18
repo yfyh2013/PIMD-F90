@@ -66,6 +66,7 @@ read(11,*)PEQUIL
 read(11,*) 
 read(11,*)
 read(11,*)setNMfreq
+read(11,*)CONTRACTION
 read(11,*)massO
 read(11,*)massH
 
@@ -221,7 +222,7 @@ if (.not. (mod(Nbeads,Nnodes) .eq. 0)) then
 	stop
 endif
 
-	CompFac = (.4477d-5*delt)/(3*tau_P) !Barostat var. (contains compressibility of H2O)
+	CompFac = ((.4477d-5)*delt)/(3*tau_P) !Barostat var. (contains compressibility of H2O)
 	sum_temp = 0 
 	sum_press = 0 
 	sum_tot_energy = 0 
@@ -359,6 +360,7 @@ end subroutine open_files
 !----------------------------------------------------------------------------------!
 subroutine write_out 
  Implicit none
+ double precision :: virial
 
  !reset averaging after equilbration ends
  if  (t .eq. eq_timesteps) then
@@ -391,7 +393,19 @@ subroutine write_out
  !pressure / total energy calculation : classical case
  if (Nbeads .eq. 1) then
 
-	sys_press = (1/(3*volume))*( 2*uk - MASSCON*( virt(1,1)+virt(2,2)+virt(3,3) )   )
+	!sys_press = (1/(3*volume))*( 2*uk -	 MASSCON*( virt(1,1)+virt(2,2)+virt(3,3) )  )
+	!sys_press = PRESSCON*sys_press !convert to bar
+		
+	!Calculate the virial
+	virial = 0
+	do j = 1, Natoms
+		do i = 1, 3
+			virial = virial + RRt(i,j,1)*dRRt(i,j,1) 
+		enddo
+	enddo
+	
+	!use virial to calculate pressure 
+	sys_press = (1/(3*volume))*( 2*uk - MASSCON*virial   )
 	sys_press = PRESSCON*sys_press !convert to bar
 
 	Upot = Upott(1)
@@ -403,7 +417,8 @@ subroutine write_out
 
 	call quantum_estimators(RRt, dRRt, sys_press, tot_energy, sys_temp, Upot)
  endif
- 
+
+
  sum_press      = sum_press + sys_press
  sum_tot_energy = sum_tot_energy + tot_energy
  sum_temp       = sum_temp + sys_temp
@@ -527,8 +542,7 @@ end subroutine write_out
 
 
 !----------------------------------------------------------------------------------!
-!- Quantum virial estimator for the energy (ref: Tuckerman, "Statistical Mechanics.." 2008 pg 485)
-!- And simple virial pressure estimator 
+!- Quantum virial estimator for the energy and pressure (ref: Tuckerman, "Statistical Mechanics.." 2008 pg 485)
 !----------------------------------------------------------------------------------!
 subroutine quantum_estimators(RRt, dRRt, qPress, qEnergy, sys_temp, Upot) 
  use consts 
@@ -688,6 +702,10 @@ subroutine print_basic_run_info
  if (pot_model .eq. 5) write(TPoutStream,'(a)') "Model is  SPCf"
  write(TPoutStream,'(a50,i4,a,i4,a)') "Running with ", Nbeads, " beads on ", Nnodes, " nodes"
  write(TPoutStream,'(a50, f10.3,a3)') "timestep = ", delt*1000, " fs"
+ write(TPoutStream,'(a50, f8.4,a25,f8.4)') "mass of hydrogen = ", massH
+ write(TPoutStream,'(a50, f8.4,a25,f8.4)') "  mass of oxygen = ", massO
+ if (CONTRACTION) write(TPoutStream,'(a50,a)') "ring polymer contraction to centroid = ", "yes"
+ if (.not. CONTRACTION) write(TPoutStream,'(a50,a)') "ring polymer contraction to centroid = ", "no"
  if (THERMOSTAT) write(TPoutStream,'(a50, f10.3,a3)') "Nose-Hoover tau = ", tau, " ps"
  if (.not. THERMOSTAT) write(TPoutStream,'(a50, a3)') "Nose-Hoover tau = ", "n/a"
  if (BEADTHERMOSTAT) write(TPoutStream,'(a50, a )')  " type of bead thermostat = ", bead_thermostat_type

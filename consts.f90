@@ -5,8 +5,8 @@ module consts
    double precision, parameter :: DEBYE  = 4.8033324d0
    double precision, parameter :: MASSCON=418.4d0!at.weig->(kcal/mol)*(ps/Ang)^2 also, !kcal/(mol*ang) -> amu*ang/(particle*ps^2)
    double precision, parameter :: MASSCONi=1d0/418.4d0
-   double precision, parameter :: PRESSCON2=69477   ! kcal/mole/Ang**3 to bar
-   double precision, parameter :: PRESSCON =166.054  ! amu/(ps^2*ang) to bar
+   double precision, parameter :: PRESSCON2=69477d0   ! kcal/mole/Ang**3 to bar
+   double precision, parameter :: PRESSCON =166.05387280d0  ! amu/(ps^2*ang) to bar
 !  double precision, parameter :: KCALKLVN=503.21659237841666799453d0
 !  double precision, parameter :: HBAR =0.0151704885d0 ! kcal/mol * ps
    double precision, parameter :: TEMPFACTOR =0.80181484527d0 ! factor to convert kinetic energy amu*Ang^2/ps^2 to K (using T = (2/3) 1/(k_B) * <uk>)

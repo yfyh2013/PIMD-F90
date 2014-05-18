@@ -175,7 +175,7 @@ subroutine calc_radius_of_gyration(RRt, RRc)
 	do j = 1, Nbeads
 	radiusO = radiusO + sqrt( sum( (RRt(:,iO ,j) - RRc(:,iO ))**2, 1)  )	
 	!write(*,*) i, RRt(1,iO,j), RRc(1,iO)
-	radiusH = radiusH + sqrt( sum( (RRt(:,iH1,j) - RRc(:,iH1))**2, 1)  )
+	radiusH = radiusH + sqrt( sum( (RRt(:,iH1,j)  - RRc(:,iH1))**2, 1)  )
 	radiusH = radiusH + sqrt( sum( (RRt(:,iH2,j) - RRc(:,iH2))**2, 1)  )
 	enddo
  enddo
@@ -193,7 +193,8 @@ end subroutine calc_radius_of_gyration
 !--------------  Berendson Pressure Coupling (J. Chem. Phys. 81, 3684, 1984)-------
 !----------------------------------------------------------------------------------!
 subroutine Pcouple 
-	scale_factor = ( 1 - CompFac*(sys_press - press)  )**.333333
+	scale_factor = ( 1 + CompFac*(sys_press - press)  )**.333333
+
 	RRt = RRt*scale_factor
 	RRc = RRc*scale_factor
 	box = box*scale_factor	
