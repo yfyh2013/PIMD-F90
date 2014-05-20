@@ -1,4 +1,4 @@
-MODULES=$(addprefix ./, consts.o   math.o Nose_Hoover.o NormalModes.o MPItimer.o pot_mod.o system_mod.o Langevin.o main_stuff.o  InputOutput.o nasa_mod.o calcRij.o find_neigh.o nasa.o ewald.o pot_spc.o pot_ttm.o potential.o smear.o  main_p.o  )
+MODULES=$(addprefix ./, consts.o   math.o Nose_Hoover.o NormalModes.o MPItimer.o pot_mod.o system_mod.o Langevin.o main_stuff.o  force_calc.o  InputOutput.o nasa_mod.o calcRij.o find_neigh.o nasa.o ewald.o pot_spc.o pot_ttm.o potential.o smear.o  main_p.o  )
 
 SRC = $(MODULES)
 
@@ -13,6 +13,13 @@ FC=mpif90
 FFLAGS = -O3 #--debug --backtrace -fbounds-check
 
 all: main.x
+
+debug: FFLAGS += --debug --backtrace -fbounds-check
+debug: main.x
+
+profile: FFLAGS += -p
+profile: main.x 
+
 
 $(OBJ) : Makefile
 

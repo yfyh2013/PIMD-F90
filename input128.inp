@@ -40,8 +40,8 @@ MD OPTIONS
 5			 ! global Nose-Hoover chain length
 5			 ! bead Nose-Hoover chain length
 300	                 ! temperature (Kelvin)
-.t.			 ! Berendson barostat ? 
-.4      		 ! tau for barostat (ps)
+.f.			 ! Berendson barostat ? 
+.1      		 ! tau for barostat (ps)
 1		         ! reference pressure (bar) 
 .f.			 ! pressure coupling during equilibration only?
 
