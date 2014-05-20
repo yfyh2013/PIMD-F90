@@ -25,7 +25,7 @@ double precision, dimension(3) :: summom, sumvel, sum_dip
 double precision :: delt, delt2,  uk,  imassO, imassH
 double precision :: temp, sum_temp, sum_press, sys_temp, avg_vel, init_energy, sum_RMSenergy
 double precision :: tot_energy, sum_tot_energy, sum_energy2, sum_simple_energy, simple_energy
-double precision :: specific_heat, avg_temp, init_temp, sum_dip2
+double precision :: specific_heat, avg_temp, init_temp, sum_dip2, sum_simple_press, simple_sys_press
 double precision :: dielectric_constant, diel_prefac, dielectric_error
 double precision, dimension(1000)  :: dielectric_running
 integer                    :: dielectric_index = 1
@@ -193,7 +193,7 @@ end subroutine calc_radius_of_gyration
 !--------------  Berendson Pressure Coupling (J. Chem. Phys. 81, 3684, 1984)-------
 !----------------------------------------------------------------------------------!
 subroutine Pcouple 
-	scale_factor = ( 1 + CompFac*(sys_press - press)  )**.333333
+	scale_factor = ( 1 + CompFac*(sys_press - press)  )**.333333 !sum_press/tr 
 
 	RRt = RRt*scale_factor
 	RRc = RRc*scale_factor

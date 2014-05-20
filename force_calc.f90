@@ -58,10 +58,12 @@ end subroutine full_bead_forces
 !--------------------------------------------------------------------------------------------
 subroutine contracted_forces
  use main_stuff 
+! use neigh_mod 
  Implicit None 
  double precision :: e1 !monomer energy 
  double precision, dimension(3,Natoms) ::  dRRc
  double precision, dimension(3,3)      :: temp1, temp2
+ !type(t_neigh) :: neigh
 
  if (pid .eq. 0) then
 
@@ -82,6 +84,9 @@ subroutine contracted_forces
 		enddo
 	enddo
 
+
+
+
 	if (Nnodes .gt. 1) then 
 		!masternode recieve forces on centroid		
 		call MPI_Recv(dRRc, counti, MPI_DOUBLE_PRECISION, 1, 0, MPI_COMM_WORLD, status2, ierr)
@@ -90,7 +95,8 @@ subroutine contracted_forces
 		!masternode recieve centroid based dipole moments		
 		!if (dip_out .or. TD_out) call MPI_Recv(dip_momIt(:,:,k), 3*Nwaters, MPI_DOUBLE_PRECISION, i, 0, MPI_COMM_WORLD, status2, ierr)
 		!if (Edip_out) call MPI_Recv(dip_momEt(:,:,k), 3*Nwaters, MPI_DOUBLE_PRECISION, i, 0, MPI_COMM_WORLD, status2, ierr)
-	else !if only one node then masternode calculates forces on centroid
+	else 
+		!if only one node then masternode calculates forces on centroid
 		call potential(RRc, Upot, dRRc, virt, dip_momI, dip_momE, chg, t, BAROSTAT)
 	endif
  

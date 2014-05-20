@@ -96,32 +96,14 @@ do t = 1, num_timesteps + eq_timesteps
 			uk = uk + imassH*sum( PPc(:,3*i-1)**2 )
 			uk = uk + imassH*sum( PPc(:,3*i-0)**2 )
 		enddo	
+		!do j = 1, Nbeads
+		!	do i = 1,Nwaters
+		!		uk = uk + imassO*sum( PPt(:,3*i-2,j)**2 )
+		!		uk = uk + imassH*sum( PPt(:,3*i-1,j)**2 )
+		!		uk = uk + imassH*sum( PPt(:,3*i-0,j)**2 )
+		!	enddo
+		!enddo	
 		uk = .5d0*uk 
-
-
-		call MPItimer(3, 'start', secondsIO)
-		
-		!write stuff out if necessary 
-		call write_out
-
-		call MPItimer(3,'stop ',secondsIO)
-
-		!check PBCs
-		call PBCs(RRt, RRc)
-	
-	endif!if (pid .eq. 0) 
-	
-	!call force routine
-	if (CONTRACTION .eqv. .false.) then	
-		call full_bead_forces
-	else 	
-		call contracted_forces
-	endif 
-
-	if (pid .eq. 0) then
-
-		!update momenta a half step w/ new forces
-		PPt = PPt - MASSCON*dRRt*delt2
 
 		!Propagate NH chains 
 		if (BEADTHERMOSTAT) call bead_thermostat
@@ -131,6 +113,30 @@ do t = 1, num_timesteps + eq_timesteps
 			PPt = PPt*s
 		endif
 
+		!check PBCs
+		call PBCs(RRt, RRc)
+	
+	endif!if (pid .eq. 0) 
+	
+	!------ call force routine ------------------------------------ 
+	if (CONTRACTION .eqv. .false.) then	
+		call full_bead_forces
+	else 	
+		call contracted_forces
+	endif 
+	!------ end call force routine ------------------------------------ 
+
+	if (pid .eq. 0) then
+
+		!write stuff out if necessary 
+		call MPItimer(3, 'start', secondsIO)
+		call write_out
+		call MPItimer(3,'stop ',secondsIO)
+
+		!update momenta a half step w/ new forces
+		PPt = PPt - MASSCON*dRRt*delt2
+
+		
 		if (BAROSTAT) call Pcouple
 
 

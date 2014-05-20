@@ -136,6 +136,7 @@ do iw=1, Nwaters
       Uvdw = Uvdw + uij
       dR(1:3,iO) = dR(1:3,iO) + dij
       dR(1:3,jO) = dR(1:3,jO) - dij
+
       virt(1:3,1) = virt(1:3,1) + dij(1)*Rij
       virt(1:3,2) = virt(1:3,2) + dij(2)*Rij
       virt(1:3,3) = virt(1:3,3) + dij(3)*Rij

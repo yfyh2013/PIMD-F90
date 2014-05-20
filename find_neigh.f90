@@ -1,4 +1,5 @@
 !edited by Dan Elton to improve speed 2/2013
+
 module neigh_mod
 type t_neigh
    integer :: N, N0
@@ -8,7 +9,9 @@ type t_neigh
 end type t_neigh
 
 contains
-   subroutine find_neigh(iO, RR, neigh)
+
+!Note : this takes RR in the form OOOOO...HHH...HHHHH....
+subroutine find_neigh(iO, RR, neigh)
    use system_mod
    implicit none
    double precision, dimension(3, Natoms) :: RR

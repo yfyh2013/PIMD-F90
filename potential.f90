@@ -26,7 +26,7 @@ logical, intent(in) :: BAROSTAT
 	Uvdw_lrc = Uvdw_lrc0*(volume_init/volume)
 
 !If the volume is changing than the Ewald k-vectors have to be reset every timestep
-!if (BAROSTAT) call ewald_set(.false.)
+if (BAROSTAT) call ewald_set(.false.)
  
 if (pot_model==2 .or. pot_model==3) then
     call pot_ttm(RR, Upot, dRR, virt, dip_momI,Edip_mom, chg,t)
