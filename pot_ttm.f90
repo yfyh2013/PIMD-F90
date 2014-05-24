@@ -1,12 +1,14 @@
 !Periodic boundary conditions added by D. Elton 2013
-subroutine pot_ttm(RR, En, dRR, virt, dip_momI,Edip_mom, chg,t)
+!"centroid virial" (virialc) calculation added by D. Elton 2014. Used in pressure estimator. 
+subroutine pot_ttm(RR, RRc, En, dRR, virt, virialc, dip_momI,Edip_mom, chg,t)
 use consts
 use system_mod
 use pot_mod
 use neigh_mod
 implicit none
-double precision, dimension(3, Natoms), intent(in) :: RR
-double precision, intent(out) :: En
+double precision, dimension(3, Natoms), intent(in) :: RR, RRc
+double precision, dimension(3, 4*Natoms/3) :: RRRc
+double precision, intent(out) :: En, virialc
 double precision, dimension(3, Natoms), intent(out) :: dRR
 double precision, dimension(3, 3), intent(out) :: virt
 double precision, dimension(3, NWaters), intent(out) :: dip_momI, Edip_mom
@@ -18,7 +20,7 @@ double precision :: tmp, R2i, R4i, R6i, R8i, uij, dRsq, dRij, qdqd_sq, ksq, polf
 double precision :: dri, drsqi, expon, er, dd, ch1, ch2, ch3, sr1, sr2, sr3, exp1, a_pol12, drijsq
 !double precision :: Umon, Uvdw, Uelec, Uind, Uind_init
 double precision :: Uind_init
-double precision, dimension(3) :: qdqd,q3, Ri,Rij, dij,di,dj, roh1,roh2, Rij0,rh1m,rh2m,rmO
+double precision, dimension(3) :: qdqd,q3, Ri,Rij, dij,di,dj, roh1,roh2, Rij0,rh1m,rh2m,rmO, Rcij
 double precision, dimension(3, 3) :: r1, dr1, vij, dd3, arr33, dgrad
 double precision, dimension(3,3,3) :: dq3, TSabc
 double precision, dimension(4) :: dpcf
@@ -28,6 +30,7 @@ double precision, dimension(3), save :: pr_box
 integer , save :: pr_Natoms
 double precision, dimension(5) :: tmp_arr5
 integer, intent(in) :: t
+logical :: EWALD = .true.
 type(t_neigh) :: neigh
 
 if (.not. allocated(R) .or. Natoms/=pr_Natoms .or. &
@@ -37,6 +40,7 @@ pr_Natoms = Natoms
 endif
 
 virt = 0.d0
+virialc = 0.d0
 vir_rec = 0.d0 !?
 Umon = 0.d0; Uvdw = 0.d0; Uelec = 0.d0
 phi= 0.d0
@@ -45,22 +49,38 @@ dip = 0.d0
 olddip = 0.d0
 dR = 0.d0
 
+
+!converts OHHOHH... to OOOO...HHHH...HHHH...MMMM
+!do the same thing with RRc. Convert RRc to RRRc for ease of use later on. 
+
 do iw=1, Nwaters
    iOa=3*iw-2; iH1a=3*iw-1; iH2a=3*iw
    iO=fO+iw-1; iH1=iO+Nwaters; iH2=iO+2*Nwaters; iM=iO+3*Nwaters
    R(1:3, (/iO, iH1, iH2/)) = RR(1:3, (/iOa, ih1a, ih2a/) )! * boxi
+   RRRc(1:3, (/iO, iH1, iH2/)) = RRc(1:3, (/iOa, ih1a, ih2a/) )! * boxi
   
+
+!.... determine M-site positions for R
    roh1 = R(1:3, iH1) - R(1:3,iO)
    roh1 = roh1 - box(1)*anint(roh1*boxi(1))!PBC
 
    roh2 = R(1:3, iH2) - R(1:3,iO)
    roh2 = roh2 - box(1)*anint(roh2*boxi(1))!PBC
 
-!.... determine M-site position
    R(1:3, iM) = 0.5d0*gammaM*( roh1(:) + roh2(:) ) + R(:,iO)
    R(:, iM) = R(:, iM) - box(1)*anint(R(:, iM)*boxi(1))!PBC
-enddo
 
+!.... determine M-site positions for RRRc
+   roh1 = RRc(1:3, iH1) - RRc(1:3,iO)
+   roh1 = roh1 - box(1)*anint(roh1*boxi(1))!PBC
+
+   roh2 = RRc(1:3, iH2) - RRc(1:3,iO)
+   roh2 = roh2 - box(1)*anint(roh2*boxi(1))!PBC
+
+   RRRc(1:3, iM) = 0.5d0*gammaM*( roh1(:) + roh2(:) ) + RRRc(:,iO)
+   RRRc(:, iM) = RRRc(:, iM) - box(1)*anint(RRRc(:, iM)*boxi(1))!PBC
+
+enddo
 
 tmp = 0.5d0*gammaM/(1.d0-gammaM)
 charge = 0.d0
@@ -86,12 +106,24 @@ do iw=1, Nwaters
 
    roh1 = r1(:,2) - r1(:,1)
    roh1 = roh1 - box(1)*anint(roh1*boxi(1)) !PBC
-
    roh2 = r1(:,3) - r1(:,1)
    roh2 = roh2 - box(1)*anint(roh2*boxi(1)) !PBC
-   do iy=1,3
-      virt(:,iy)=virt(:,iy)+roh1*dr1(iy,2)+roh2*dr1(iy,3)
-   enddo
+
+    virt(:,1)=virt(:,1) + roh1*dr1(1,2) + roh2*dr1(1,3)
+    virt(:,2)=virt(:,2) + roh1*dr1(2,2) + roh2*dr1(2,3)
+    virt(:,3)=virt(:,3) + roh1*dr1(3,2) + roh2*dr1(3,3)
+   
+  !repeat for centroid virial
+   r1(1:3, 1:3) = RRRc(1:3, (/iO, ih1, ih2/) )
+   roh1 = r1(:,2) - r1(:,1)
+   roh1 = roh1 - box(1)*anint(roh1*boxi(1)) !PBC
+   roh2 = r1(:,3) - r1(:,1)
+   roh2 = roh2 - box(1)*anint(roh2*boxi(1)) !PBC
+
+   virialc =  virialc + dot_product(roh1, dr1(:,2)) 
+   virialc =  virialc + dot_product(roh2, dr1(:,3)) 
+
+
    charge(iO) = 0.d0
    charge(iH1) = q3(2) + tmp*(q3(2)+q3(3))
    charge(iH2) = q3(3) + tmp*(q3(2)+q3(3))
@@ -137,12 +169,19 @@ do iw=1, Nwaters
       dR(1:3,iO) = dR(1:3,iO) + dij
       dR(1:3,jO) = dR(1:3,jO) - dij
 
+
+      Rcij = RRRc(1:3, iO) - RRRc(1:3, jO)
+      Rcij = Rcij - box*anint(Rcij*boxi) !PBC
+      virialc =  virialc + dot_product(Rcij, dij) 
+
       virt(1:3,1) = virt(1:3,1) + dij(1)*Rij
       virt(1:3,2) = virt(1:3,2) + dij(2)*Rij
       virt(1:3,3) = virt(1:3,3) + dij(3)*Rij
       !........ electrostatics
-      Rij0 = Rij - R(1:3, iO) + R(1:3, jO) !?????????
-      !Rij0 = Rij0 - box(1)*anint(Rij0*boxi(1)) !PBC
+      Rij0 = Rij - R(1:3, iO) + R(1:3, jO) !????????????
+     !Rij0 = Rij0 - box(1)*anint(Rij0*boxi(1)) !PBC
+
+	!write(*,*)  Rij0
       do isp=1, 4
          iat = iw + (isp-1)*Nwaters
          Ri = R(1:3, iat) + Rij0
@@ -154,7 +193,7 @@ do iw=1, Nwaters
             jat = jO + (jsp-1)*Nwaters
             qj = charge(jat)
             Rij = Ri - R(1:3, jat)
-Rij = Rij - box(1)*anint(Rij*boxi(1)) !PBC
+	    Rij = Rij - box(1)*anint(Rij*boxi(1)) !PBC
             dRsq = Rij(1)*Rij(1) + Rij(2)*Rij(2) + Rij(3)*Rij(3)
             call PBCsmear01(dRsq, polfacI*polfac(jsp), aewald, ts0, ts1)
             phi(iat) = phi(iat) + ts0*qj
@@ -162,6 +201,11 @@ Rij = Rij - box(1)*anint(Rij*boxi(1)) !PBC
             Efq(1:3,iat) = Efq(1:3,iat) + ts1*qj*Rij
             Efq(1:3,jat) = Efq(1:3,jat) - ts1*qi*Rij
             dij = -ts1*qi*qj*Rij
+
+   	    Rcij = RRRc(1:3, iat) - RRRc(1:3, jat)
+     	    Rcij = Rcij - box*anint(Rcij*boxi) !PBC
+            virialc =  virialc + dot_product(Rcij, dij)
+
             virt(1:3,1) = virt(1:3,1) + dij(1)*Rij
             virt(1:3,2) = virt(1:3,2) + dij(2)*Rij
             virt(1:3,3) = virt(1:3,3) + dij(3)*Rij
@@ -179,8 +223,8 @@ do iw=1, Nwaters
       do jsp=isp+1, 4
          jat=iw + (jsp-1)*Nwaters
          Rij=R(:,iat)-R(:,jat)
-Rij = Rij - box(1)*anint(Rij*boxi(1)) !PBC
-dRsq = Rij(1)*Rij(1) + Rij(2)*Rij(2) + Rij(3)*Rij(3)
+	 Rij = Rij - box(1)*anint(Rij*boxi(1)) !PBC
+	 dRsq = Rij(1)*Rij(1) + Rij(2)*Rij(2) + Rij(3)*Rij(3)
          call self1(dRsq, aewald, ts0, ts1)
          phi(iat)=phi(iat)+ts0*charge(jat)
          phi(jat)=phi(jat)+ts0*charge(iat)
@@ -188,21 +232,30 @@ dRsq = Rij(1)*Rij(1) + Rij(2)*Rij(2) + Rij(3)*Rij(3)
          Efq(1:3,iat) = Efq(1:3,iat) + ts1*charge(jat)*Rij
          Efq(1:3,jat) = Efq(1:3,jat) - ts1*charge(iat)*Rij
          dij = -ts1*charge(iat)*charge(jat)*Rij
+
+   	 Rcij = RRRc(1:3, iat) - RRRc(1:3, jat)
+     	 Rcij = Rcij - box*anint(Rcij*boxi) !PBC
+         virialc =  virialc + dot_product(Rcij, dij) 
+
          virt(1:3,1) = virt(1:3,1) + dij(1)*Rij
          virt(1:3,2) = virt(1:3,2) + dij(2)*Rij
          virt(1:3,3) = virt(1:3,3) + dij(3)*Rij
       enddo
    enddo
 enddo
+
 !...................................................................
 !............... Reciprocal space ...............................
 !...................................................................
+if (EWALD) then 
 call ewald_std_qq
+
 !...
 Uelec = 0.5d0 * sum(charge(fH:lM)*phi(fH:lM))
 do iat=fH, lM
    dR(1:3, iat) = dR(1:3, iat) - charge(iat) * Efq(1:3,iat)
 enddo
+endif !(EWALD) then 
 !........................................................................................!
 !.......... Initial guess of induced dipoles ............................................!
 !........................................................................................!
@@ -242,7 +295,7 @@ do iter=1, polar_maxiter
          Rij = neigh % Rij(1:3, j)
          dRsq = neigh % R2(j)
          Rij0 = Rij - R(1:3, iO) + R(1:3, jO)!????????????????????
-!Rij0 = Rij0 - box(1)*anint(Rij0*boxi(1)) !PBC
+	! Rij0 = Rij0 - box(1)*anint(Rij0*boxi(1)) !PBC
          do isp=fdI, ldI
             iat = iO + (isp-1)*Nwaters
             polfacI = aDD*polfac(isp)
@@ -252,7 +305,7 @@ do iter=1, polar_maxiter
                jat = jO + (jsp-1)*Nwaters
                dj = dip(1:3, jat)
                Rij = Ri - R(1:3, jat)
-Rij = Rij - box(1)*anint(Rij*boxi(1)) !PBC
+		Rij = Rij - box(1)*anint(Rij*boxi(1)) !PBC
                dRsq = Rij(1)*Rij(1) + Rij(2)*Rij(2) + Rij(3)*Rij(3)
                call PBCsmear2(dRsq, polfacI*polfac(jsp), aewald, ts1DD, ts2DD)
                call get_dd3(Rij, ts1DD, ts2DD, dd3)
@@ -276,8 +329,8 @@ Rij = Rij - box(1)*anint(Rij*boxi(1)) !PBC
             jat=iw + (jsp-1)*Nwaters
             dj = dip(1:3, jat)
             Rij=(R(:,iat)-R(:,jat))
-Rij = Rij - box(1)*anint(Rij*boxi) !PBC
-dRsq=Rij(1)*Rij(1)+Rij(2)*Rij(2) + Rij(3)*Rij(3)
+		Rij = Rij - box(1)*anint(Rij*boxi) !PBC
+		dRsq=Rij(1)*Rij(1)+Rij(2)*Rij(2) + Rij(3)*Rij(3)
             call PBCsmear2(dRsq, polfacI*polfac(jsp), aewald, ts1DD, ts2DD)
             call get_dd3(Rij, ts1DD, ts2DD, dd3)
             Efd(1,iat) = Efd(1,iat)+dd3(1,1)*dj(1)+dd3(2,1)*dj(2)+dd3(3,1)*dj(3)
@@ -290,7 +343,9 @@ dRsq=Rij(1)*Rij(1)+Rij(2)*Rij(2) + Rij(3)*Rij(3)
       enddo
    enddo
    ! ................. reciprocal space
+  if (EWALD) then 
    call ewald_std_dd
+  endif 
    !.............
    Efd(1:3, fd:ld) = Efd(1:3, fd:ld) + Efq(1:3,fd:ld) + factor*dip(1:3,fd:ld)
    !.............. calculate a new induced dipole
@@ -326,7 +381,9 @@ do iw=1, Nwaters
       dRsq = neigh % R2(j)
       Rij0 = Rij - R(1:3, iO) + R(1:3, jO)!?
       !Rij0 = Rij0 - box(1)*anint(Rij0*boxi) !PBC
-      do isp=1, 4
+      
+
+	do isp=1, 4
          iat = iO + (isp-1)*Nwaters
          Ri = R(1:3, iat) + Rij0
          qi = charge(iat)
@@ -345,7 +402,7 @@ do iw=1, Nwaters
             qdqd_sq=qdqd(1)*qdqd(1) + qdqd(2)*qdqd(2) + qdqd(3)*qdqd(3)
             !....... dipole-dipole interaction
             if (isp>=fdI .and. isp<=ldI .and. jsp>=fdI .and. jsp<=ldI) then
-call PBCsmear3(dRsq, aDD*polfacI*polfac(jsp), aewald, ts1DD, ts2DD, ts3DD)
+	   	call PBCsmear3(dRsq, aDD*polfacI*polfac(jsp), aewald, ts1DD, ts2DD, ts3DD)
                do ii=1,3; do jj=1,3; do kk=1,3
                   TSabc(ii,jj,kk)=15.d0*Rij(ii)*Rij(jj)*Rij(kk)*ts3DD
                enddo; enddo; enddo
@@ -359,30 +416,36 @@ call PBCsmear3(dRsq, aDD*polfacI*polfac(jsp), aewald, ts1DD, ts2DD, ts3DD)
                dij(2) = dij(2) + di(1)*arr33(1,2) + di(2)*arr33(2,2) + di(3)*arr33(3,2)
                dij(3) = dij(3) + di(1)*arr33(1,3) + di(2)*arr33(2,3) + di(3)*arr33(3,3)
                if (qdqd_sq>1.d-9) then
-if (dabs(aCCaCD-aDD)<1.d-12) then
-ts1=ts1DD; ts2=ts2DD
-                  else
-call PBCsmear2(dRsq, aCCaCD*polfacI*polfac(jsp), aewald, ts1, ts2)
-                  endif
-call get_dd3(Rij, ts1, ts2, dd3)
-                  dij(1) = dij(1) + dd3(1,1)*qdqd(1) + dd3(2,1)*qdqd(2) + dd3(3,1)*qdqd(3)
-                  dij(2) = dij(2) + dd3(1,2)*qdqd(1) + dd3(2,2)*qdqd(2) + dd3(3,2)*qdqd(3)
-                  dij(3) = dij(3) + dd3(1,3)*qdqd(1) + dd3(2,3)*qdqd(2) + dd3(3,3)*qdqd(3)
+			if (dabs(aCCaCD-aDD)<1.d-12) then
+				ts1=ts1DD; ts2=ts2DD
+                 	else
+				call PBCsmear2(dRsq, aCCaCD*polfacI*polfac(jsp), aewald, ts1, ts2)
+                	endif
+			call get_dd3(Rij, ts1, ts2, dd3)
+                	dij(1) = dij(1) + dd3(1,1)*qdqd(1) + dd3(2,1)*qdqd(2) + dd3(3,1)*qdqd(3)
+                  	dij(2) = dij(2) + dd3(1,2)*qdqd(1) + dd3(2,2)*qdqd(2) + dd3(3,2)*qdqd(3)
+                  	dij(3) = dij(3) + dd3(1,3)*qdqd(1) + dd3(2,3)*qdqd(2) + dd3(3,3)*qdqd(3)
                endif
             !....... charge-dipole interaction
             else
-if (qdqd_sq>1.d-9) then
-call PBCsmear2(dRsq, aCCaCD*polfacI*polfac(jsp), aewald, ts1, ts2)
-                  call get_dd3(Rij, ts1, ts2, dd3)
-                  dij(1) = dij(1) + dd3(1,1)*qdqd(1) + dd3(2,1)*qdqd(2) + dd3(3,1)*qdqd(3)
-                  dij(2) = dij(2) + dd3(1,2)*qdqd(1) + dd3(2,2)*qdqd(2) + dd3(3,2)*qdqd(3)
-                  dij(3) = dij(3) + dd3(1,3)*qdqd(1) + dd3(2,3)*qdqd(2) + dd3(3,3)*qdqd(3)
+		if (qdqd_sq>1.d-9) then
+			call PBCsmear2(dRsq, aCCaCD*polfacI*polfac(jsp), aewald, ts1, ts2)
+                	call get_dd3(Rij, ts1, ts2, dd3)
+                  	dij(1) = dij(1) + dd3(1,1)*qdqd(1) + dd3(2,1)*qdqd(2) + dd3(3,1)*qdqd(3)
+                  	dij(2) = dij(2) + dd3(1,2)*qdqd(1) + dd3(2,2)*qdqd(2) + dd3(3,2)*qdqd(3)
+                  	dij(3) = dij(3) + dd3(1,3)*qdqd(1) + dd3(2,3)*qdqd(2) + dd3(3,3)*qdqd(3)
                endif
-endif
-phi(iat) = phi(iat)+ts1*(Rij(1)*dj(1)+Rij(2)*dj(2)+Rij(3)*dj(3))
+	     endif
+	    phi(iat) = phi(iat)+ts1*(Rij(1)*dj(1)+Rij(2)*dj(2)+Rij(3)*dj(3))
             phi(jat) = phi(jat)-ts1*(Rij(1)*di(1)+Rij(2)*di(2)+Rij(3)*di(3))
             dR(1:3, iat) = dR(1:3, iat) + dij
             dR(1:3, jat) = dR(1:3, jat) - dij
+
+ 	    Rcij = RRRc(1:3, iat) - RRRc(1:3, jat)
+     	    Rcij = Rcij - box*anint(Rcij*boxi) !PBC
+            virialc =  virialc + dot_product(Rcij, dij) 
+	 !   write(*,*) "RCij = ", Rcij
+	  !  write(*,*) "Rij =  " , Rij 
             virt(1:3,1)=virt(1:3,1) + dij(1:3)*Rij(1)
             virt(1:3,2)=virt(1:3,2) + dij(1:3)*Rij(2)
             virt(1:3,3)=virt(1:3,3) + dij(1:3)*Rij(3)
@@ -399,14 +462,14 @@ do iw=1, Nwaters
       do jsp=isp+1, 4
          jat=iw + (jsp-1)*Nwaters
          qj = charge(jat)
-! dj=0.d0; if (jsp<=3) dj = dip(1:3, jat)
+	  ! dj=0.d0; if (jsp<=3) dj = dip(1:3, jat)
          dj = 0.d0; if (jsp>=fdI .and. jsp<=ldI) dj = dip(1:3, jat)
          Rij=(R(:,iat)-R(:,jat))
-Rij = Rij - box(1)*anint(Rij*boxi) !PBC
-dRsq = Rij(1)*Rij(1) + Rij(2)*Rij(2) + Rij(3)*Rij(3)
+	Rij = Rij - box(1)*anint(Rij*boxi) !PBC
+	dRsq = Rij(1)*Rij(1) + Rij(2)*Rij(2) + Rij(3)*Rij(3)
          !....... dipole-dipole interaction (SELF)
          if (isp>=fdI .and. isp<=ldI .and. jsp>=fdI .and. jsp<=ldI) then
-! if (isp<=3 .and. jsp<=3) then
+	! if (isp<=3 .and. jsp<=3) then
             call PBCsmear3(dRsq, aDD*polfac(isp)*polfac(jsp), aewald, ts1, ts2, ts3)
             do ii=1,3; do jj=1,3; do kk=1,3
                tmp = 0.d0
@@ -419,6 +482,11 @@ dRsq = Rij(1)*Rij(1) + Rij(2)*Rij(2) + Rij(3)*Rij(3)
             dij = di(1)*arr33(1,:) + di(2)*arr33(2,:) + di(3)*arr33(3,:)
             dR(1:3, iat) = dR(1:3, iat) + dij
             dR(1:3, jat) = dR(1:3, jat) - dij
+
+	    Rcij = RRRc(1:3, iat) - RRRc(1:3, jat)
+     	    Rcij = Rcij - box*anint(Rcij*boxi) !PBC
+            virialc =  virialc + dot_product(Rcij, dij) 
+
             virt(1:3,1)=virt(1:3,1) + dij(1:3)*Rij(1)
             virt(1:3,2)=virt(1:3,2) + dij(1:3)*Rij(2)
             virt(1:3,3)=virt(1:3,3) + dij(1:3)*Rij(3)
@@ -435,6 +503,10 @@ dRsq = Rij(1)*Rij(1) + Rij(2)*Rij(2) + Rij(3)*Rij(3)
          phi(jat) = phi(jat)-ts1*(Rij(1)*di(1)+Rij(2)*di(2)+Rij(3)*di(3))
          dR(1:3, iat) = dR(1:3, iat) + dij
          dR(1:3, jat) = dR(1:3, jat) - dij
+
+
+         virialc =  virialc + dot_product(Rcij, dij) 
+
          virt(1:3,1)=virt(1:3,1) + dij(1:3)*Rij(1)
          virt(1:3,2)=virt(1:3,2) + dij(1:3)*Rij(2)
          virt(1:3,3)=virt(1:3,3) + dij(1:3)*Rij(3)
@@ -445,9 +517,9 @@ enddo
 !...................................................................
 !............... Reciprocal space (dipoles) ......................
 !...................................................................
-!>...
-call ewald_std_qd
-virt = virt + vir_rec
+  call ewald_std_qd
+  virt = virt + vir_rec !this comes from the Ewald summation. We add it to the centroid virial. 
+  virialc = virialc + vir_rec(1,1) + vir_rec(2,2) + vir_rec(3,3)
 !....
 do iw=1, Nwaters
    iO=fO+iw-1; iH1=iO+Nwaters; iH2=iO+2*Nwaters; iM=iO+3*Nwaters
@@ -467,11 +539,24 @@ do iw=1, Nwaters
          virt(ix,iy) = virt(ix, iy) + roh1(ix)*dgrad(iy,2) + roh2(ix)*dgrad(iy,3)
       enddo
    enddo
+   !do same thing for centroid virial tensor 
+   Roh1=RRRc(:,ih1)-RRRc(:,io)
+   Roh1 = Roh1 - box(1)*anint(Roh1*boxi) !PBC
+   Roh2=RRRc(:,ih2)-RRRc(:,io)
+   Roh2 = Roh2 - box(1)*anint( Roh2*boxi) !PBC
+
+   virialc = virialc + roh1(1)*dgrad(1,2) + roh2(1)*dgrad(1,3)
+   virialc = virialc + roh1(2)*dgrad(2,2) + roh2(2)*dgrad(2,3)
+   virialc = virialc + roh1(3)*dgrad(3,2) + roh2(3)*dgrad(3,3)
+
 enddo
+
+!write(*,*) "Udvw_lrc = ", Uvdw_lrc
 
 virt(1,1) = virt(1,1) - Uvdw_lrc !?? I guess this makes sense ?? The factor is small in any case (4 percent)
 virt(2,2) = virt(2,2) - Uvdw_lrc
 virt(3,3) = virt(3,3) - Uvdw_lrc
+virialc = virialc -  Uvdw_lrc
 
 if (print_dipiters ) write(*,'(a,f14.8,2x,a,f14.8,2x,a,i3)') &
     &"Uind(init)=",Uind_init,"Uind(fin)=",Uind,"#of iterations = ",iter

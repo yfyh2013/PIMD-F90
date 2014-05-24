@@ -3,7 +3,7 @@
 BASIC INFO
 'input_1.xyz'          ! input filename - either a centroid .xyz or a full bead configuration
 'test'    ! run name - this will be appended to all the output files
-2	 		 ! Number of beads 
+1	 		 ! Number of beads 
 1000000		         ! number of steps to equilibrate		 
 100000	            	 ! number of steps to run
 .5                  	 ! timestep (delt) (fs)

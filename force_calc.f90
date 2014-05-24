@@ -15,12 +15,17 @@ subroutine full_bead_forces
 
  	do i = 1, Nnodes - 1 !node index
 		k = bat*Nnodes + i  !bead index
+		!masternode send image coordinates
 		Call MPI_Send(RRt(:,:,k), counti, MPI_DOUBLE_PRECISION, i, 0, MPI_COMM_WORLD, ierr)   
+		!masternode send centroid coordinates to calculate centroid virial
+		Call MPI_Send(RRc, 3*Natoms, MPI_DOUBLE_PRECISION, i, 0, MPI_COMM_WORLD, ierr)   
 	enddo
-	!masternode force calculation
+	!masternode force & virial calculation
 	k = bat*Nnodes + Nnodes  
 
-	call potential(RRt(:,:,k), Upott(k), dRRt(:,:,k), virt, dip_momIt(:,:,k), dip_momEt(:,:,k), chg, t, BAROSTAT)
+	call potential(RRt(:,:,k), RRc, Upott(k), dRRt(:,:,k), virt, virialct(k), dip_momIt(:,:,k), dip_momEt(:,:,k), chg, t, BAROSTAT)
+
+	virialt(k) = virt(1,1) + virt(2,2) + virt(3,3)	
 
 	!recieve stuff from nodes
 	do i = 1, Nnodes - 1
@@ -29,6 +34,10 @@ subroutine full_bead_forces
 		call MPI_Recv(dRRt(:,:,k), counti, MPI_DOUBLE_PRECISION, i, 0, MPI_COMM_WORLD, status2, ierr)
 		!masternode recieve energies
 		call MPI_Recv(Upott(k), 1, MPI_DOUBLE_PRECISION, i, 0, MPI_COMM_WORLD, status2, ierr)	
+		!masternode receive virials
+		call MPI_Recv(virialt(k), 1, MPI_DOUBLE_PRECISION, i, 0, MPI_COMM_WORLD, status2, ierr)	
+		!masternode receive centroid virials
+		call MPI_Recv(virialct(k), 1, MPI_DOUBLE_PRECISION, i, 0, MPI_COMM_WORLD, status2, ierr)	
 		!masternode recieve dipole moments		
 		if (dip_out .or. TD_out) call MPI_Recv(dip_momIt(:,:,k), 3*Nwaters, MPI_DOUBLE_PRECISION, i, 0, MPI_COMM_WORLD, status2, ierr)
 		if (Edip_out) call MPI_Recv(dip_momEt(:,:,k), 3*Nwaters, MPI_DOUBLE_PRECISION, i, 0, MPI_COMM_WORLD, status2, ierr)
@@ -36,13 +45,20 @@ subroutine full_bead_forces
     else
 		!slavenode recieve coords from master node
 		call MPI_Recv(RR, counti, MPI_DOUBLE_PRECISION, 0, 0, MPI_COMM_WORLD, status2, ierr)
-		!slavenode force calculation
-		call potential(RR, Upot, dRR, virt, dip_momI, dip_momE, chg, t, BAROSTAT)
-		!slavenode send back derivatives
+		!slavenode recieve centroid coords from master node
+		call MPI_Recv(RRc, 3*Natoms, MPI_DOUBLE_PRECISION, 0, 0, MPI_COMM_WORLD, status2, ierr)
+		!slavenode force & virial calculation
+		call potential(RR, RRc, Upot, dRR, virt, virialc, dip_momI, dip_momE, chg, t, BAROSTAT)
+		virial = virt(1,1) + virt(2,2) + virt(3,3)	
+		!slavenode send back derivative
 		call MPI_Send(dRR, counti, MPI_DOUBLE_PRECISION, 0, 0, MPI_COMM_WORLD, ierr) 
-		!slavenode send back energies
+		!slavenode send back energy
 		call MPI_Send(Upot, 1, MPI_DOUBLE_PRECISION, 0, 0, MPI_COMM_WORLD, ierr) 
-		!slavenode send back dipole moments  
+		!slavenode send back virial
+		call MPI_Send(virial, 1, MPI_DOUBLE_PRECISION, 0, 0, MPI_COMM_WORLD, ierr) 
+		!slavenode send back centroid virial
+		call MPI_Send(virialc, 1, MPI_DOUBLE_PRECISION, 0, 0, MPI_COMM_WORLD, ierr) 
+		!slavenode send back dipole moments 
 		if (dip_out .or. TD_out) call MPI_Send(dip_momI, 3*Nwaters, MPI_DOUBLE_PRECISION, 0, 0, MPI_COMM_WORLD, ierr)
 		if (Edip_out) call MPI_Send(dip_momE, 3*Nwaters, MPI_DOUBLE_PRECISION, 0, 0, MPI_COMM_WORLD, ierr)
     endif

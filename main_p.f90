@@ -39,7 +39,8 @@ if (pid .eq. 0) then
 	call read_coords           ! Read in coord data to RRc 
 	call initialize_beads      ! Initialize RRt
 	call initialize_velocities ! Initialize PPt
- 	call open_files
+	call calc_uk 		    ! Initalize kinetic energy
+	call open_files
 	call MPItimer(1,'start',seconds)
 endif!(pid .eq. 0)
 
@@ -89,30 +90,6 @@ do t = 1, num_timesteps + eq_timesteps
 		!calculate centroid momenta
 		PPc = sum(PPt,3)/Nbeads 
 
-		!update kinetic energy 
-		uk = 0
-		do i = 1,Nwaters
-			uk = uk + imassO*sum( PPc(:,3*i-2)**2 )
-			uk = uk + imassH*sum( PPc(:,3*i-1)**2 )
-			uk = uk + imassH*sum( PPc(:,3*i-0)**2 )
-		enddo	
-		!do j = 1, Nbeads
-		!	do i = 1,Nwaters
-		!		uk = uk + imassO*sum( PPt(:,3*i-2,j)**2 )
-		!		uk = uk + imassH*sum( PPt(:,3*i-1,j)**2 )
-		!		uk = uk + imassH*sum( PPt(:,3*i-0,j)**2 )
-		!	enddo
-		!enddo	
-		uk = .5d0*uk 
-
-		!Propagate NH chains 
-		if (BEADTHERMOSTAT) call bead_thermostat
-	
-		if (THERMOSTAT)     then 
-			call Nose_Hoover(s, uk, global_chain_length, vxi_global, tau, delt2, 3*Natoms, temp)
-			PPt = PPt*s
-		endif
-
 		!check PBCs
 		call PBCs(RRt, RRc)
 	
@@ -128,6 +105,9 @@ do t = 1, num_timesteps + eq_timesteps
 
 	if (pid .eq. 0) then
 
+		!update kinetic energy 
+		call calc_uk
+
 		!write stuff out if necessary 
 		call MPItimer(3, 'start', secondsIO)
 		call write_out
@@ -136,6 +116,15 @@ do t = 1, num_timesteps + eq_timesteps
 		!update momenta a half step w/ new forces
 		PPt = PPt - MASSCON*dRRt*delt2
 
+		!Propagate NH chains 
+		if (BEADTHERMOSTAT) call bead_thermostat
+
+		call calc_uk_centroid
+
+		if (THERMOSTAT)     then 
+			call Nose_Hoover(s, uk, global_chain_length, vxi_global, tau, delt2, 3*Natoms, temp)
+			PPt = PPt*s
+		endif
 		
 		if (BAROSTAT) call Pcouple
 

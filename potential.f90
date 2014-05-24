@@ -1,13 +1,13 @@
 !---------------------------------------------------------------------!
 !-----------------Call correct potential -----------------------------
 !---------------------------------------------------------------------!
-subroutine potential(RR, Upot, dRR, virt, dip_momI,Edip_mom, chg,t,BAROSTAT)
+subroutine potential(RR, RRc, Upot, dRR, virt, virialc, dip_momI, Edip_mom, chg, t, BAROSTAT)
 use consts
 use system_mod
 use pot_mod
 implicit none
-double precision, dimension(3, Natoms), intent(in) :: RR
-double precision, intent(out) :: Upot
+double precision, dimension(3, Natoms), intent(in) :: RR, RRc
+double precision, intent(out) :: Upot, virialc
 double precision, dimension(3, Natoms), intent(out) :: dRR
 double precision, dimension(3, 3), intent(out) :: virt
 double precision, dimension(Natoms), intent(out)  :: chg
@@ -26,10 +26,10 @@ logical, intent(in) :: BAROSTAT
 	Uvdw_lrc = Uvdw_lrc0*(volume_init/volume)
 
 !If the volume is changing than the Ewald k-vectors have to be reset every timestep
-if (BAROSTAT) call ewald_set(.false.)
+!if (BAROSTAT) call ewald_set(.false.)
  
 if (pot_model==2 .or. pot_model==3) then
-    call pot_ttm(RR, Upot, dRR, virt, dip_momI,Edip_mom, chg,t)
+    call pot_ttm(RR, RRc, Upot, dRR, virt, virialc, dip_momI,Edip_mom, chg,t)
 
 else if (pot_model==4 .or. pot_model==5) then
     call pot_spc(RR, Upot, dRR, virt, dip_momI, chg)

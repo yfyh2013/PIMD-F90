@@ -55,8 +55,8 @@ double precision :: tau_P, ref_P, press, CompFac, scale_factor
 !- Variables for the paralleziation / PIMD
 double precision, dimension(:,:,:), allocatable :: RRt, PPt, dip_momIt, dip_momEt, dRRt
 double precision, dimension(:,:), allocatable :: RRc, PPc
-double precision, dimension(:), allocatable :: Upott
-double precision ::  omegan, kTN, iNbeads, setNMfreq
+double precision, dimension(:), allocatable :: Upott, Virialt, virialct
+double precision ::  omegan, kTN, iNbeads, setNMfreq, virial, virialc
 double precision :: radiusH, radiusO
 integer :: Nnodes, Nbeads, pid, j, k, ierr, Nbatches, counti, bat
 integer :: status2(MPI_STATUS_SIZE)
@@ -193,7 +193,7 @@ end subroutine calc_radius_of_gyration
 !--------------  Berendson Pressure Coupling (J. Chem. Phys. 81, 3684, 1984)-------
 !----------------------------------------------------------------------------------!
 subroutine Pcouple 
-	scale_factor = ( 1 + CompFac*(sys_press - press)  )**.333333 !sum_press/tr 
+	scale_factor = ( 1 + CompFac*(simple_sys_press - press)  )**.333333 !sum_press/tr 
 
 	RRt = RRt*scale_factor
 	RRc = RRc*scale_factor
@@ -318,6 +318,32 @@ endif
 end subroutine initialize_velocities
 
 
+subroutine calc_uk
+
+
+
+ uk = 0 
+ do j = 1, Nbeads
+	do i = 1,Nwaters
+		uk = uk + imassO*sum( PPt(:,3*i-2,j)**2 )
+		uk = uk + imassH*sum( PPt(:,3*i-1,j)**2 )
+		uk = uk + imassH*sum( PPt(:,3*i-0,j)**2 )
+	enddo
+ enddo	
+ uk = .5d0*uk 
+
+end subroutine calc_uk
+
+subroutine calc_uk_centroid
+ uk = 0
+ do i = 1,Nwaters
+ 		uk = uk + imassO*sum( PPc(:,3*i-2)**2 )
+ 		uk = uk + imassH*sum( PPc(:,3*i-1)**2 )
+ 		uk = uk + imassH*sum( PPc(:,3*i-0)**2 )
+ enddo	
+ uk = .5*uk
+
+end subroutine calc_uk_centroid
 
 
 

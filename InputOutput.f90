@@ -147,6 +147,7 @@ allocate(dip_momI(3, Nwaters))
 allocate(dip_momE(3, Nwaters))
 allocate(chg (Natoms))
 allocate(tx_dip(3,4*Nwaters, 4))
+allocate(RRc(3, Natoms))
 
 end subroutine initialize_all_node_variables
 
@@ -254,7 +255,8 @@ endif
 	allocate(dip_momIt(3, Nwaters,Nbeads))
 	allocate(dip_momEt(3, Nwaters,Nbeads))
 	allocate(Upott(Nbeads))
-	allocate(RRc(3, Natoms))
+	allocate(Virialt(Nbeads))
+	allocate(virialct(Nbeads))
 	allocate(PPc(3, Natoms))
 	dRRt = 0 
 
@@ -388,7 +390,7 @@ subroutine write_out
 
  tr = tr + 1
 
- sys_temp = TEMPFACTOR*uk/(Natoms)
+ sys_temp = TEMPFACTOR*uk/(Natoms*Nbeads)
 
  !- pressure / total energy calculation : old classical case -
  !if (Nbeads .eq. 1) then
@@ -396,10 +398,12 @@ subroutine write_out
 	!sys_press = PRESSCON*sys_press !convert to bar
  !endif
  
- Upot = iNbeads*sum(Upott)
+ Upot    = sum(Upott)    !potential energy for the ENTIRE system
+ virial  = sum(virialt)  !virial for the ENTIRE system (kcal/mol)
+ virialc = sum(virialct)/Nbeads !centroid virial for the ENTIRE system (kcal/mol)
 
- call quantum_virial_estimators(RRt, dRRt, tot_energy, sys_press, sys_temp, Upot)
- call simple_quantum_estimators(RRt, dRRt, simple_energy, simple_sys_press, sys_temp, Upot) 
+ call quantum_virial_estimators(RRt, virial, virialc, tot_energy, sys_press, sys_temp, Upot)
+ call simple_quantum_estimators(RRt, virial, simple_energy, simple_sys_press, sys_temp, Upot) 
 
  sum_simple_energy = sum_simple_energy + simple_energy
  sum_simple_press  = sum_simple_press + simple_sys_press
@@ -444,8 +448,8 @@ subroutine write_out
  !print out temperature, pressure, average press, energies & dielectric constant
  if (mod(t,tp_freq) == 0) then
 
-	write(TPoutStream,'(1f10.4,f10.2,f11.2,5f10.2)',advance='no') tr*delt, sys_temp , sys_press, & 
-		sum_temp/tr, sum_press/tr, Upot, tot_energy , sum_tot_energy/tr
+	write(TPoutStream,'(1f10.4,f10.2,f11.2,5f10.2)',advance='no') tr*delt, sys_temp/Nbeads , sys_press, & 
+		sum_temp/tr/Nbeads, sum_press/tr, sum(Upott)/Nbeads, tot_energy , sum_tot_energy/tr
 
   	if (SIMPLE_ENERGY_ESTIMATOR) then 
 	 write(TPoutStream,'(4f10.2)',advance='no') simple_sys_press, sum_simple_press/tr, simple_energy, sum_simple_energy/tr
@@ -530,40 +534,27 @@ end subroutine write_out
 !----------------------------------------------------------------------------------!
 !- Quantum virial estimator for the energy and pressure (ref: Tuckerman, "Statistical Mechanics.." 2008 pg 485)
 !----------------------------------------------------------------------------------!
-subroutine quantum_virial_estimators(RRt, dRRt, qEnergy, qPress, sys_temp, Upot) 
+subroutine quantum_virial_estimators(RRt, virial, virialc, qEnergy, qPress, sys_temp, Upot) 
  use consts 
  Implicit none
- double precision, dimension(3,Natoms,Nbeads),intent(in)  :: RRt, dRRt
- double precision, intent(in)      :: sys_temp, Upot
+ double precision, dimension(3,Natoms,Nbeads),intent(in)  :: RRt 
+ double precision, intent(in)      :: virial, virialc, sys_temp, Upot
  double precision, intent(out)     :: qPress, qEnergy 
  double precision 		   :: qVirial, qVirial2, KE
  integer :: i, j, k 
 
  !Note on units : it is assumed that dRRt is in (in kcal/(mol*Ang))
  !and that Upot is in kcal/mol and that sys_temp is in Kelvin 
-
- !The pressure estimator assumes that the potential energy does not have volume dependence
- qVirial = 0 
- qVirial2 = 0 
-
- do k = 1,Nbeads
-	do j = 1, Natoms
-		do i = 1, 3
-			qVirial  = qVirial + (RRt(i,j,k) - RRc(i,j))*dRRt(i,j,k)
-			qVirial2 = qVirial2 - RRc(i,j)*dRRt(i,j,k)
-		enddo
-	enddo
- enddo
- qVirial  = .5*iNbeads*qVirial 
+ !This pressure estimator assumes that the potential energy does not have volume dependence
  
- qVirial2 = iNbeads*qVirial2
+ KE = 1.5*Natoms*kb*sys_temp*Nbeads!kinetic energy in kcal/mol
 
- KE = 1.5*Natoms*kb*sys_temp !kinetic energy in kcal/mol
+ write(*,*) virial, virialc
 
  !convert to kcal/(mole of mol H2O) by dividing by Nwaters
- qEnergy = (KE + qVirial + Upot)/Nwaters 
+ qEnergy = ( KE + .5*(virial - virialc ) + Upot )/(Nwaters*Nbeads) 
 
- qPress  =  PRESSCON2*(1/(3*volume))*(  2*KE + qVirial2)/Nwaters !factor of 1/3 not in Tuckerman's book. (book is wrong!!)
+ qPress  =  PRESSCON2*(1/(3*volume))*( 2*KE - virialc )/Nwaters !factor of 1/3 not in Tuckerman's book. (book is wrong!!)
 
 
 end subroutine quantum_virial_estimators
@@ -572,11 +563,11 @@ end subroutine quantum_virial_estimators
 !----------------------------------------------------------------------------------!
 !- Simple quantum estimators for energy & pressure --------------------------------
 !----------------------------------------------------------------------------------!
-subroutine simple_quantum_estimators(RRt, dRRt, qEnergy, qPress, sys_temp, Upot) 
+subroutine simple_quantum_estimators(RRt, virial, qEnergy, qPress, sys_temp, Upot) 
  use consts 
  use NormalModes !need MassScaleFactor
  Implicit none
- double precision, dimension(3,Natoms,Nbeads),intent(in)  :: RRt, dRRt !forces in kcal/(mol*Ang) 
+ double precision, dimension(3,Natoms,Nbeads),intent(in)  :: RRt  !coords in Ang
  double precision, intent(in)      :: sys_temp       !temp in Kelvin
  double precision, intent(in)      ::  Upot 	!potential energy in kcal/mol
  double precision, intent(out)     :: qEnergy  	!energy out in kcal/mol
@@ -588,19 +579,8 @@ subroutine simple_quantum_estimators(RRt, dRRt, qEnergy, qPress, sys_temp, Upot)
  !and that Upot is in kcal/mol and that sys_temp is in Kelvin 
  !The pressure estimator assumes that the potential energy does not have volume dependence
 
-
- virial = 0
- do k = 1, Nbeads
- 	do j = 1, Natoms
- 		do i = 1, 3
- 			virial = virial - RRt(i,j,k)*dRRt(i,j,k	) 
- 		enddo
-	enddo
- enddo
- virial = virial/Nbeads 
-
  K0 = 0
- do k = 2, Nbeads
+ do k = 1, Nbeads
 	do j = 1, Natoms
 		if (mod(j+2,3) .eq. 0) then
 			mass = massO
@@ -608,16 +588,20 @@ subroutine simple_quantum_estimators(RRt, dRRt, qEnergy, qPress, sys_temp, Upot)
 			mass = massH
 		endif
 		do i = 1, 3
-			K0 = K0 + MassScaleFactor(k)*mass*( RRt(i,j,k) - RRt(i,j,k-1) )**2
+			if (k .eq. 1) then
+				K0 = K0 + MassScaleFactor(k)*mass*( RRt(i,j,k) - RRt(i,j,Nbeads) )**2
+			else
+				K0 = K0 + MassScaleFactor(k)*mass*( RRt(i,j,k) - RRt(i,j,k-1) )**2
+			endif
 		enddo
 	enddo
  enddo
 
  KE = 1.5*Natoms*Nbeads*kb*sys_temp !kinetic energy of the beads in kcal/mol
- K0 = .5*K0*(omegan**2)*MASSCONi    !quantum correction to kinetic energy - convert from Ang,amu,ps to kcal/mol
+ K0 = .5*K0*(omegan**2)*MASSCONi   !quantum correction to kinetic energy - convert from Ang,amu,ps to kcal/mol
 
- qEnergy = (KE - K0 + Upot )/Nwaters    		    !kcal/(mole of mol)
- qPress  = PRESSCON2*(1/(3*volume))*(  2*(KE - K0) + virial )/Nwaters 
+ qEnergy = (KE - K0 + Upot )/(Nwaters*Nbeads)   		    !kcal/(mole of mol)
+ qPress  = PRESSCON2*(1/(3*volume))*(  2*(KE - K0) - virial )/Nwaters  !subtract virial to convert derivative to force
 
 end subroutine simple_quantum_estimators
 

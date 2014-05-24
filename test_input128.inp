@@ -20,8 +20,8 @@ OUTPUT OPTIONS
 .t.			 ! avg. radius of gyration (in Temp/Press file) 
 .t.			 ! output dielectric constant (running average in Temp/Press file)
 .f.			 ! write final configuration of all beads to seperate file? 
-100			 ! Total dipole output frequency 
-100  			 ! Temp/Press output frequency
+1			 ! Total dipole output frequency 
+1  			 ! Temp/Press output frequency
 40			 ! all images output frequency 
 20       		 ! Output frequency for everything else
 
@@ -34,7 +34,7 @@ MD OPTIONS
 .t.                 	 ! Global thermostat? t/f
 .t.                      ! Thermostat non-centroid modes ? 
 .t.			 ! Thermostat centroid mode ?
-'Nose-Hoover'               ! type of bead thermostat - 'Nose-Hoover', 'Langevin' or 'none'
+'Langevin'               ! type of bead thermostat - 'Nose-Hoover', 'Langevin' or 'none'
 .01			 ! tau for global thermostat (ps)
 .01			 ! tau for centroid thermostat (ps)
 5			 ! global Nose-Hoover chain length
