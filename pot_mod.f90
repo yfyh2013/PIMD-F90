@@ -51,7 +51,8 @@ double precision :: harmka, harmkb, roh0, th0, qO, qH
 ! Auxiliary variables and arrays                                             !
 !----------------------------------------------------------------------------!
 
-double precision, dimension(:,:), allocatable :: R, dR, dipt, dip, olddip, Efq, Efd
+double precision, dimension(:,:), allocatable :: R, dR, dipt, dip, Efq, Efd
+double precision, dimension(:,:), allocatable, save :: olddip
 double precision, dimension(:), allocatable :: charge, phi
 double precision, dimension(:,:,:,:), allocatable :: grdq
 double precision, dimension(4) :: polfac
@@ -80,7 +81,5 @@ integer :: my_ndim3S, my_ndim3E, blk_ndim3
 integer :: my_ndim2S, my_ndim2E
 logical :: polar_model
 
-
-logical :: save_dd
 
 end module pot_mod

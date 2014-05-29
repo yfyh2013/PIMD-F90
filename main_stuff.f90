@@ -64,6 +64,10 @@ integer :: status2(MPI_STATUS_SIZE)
 ! timing variables
 double precision :: seconds, secondsNM, secondsIO
 
+!variables for multiple timestep / contraction
+integer, parameter :: intra_timesteps 
+double precision   :: deltfast, delt2fast  
+
 contains
 
 

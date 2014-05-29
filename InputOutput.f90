@@ -67,12 +67,13 @@ read(11,*)
 read(11,*)
 read(11,*)setNMfreq
 read(11,*)CONTRACTION
+read(11,*)intra_timesteps
 read(11,*)massO
 read(11,*)massH
 
 read_method = 1 !read_method(=0,1) (0 for OOOO....HHHHH and 1 for OHHOHHOHH...)
 SIMPLE_ENERGY_ESTIMATOR = .true. !setting this to true will output the simple energy to temp/press file
-!this quantity will take a long, long time to converge with 4+ beads 
+!simple estimators take a long time to converge with 4+ beads 
 
 close(11)  
 end subroutine read_input_file 
@@ -149,6 +150,8 @@ allocate(chg (Natoms))
 allocate(tx_dip(3,4*Nwaters, 4))
 allocate(RRc(3, Natoms))
 
+tx_dip = 0 
+
 end subroutine initialize_all_node_variables
 
 
@@ -217,11 +220,19 @@ if ( Nnodes .gt. Nbeads) then
 	stop
 endif
 
-if (.not. (mod(Nbeads,Nnodes) .eq. 0)) then
-	write(*,*) "ERROR: the number of beads must be a multiple of the number of nodes."
-        write(*,'(a,i4,a,i4,a)') "To run on ", Nnodes, " nodes I suggest using ", Nbeads - mod(Nbeads,Nnodes), " beads"
+if (.not. (CONTRACTION) ) then
+	if (.not. (mod(Nbeads,Nnodes) .eq. 0)) then
+		write(*,*) "ERROR: the number of beads must be a multiple of the number of nodes."
+     	   write(*,'(a,i4,a,i4,a)') "To run on ", Nnodes, " nodes I suggest using ", Nbeads - mod(Nbeads,Nnodes), " beads"
 	stop
+	endif
+else
+	if (Nnodes .gt. 2) then 
+		write(*,*) "ERROR: When running with ring polymer contraction, a maximum of 2 nodes can be used."
+		stop
+	endif
 endif
+
 
 	CompFac = ((4.477d-5)*delt)/(3*tau_P) !Barostat var. (contains compressibility of H2O)
 	sum_temp = 0 
@@ -260,7 +271,15 @@ endif
 	allocate(PPc(3, Natoms))
 	dRRt = 0 
 
-	call InitNormalModes(Nbeads, omegan, delt, setNMfreq)
+
+ 	if (CONTRACTION) deltfast = delt/intra_timesteps
+ 	if (CONTRACTION) delt2fast = deltfast/2d0
+
+	if (CONTRACTION) then
+		call InitNormalModes(Nbeads, omegan, deltfast, setNMfreq)
+	else
+		call InitNormalModes(Nbeads, omegan, delt, setNMfreq)
+	endif
 
 	if (THERMOSTAT)  then
 		allocate(vxi_global(global_chain_length))
@@ -311,6 +330,9 @@ end subroutine read_coords
 !--------------Open write out files -----------------------------------------------------
 !-----------------------------------------------------------------------------------------
 subroutine open_files
+ Implicit none 
+ logical :: EXIST
+
  if (coord_out) then
 	open(20, file='out_'//TRIM(fsave)//'_coord.xyz', status='unknown')
  endif
@@ -327,7 +349,12 @@ subroutine open_files
 	open(26, file='out_'//TRIM(fsave)//'_Edip.dat', status='unknown')
  endif
  if (TD_out) then 
-	open(23, file='out_'//TRIM(fsave)//'_tot_dip.dat', status='unknown')
+	inquire(file="test.txt", exist=EXIST)
+  	if (EXIST) then
+   		open(12, file='out_'//TRIM(fsave)//'_tot_dip.dat', status="old", position="append", action="write")
+  	else
+    		open(12, file='out_'//TRIM(fsave)//'_tot_dip.dat', status="new", action="write")
+	endif
  endif
  if (BOXSIZEOUT) then 
 	open(25, file='out_'//TRIM(fsave)//'_box.dat', status='unknown')
@@ -397,10 +424,7 @@ subroutine write_out
 	!sys_press = (1/(3*volume))*( 2*uk -	 MASSCON*( virt(1,1)+virt(2,2)+virt(3,3) )  )
 	!sys_press = PRESSCON*sys_press !convert to bar
  !endif
- 
- Upot    = sum(Upott)    !potential energy for the ENTIRE system
- virial  = sum(virialt)  !virial for the ENTIRE system (kcal/mol)
- virialc = sum(virialct)/Nbeads !centroid virial for the ENTIRE system (kcal/mol)
+
 
  call quantum_virial_estimators(RRt, virial, virialc, tot_energy, sys_press, sys_temp, Upot)
  call simple_quantum_estimators(RRt, virial, simple_energy, simple_sys_press, sys_temp, Upot) 
@@ -414,9 +438,13 @@ subroutine write_out
  sum_RMSenergy     = sum_RMSenergy + (tot_energy - sum_tot_energy/tr)**2
 
  !debug options
+  !write(*,*) "Upot   " , Upot
+  !write(*,*) "virial " , virial
+  !write(*,*) "virialc" , virialc
  !write(*,*) "simple P" , simple_sys_press
  !write(*,*) "virial P" , sys_press
-
+ !write(*,*) "simple E" , simple_energy
+ !write(*,*) "virial E" , tot_energy
 
 
  !caculate dipole moments only if necessary 
@@ -449,7 +477,7 @@ subroutine write_out
  if (mod(t,tp_freq) == 0) then
 
 	write(TPoutStream,'(1f10.4,f10.2,f11.2,5f10.2)',advance='no') tr*delt, sys_temp/Nbeads , sys_press, & 
-		sum_temp/tr/Nbeads, sum_press/tr, sum(Upott)/Nbeads, tot_energy , sum_tot_energy/tr
+		sum_temp/tr/Nbeads, sum_press/tr, Upot, tot_energy , sum_tot_energy/tr
 
   	if (SIMPLE_ENERGY_ESTIMATOR) then 
 	 write(TPoutStream,'(4f10.2)',advance='no') simple_sys_press, sum_simple_press/tr, simple_energy, sum_simple_energy/tr
@@ -533,6 +561,7 @@ end subroutine write_out
 
 !----------------------------------------------------------------------------------!
 !- Quantum virial estimator for the energy and pressure (ref: Tuckerman, "Statistical Mechanics.." 2008 pg 485)
+!- Inputs (virial, virialc, sys_temp, Upot are for the ENTIRE system) 
 !----------------------------------------------------------------------------------!
 subroutine quantum_virial_estimators(RRt, virial, virialc, qEnergy, qPress, sys_temp, Upot) 
  use consts 
@@ -549,10 +578,10 @@ subroutine quantum_virial_estimators(RRt, virial, virialc, qEnergy, qPress, sys_
  
  KE = 1.5*Natoms*kb*sys_temp*Nbeads!kinetic energy in kcal/mol
 
- write(*,*) virial, virialc
+ !writwe(*,*) virial, virialc
 
  !convert to kcal/(mole of mol H2O) by dividing by Nwaters
- qEnergy = ( KE + .5*(virial - virialc ) + Upot )/(Nwaters*Nbeads) 
+ qEnergy = ( KE + .5*(virial - nbeads*virialc ) + Upot )/(Nwaters*Nbeads) 
 
  qPress  =  PRESSCON2*(1/(3*volume))*( 2*KE - virialc )/Nwaters !factor of 1/3 not in Tuckerman's book. (book is wrong!!)
 
@@ -631,7 +660,7 @@ write(TPoutStream,'(a50, f10.2)') "ps/day = ",  (  (num_timesteps + eq_timesteps
  write(TPoutStream,*) "#------------------------------------------------------"
  avg_temp =  sum_temp/tr
 
- write(TPoutStream,'(a50, 3f10.2)') "Average temperature during run (K) = ", avg_temp
+ write(TPoutStream,'(a50, 3f10.2)') "Average temperature during run (K) = ", avg_temp/Nbeads
  write(TPoutStream,'(a50, 3f10.2)') "Average pressure during run (bar) = ", sum_press/tr
  write(TPoutStream,'(a50, 3f10.2)') "Average total energy during run (kcal/mole) = ", sum_tot_energy/tr
  write(TPoutStream,'(a50, 3f10.2)') "Estimated energy drift (kcal/mole/ps) = ",(tot_energy - init_energy)/(num_timesteps*delt)

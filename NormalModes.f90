@@ -188,6 +188,15 @@ if (.not. (setNMfreq .eq. 0)) then
 endif
 
 
+!check for resonances 
+ do i = 1, Nbeads
+	if ( abs(1/delta - omegalist(i)/TWOPI)/(1/delta)  .lt. .01 ) then
+		write(*,'(a,i2,a)') "WARNING: normal mode frequency", i, " differs from 1/timestep by less than 1 percent"
+		write(*,'(a,f10.4,a,f10.4)') "Normal mode frequency ", i, " = ", omegalist(i)/TWOPI, " 1/timestep = ", 1/delta
+		write(*,*) "You may encounter resonances which cause the simulation to fail"
+	endif
+ enddo
+
 end subroutine InitNormalModes
 
 !-----------------------------------------------------------------------------------------

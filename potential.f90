@@ -56,7 +56,6 @@ else
    polar_model = .false.
 endif
 
-save_dd = .false.
 if (allocated(R)) then
    deallocate(R, dR, charge, Efq, phi)
    if (polar_model) deallocate(Efd, dip, olddip, grdq)

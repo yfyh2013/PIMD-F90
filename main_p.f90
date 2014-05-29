@@ -48,9 +48,8 @@ endif!(pid .eq. 0)
 !----------- MD Part of the program ---------------------------------------------
 !---------------------------------------------------------------------------------
 do t = 1, num_timesteps + eq_timesteps
-	!----- Verlet integration -------
+	!----- Velocity-Verlet integration -------
 	if (pid .eq. 0) then
-
 		!Propagate NH chains 
 		if (BEADTHERMOSTAT) call bead_thermostat
 		
@@ -63,8 +62,10 @@ do t = 1, num_timesteps + eq_timesteps
 		PPt = PPt - MASSCON*dRRt*delt2
 		
 		!Normal modes stuff
+	      if (.not. (CONTRACTION)) then
+	
 		call MPItimer(2,'start',secondsNM)
-
+		
 		if (Nbeads .gt. 1) then
 			do i = 1, Nwaters
 				!Evolve ring a full step 
@@ -92,12 +93,14 @@ do t = 1, num_timesteps + eq_timesteps
 
 		!check PBCs
 		call PBCs(RRt, RRc)
+
+	      endif!.not. (CONTRACTION)
 	
 	endif!if (pid .eq. 0) 
-	
 	!------ call force routine ------------------------------------ 
 	if (CONTRACTION .eqv. .false.) then	
 		call full_bead_forces
+
 	else 	
 		call contracted_forces
 	endif 
