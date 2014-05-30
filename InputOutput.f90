@@ -331,7 +331,7 @@ end subroutine read_coords
 !-----------------------------------------------------------------------------------------
 subroutine open_files
  Implicit none 
- logical :: EXIST
+ logical :: EXISTS
 
  if (coord_out) then
 	open(20, file='out_'//TRIM(fsave)//'_coord.xyz', status='unknown')
@@ -349,11 +349,12 @@ subroutine open_files
 	open(26, file='out_'//TRIM(fsave)//'_Edip.dat', status='unknown')
  endif
  if (TD_out) then 
-	inquire(file="test.txt", exist=EXIST)
-  	if (EXIST) then
-   		open(12, file='out_'//TRIM(fsave)//'_tot_dip.dat', status="old", position="append", action="write")
+	inquire(file='out_'//TRIM(fsave)//'_tot_dip.dat', exist=EXISTS)
+  	if (EXISTS) then
+		write(*,*) "Total dipole file already exists, appending to end of file"
+   		open(23, file='out_'//TRIM(fsave)//'_tot_dip.dat', status="old", position="append", action="write")
   	else
-    		open(12, file='out_'//TRIM(fsave)//'_tot_dip.dat', status="new", action="write")
+    		open(23, file='out_'//TRIM(fsave)//'_tot_dip.dat', status="unknown")
 	endif
  endif
  if (BOXSIZEOUT) then 
@@ -448,21 +449,20 @@ subroutine write_out
 
 
  !caculate dipole moments only if necessary 
- !if (  (DIELECTRICOUT .and. ( mod(t,10) .eq. 0 )  )  .or. &
-!	 ( (t .gt. eq_timesteps) .and. &
- !( ( (mod(t,td_freq) .eq. 0) .and. TD_out) .or. (dip_out .and. (mod(t,t_freq) .eq. 0))))) then 
-      	!calculate dipole moment by averaging over all beads
- 	do iw=1,Nwaters
-		do j = 1, 3
-			dip_momI(j,iw) = sum(dip_momIt(j,iw,:))/Nbeads
-		enddo
+ !if ( (DIELECTRICOUT .and. (mod(t,10).eq.0) )  .or. ( (t .gt. eq_timesteps) .and. ( (TD_out) .or. ( dip_out.and.(mod(t,t_freq).eq.0) ) ) )  then 
+ 
+ !calculate dipole moment by averaging over all beads
+ do iw=1,Nwaters
+	do j = 1, 3
+		dip_momI(j,iw) = sum(dip_momIt(j,iw,:))/Nbeads
 	enddo
-	!convert into Debye here
-	dip_momI = dip_momI*DEBYE/CHARGECON   
-	!caculate total dipole moment (in Debye)
-	dip_mom(1:3) = sum(dip_momI(1:3, 1:Nwaters), dim=2)
- !endif 
+enddo
 
+ !convert into Debye here
+ dip_momI = dip_momI*DEBYE/CHARGECON   
+
+ !caculate total dipole moment (in Debye)
+ dip_mom(:) = sum(dip_momI(:,:), dim=2)
 
  !update quantities for dielectric constant 
  !it really isn't necessary to do this every timestep, so we do it every 10 steps
@@ -509,7 +509,6 @@ subroutine write_out
 
  !write out data during run 
  if  (t .gt. eq_timesteps) then
-	
 	if (mod(t,t_freq)  == 0 ) then 
 		!coordinate output
 		if (coord_out) then
@@ -704,6 +703,30 @@ write(TPoutStream,'(a50, f10.2)') "ps/day = ",  (  (num_timesteps + eq_timesteps
 	close(41)
  endif
 
+ if (coord_out) then
+	close(20)
+ endif
+ if (vel_out) then 	
+	close(21)
+ endif
+ if (OUTPUTIMAGES) then
+	close(27)
+ endif
+ if  (dip_out) then
+	close(22)
+ endif
+ if  (Edip_out) then
+	close(26)
+ endif
+ if (TD_out) then 
+	close(12)
+ endif
+ if (BOXSIZEOUT) then 
+	close(25)
+ endif
+ if (TP_out) then 
+	close(24)
+ endif
 end subroutine print_run
 
 !----------------------------------------------------------------------------------!

@@ -67,7 +67,6 @@ do iw=1, Nwaters
    roh2 = roh2 - box(1)*anint(roh2*boxi(1))!PBC
 
    R(1:3, iM) = 0.5d0*gammaM*( roh1(:) + roh2(:) ) + R(:,iO)
-   R(:, iM) = R(:, iM) - box(1)*anint(R(:, iM)*boxi(1))!PBC
 
 !.... determine M-site positions for RRRc
    roh1 = RRRc(1:3, iH1) - RRRc(1:3,iO)
@@ -76,8 +75,7 @@ do iw=1, Nwaters
    roh2 = RRRc(1:3, iH2) - RRRc(1:3,iO)
    roh2 = roh2 - box(1)*anint(roh2*boxi(1))!PBC
 
-   RRRc(1:3, iM) = 0.5d0*gammaM*( roh1(:) + roh2(:) ) + RRRc(:,iO)
-   RRRc(:, iM) = RRRc(:, iM) - box(1)*anint(RRRc(:, iM)*boxi(1))!PBC
+   RRRc(:, iM) = 0.5d0*gammaM*( roh1(:) + roh2(:) ) + RRRc(:,iO)
 
 enddo
 
@@ -590,7 +588,7 @@ enddo
 
 !write(*,*) "Udvw_lrc = ", Uvdw_lrc
 
-virt(1,1) = virt(1,1) - Uvdw_lrc !?? I guess this makes sense ?? The factor is small in any case (4 percent)
+virt(1,1) = virt(1,1) - Uvdw_lrc !?? I guess this makes sense ?? The factor is small in any case (4 percent for 128 molecules)
 virt(2,2) = virt(2,2) - Uvdw_lrc  
 virt(3,3) = virt(3,3) - Uvdw_lrc
 virialc = virialc -  3*Uvdw_lrc

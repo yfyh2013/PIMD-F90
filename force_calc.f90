@@ -90,10 +90,14 @@ subroutine contracted_forces
  double precision, dimension(3,Natoms,Nbeads)  ::  dRRfast
  double precision, dimension(3,Natoms) :: dRRc
  double precision, dimension(3,3)      :: dr1, r1
- double precision, dimension(3)        :: roh1, roh2
+ double precision, dimension(3)        :: roh1, roh2, rh1m, rh2m, rM
  integer :: tintra
 
  if (pid .eq. 0) then
+
+   Umonomers = 0 
+   virialmon = 0 
+   virialcmon = 0 
 	   
    !---  intramolecular (fast) forces --------------------------------------------------- 
    do tintra = 1, intra_timesteps
@@ -111,50 +115,26 @@ subroutine contracted_forces
 		call MPItimer(2, 'stop ', secondsNM)
 	!update fast forces (intramolecular forces)
 	!masternode calcuates the intramolecular forces, puts them in dRRfast
+
 	Umonomers = 0 
 	virialmon = 0 
 	virialcmon = 0 
-
 	do j = 1, Nbeads
 		do iw = 1, Nwaters
 			iO=3*iw-2; iH1 = 3*iw-1; iH2=3*iw-0
-			
+
 	   		r1(1:3, 1:3) = RRt(1:3, (/iO, ih1, ih2/), j)
 
 		  	call pot_nasa(r1, dr1, e1, box, boxi)  
 
 			dRRfast(1:3, (/iO, iH1, iH2/), j) = dr1
 
-			!if last timestep in loop, update energies and virial
+			!if last timestep in loop update energies 
 			if (tintra .eq. intra_timesteps) then
 				Umonomers = Umonomers + e1
-
-				roh1 = r1(:,2) - r1(:,1)
-       				roh1 = roh1 - box(1)*anint(roh1*boxi(1)) !PBC
-        			roh2 = r1(:,3) - r1(:,1)
-       				roh2 = roh2 - box(1)*anint(roh2*boxi(1)) !PBC
-
-				virialmon = virialmon + dot_product(roh1, dr1(:,2))
-				virialmon = virialmon + dot_product(roh2, dr1(:,3)) 
-
-
-				!repeat for centroid virial
-				RRc = sum(RRt,3)/Nbeads
- 				r1(1:3, 1:3) = RRc(1:3, (/iO, ih1, ih2/) )
-
- 				roh1 = r1(:,2) - r1(:,1)
- 				roh1 = roh1 - box(1)*anint(roh1*boxi(1)) !PBC
-  				roh2 = r1(:,3) - r1(:,1)
-  				roh2 = roh2 - box(1)*anint(roh2*boxi(1)) !PBC
-
- 				virialcmon = virialcmon + dot_product(roh1, dr1(:,2)) 
-  				virialcmon = virialcmon + dot_product(roh2, dr1(:,3)) 
-
 			endif
-
 		enddo
 	enddo
-
 
         !update momenta with fast forces
         PPt = PPt - MASSCON*dRRfast*delt2fast
@@ -169,8 +149,6 @@ subroutine contracted_forces
 
  !check PBCs
  call PBCs(RRt, RRc)
-
-
 
  !intermolecular force calculation
   !if (Nnodes .gt. 1) then 
@@ -190,11 +168,49 @@ subroutine contracted_forces
 	call potential(RRc, RRc, Upot, dRRc, virt, virialc, dip_momI, dip_momE, chg, t, BAROSTAT)
   ! endif
 
-   !update dRRt, Upot, virial and virialc
+   !update dRRt
    do j = 1, Nbeads
-   	dRRt(:,:,j) = dRRc
+	dRRt(:,:,j) = dRRc
    enddo
 
+  !calculate dipole moments and virial
+  do j = 1, Nbeads
+	do iw = 1, Nwaters
+		iO=3*iw-2; iH1 = 3*iw-1; iH2=3*iw-0
+
+		!do centroid virial first
+		roh1 = RRc(1:3, ih1) - RRc(1:3, iO)
+		roh1 = roh1 - box(1)*anint(roh1*boxi(1)) !PBC
+		roh2 = RRc(1:3, ih2) - RRc(1:3, iO)
+		roh2 = roh2 - box(1)*anint(roh2*boxi(1)) !PBC
+
+		virialcmon = virialcmon + dot_product(roh1, dr1(:,2)) 
+		virialcmon = virialcmon + dot_product(roh2, dr1(:,3)) 
+
+
+		!do virial
+		roh1 = RRt(1:3, ih1, j) - RRt(1:3, iO, j)
+       		roh1 = roh1 - box(1)*anint(roh1*boxi(1)) !PBC
+		roh2 = RRt(1:3, ih2, j) - RRt(1:3, iO, j)
+       		roh2 = roh2 - box(1)*anint(roh2*boxi(1)) !PBC
+
+		virialmon = virialmon + dot_product(roh1, dr1(:,2))
+		virialmon = virialmon + dot_product(roh2, dr1(:,3)) 
+
+		!do dipole moments
+		rM(:) = 0.5d0*0.46d0*( roh1(:) + roh2(:) ) + RRt(1:3, iO, j)
+
+		rh1m = RRt(1:3, ih1, j) - rM(:)
+  		rh2m = RRt(1:3, ih2, j) - rM(:)
+
+		dip_momIt(:,iw,j) = chg(iH1)*rh1m + chg(iH2)*rh2m
+	enddo
+	!add polarization dipoles
+   	dip_momIt(:,:,j) = dip_momIt(:,:,j) + dip_momE
+   	dip_momEt(:,:,j) = dip_momE
+   enddo
+ 
+   !update Upot, virial and virialc
    Upot = Upot*Nbeads + Umonomers !potential energy for the ENTIRE system (all images)
    virial = virialmon + virt(1,1) + virt(2,2) + virt(3,3) !virial for the ENTIRE system (all images)
    virialc = virialcmon/Nbeads + virialc
