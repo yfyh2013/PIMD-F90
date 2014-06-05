@@ -421,14 +421,10 @@ subroutine write_out
 
  tr = tr + 1
 
- sys_temp = TEMPFACTOR*uk/(Natoms*Nbeads)
+ sys_temp = TEMPFACTOR*uk/(Natoms*Nbeads*Nbeads)
 
  !- pressure / total energy calculation : old classical case -
- !if (Nbeads .eq. 1) then
-	!sys_press = (1/(3*volume))*( 2*uk -	 MASSCON*( virt(1,1)+virt(2,2)+virt(3,3) )  )
-	!sys_press = PRESSCON*sys_press !convert to bar
- !endif
-
+ !sys_press =  PRESSCON*(1/(3*volume))*( 2*uk -	 MASSCON*( virt(1,1)+virt(2,2)+virt(3,3) )  )
 
  call quantum_virial_estimators(RRt, virial, virialc, tot_energy, sys_press, sys_temp, Upot)
  call simple_quantum_estimators(RRt, virial, simple_energy, simple_sys_press, sys_temp, Upot) 
@@ -479,8 +475,8 @@ enddo
  !print out temperature, pressure, average press, energies & dielectric constant
  if (mod(t,tp_freq) == 0) then
 
-	write(TPoutStream,'(1f10.4,f10.2,f11.2,5f10.2)',advance='no') tr*delt, sys_temp/Nbeads , sys_press, & 
-		sum_temp/tr/Nbeads, sum_press/tr, Upot, tot_energy , sum_tot_energy/tr
+	write(TPoutStream,'(1f10.4,f10.2,f11.2,5f10.2)',advance='no') tr*delt, sys_temp, sys_press, & 
+		sum_temp/tr, sum_press/tr, Upot, tot_energy , sum_tot_energy/tr
 
   	if (SIMPLE_ENERGY_ESTIMATOR) then 
 	 write(TPoutStream,'(4f10.2)',advance='no') simple_sys_press, sum_simple_press/tr, simple_energy, sum_simple_energy/tr
@@ -579,7 +575,7 @@ subroutine quantum_virial_estimators(RRt, virial, virialc, qEnergy, qPress, sys_
  !and that Upot is in kcal/mol and that sys_temp is in Kelvin 
  !This pressure estimator assumes that the potential energy does not have volume dependence
  
- KE = 1.5*Natoms*kb*sys_temp!kinetic energy in kcal/mol
+ KE = 1.5*Natoms*kb*sys_temp*Nbeads!kinetic energy in kcal/mol
 
 
  !writwe(*,*) virial, virialc
@@ -630,7 +626,7 @@ subroutine simple_quantum_estimators(RRt, virial, qEnergy, qPress, sys_temp, Upo
 	enddo
  enddo
 
- KE = 1.5*Natoms*Nbeads*kb*sys_temp !kinetic energy of the beads in kcal/mol
+ KE = 1.5*Natoms*Nbeads*kb*sys_temp*Nbeads !kinetic energy of the beads in kcal/mol
  K0 = .5*K0*(omegan**2)*MASSCONi   !quantum correction to kinetic energy - convert from Ang,amu,ps to kcal/mol
 
  qEnergy = (KE - K0 + Upot )/(Nwaters*Nbeads)   		    !kcal/(mole of mol)
