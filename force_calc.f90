@@ -66,9 +66,11 @@ subroutine full_bead_forces
 
  enddo! j = 0, Nbatches - 1 !batch index
 
+if (pid .eq. 0) then
  Upot    = sum(Upott)    	!potential energy for the ENTIRE system
  virial  = sum(virialt)  	!virial for the ENTIRE system (kcal/mol)
  virialc = sum(virialct)/Nbeads !centroid virial for the ENTIRE system (kcal/mol)
+endif 
 
 end subroutine full_bead_forces
 

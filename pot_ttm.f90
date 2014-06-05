@@ -280,7 +280,7 @@ endif !(EWALD) then
 !........................................................................................!
 predict_step = t
 !write(*,*) "in force calc, t = ", t
-if ( (predict_step .gt. 6) .and. guess_initdip) then
+if ( (predict_step .gt. 4) .and. guess_initdip) then
 	!predictor 
 	call calc_dpcf(predict_step, dpcf)
 	! 	write(*,*) dpcf
@@ -478,9 +478,6 @@ do iw=1, Nwaters
 enddo! do iw=1, Nwaters -1
 
 
-
-
-
 !... self energy
 do iw=1, Nwaters
    do isp=1, 3
@@ -621,16 +618,7 @@ do iw=1, Nwaters
  
    !dip_momI(1:3, iw) = charge(iH1)*rh1m + charge(iH2)*rh2m + ( charge(iH1) + charge(iM) + charge(iH2) )*R(:,iM)
    !dip_momI(1:3, iw) = charge(iH1)*R(1:3, iH1) + charge(iH2)*R(1:3, iH2) + charge(iM)*R(1:3, iM)
- !write(*,*) dip_momI(1:3, iw)
-   !if (dip_momI(1,iw) .gt. 5*CHARGECON/DEBYE ) then
-! dip_momI(1,iw) = 1
-! endif
- ! if (dip_momI(2,iw) .gt. 5*CHARGECON/DEBYE ) then
-! dip_momI(2,iw) = 1
-! endif
- ! if (dip_momI(3,iw) .gt. 5*CHARGECON/DEBYE ) then
-! dip_momI(3,iw) = 1
-! endif
+
    do isp=fdI, ldI
        iat= iw + (isp-1)*Nwaters
        dip_momI(1:3, iw) = dip(1:3, iat) + dip_momI(1:3, iw)

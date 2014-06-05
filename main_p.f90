@@ -54,7 +54,7 @@ do t = 1, num_timesteps + eq_timesteps
 		if (BEADTHERMOSTAT) call bead_thermostat
 		
 		if (THERMOSTAT)  then 
-			call Nose_Hoover(s, uk, global_chain_length, vxi_global, tau, delt2, 3*Natoms, temp)
+			call Nose_Hoover(s, uk, global_chain_length, vxi_global, tau, delt2, 3*Natoms*Nbeads, temp*Nbeads)
 			PPt = PPt*s
 		endif
 
@@ -125,7 +125,7 @@ do t = 1, num_timesteps + eq_timesteps
 		call calc_uk_centroid
 
 		if (THERMOSTAT)     then 
-			call Nose_Hoover(s, uk, global_chain_length, vxi_global, tau, delt2, 3*Natoms, temp)
+			call Nose_Hoover(s, uk, global_chain_length, vxi_global, tau, delt2, 3*Natoms*Nbeads, temp*Nbeads)
 			PPt = PPt*s
 		endif
 		

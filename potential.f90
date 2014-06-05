@@ -178,10 +178,9 @@ if (polar_model) then
    allocate(dip(3,fd:ld))
    allocate(dipt(fd:ld, 3))
    allocate(olddip(3,fd:ld))
-   !!allocate(tx_dip(3,fd:ld, 4)) !!moved by Dan Elton
-   allocate(tmp_arr(NatomsM))
-   allocate(previous_dips(3,fd:ld, 4, 1)); previous_dips = 0.d0
+   allocate(tx_dip(3,fd:ld, 4))  
    allocate(grdq(Nwaters,3,3,3))
+   tx_dip = 0 
 endif
 
 if (pot_model==4 .or. pot_model==5) then

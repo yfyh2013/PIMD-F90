@@ -50,6 +50,7 @@ double precision :: harmka, harmkb, roh0, th0, qO, qH
 !----------------------------------------------------------------------------!
 ! Auxiliary variables and arrays                                             !
 !----------------------------------------------------------------------------!
+ double precision, dimension(:,:,:),  allocatable :: tx_dip 
 
 double precision, dimension(:,:), allocatable :: R, dR, dipt, dip, Efq, Efd
 double precision, dimension(:,:), allocatable, save :: olddip
@@ -70,7 +71,7 @@ double precision, dimension(:,:), allocatable :: coskx,cosky,coskz, sinkx,sinky,
 double precision, dimension(:), allocatable   :: coskxky,coskr,   sinkxky,sinkr
 double precision, dimension(:,:), allocatable :: kvec
 double precision, dimension(:), allocatable :: rQq, iQq, rQm, iQm
-double precision, dimension(:), allocatable :: Ak, dKk, dKkX, tmp_arr, dKkXY
+double precision, dimension(:), allocatable :: Ak, dKk, dKkX, dKkXY
 integer :: nkvec, hmax, kmax, lmax, ewald_nk, ewald_ksqmax
 
 double precision, dimension(:,:), allocatable :: fr, theta1, theta2, theta3,  dtheta1,dtheta2,dtheta3

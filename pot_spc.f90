@@ -6,7 +6,7 @@ use neigh_mod
 use math
 implicit none
 double precision, dimension(3, Natoms), intent(in) :: RR
-double precision, intent(out) :: En
+double precision, intent(out) :: En 
 double precision, dimension(3, Natoms), intent(out) :: dRR
 double precision, dimension(3, 3), intent(out) :: virt
 double precision, dimension(3, NWaters), intent(out) ::  dip_momI
@@ -98,6 +98,11 @@ if (pot_model==4) then !  Harmonic oscillators (qspcfw)
       do iy=1,3
          virt(1:3,iy)=virt(1:3,iy) + ROH1(1:3)*dh1(iy) + ROH2(1:3)*dh2(iy)
       enddo
+
+
+     ! virialc = virialc + dot_product(ROH1,dh1)
+      !virialc = virialc + dot_product(ROH2,dh2)
+
    enddo
 else if (pot_model==5) then   ! More oscillators (spcfw) JCP 106 2400
  rhh0 = 2.d0*dsin(0.5d0*th0)*roh0

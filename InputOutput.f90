@@ -147,10 +147,8 @@ endif
 allocate(dip_momI(3, Nwaters))
 allocate(dip_momE(3, Nwaters))
 allocate(chg (Natoms))
-allocate(tx_dip(3,4*Nwaters, 4))
+!allocate(tx_dip(3,4*Nwaters, 4))
 allocate(RRc(3, Natoms))
-
-tx_dip = 0 
 
 end subroutine initialize_all_node_variables
 
@@ -217,6 +215,11 @@ endif
 
 if ( Nnodes .gt. Nbeads) then 
 	write(*,*) "ERROR : The number of processors is greater than the number of beads! Assuming this is an error! "
+	stop
+endif
+
+if ( (pot_model .gt. 4) .or. (pot_model .lt. 1) ) then 
+	write(*,*) "ERROR: Invalid potential model !"
 	stop
 endif
 
@@ -289,7 +292,7 @@ endif
 		allocate(vxi_beads(bead_chain_length,natoms,Nbeads,3))
 		vxi_beads = 0 !set chain velocities to zero initially
 	endif
-	if (bead_thermostat_type .eq. 'Langevin') call Init_Langevin_NM(delt2, CENTROIDTHERMOSTAT, tau_centroid, Nbeads, temp)
+	if (bead_thermostat_type .eq. 'Langevin') call Init_Langevin_NM(delt2, CENTROIDTHERMOSTAT, tau_centroid, Nbeads, Nbeads*temp)
 
 
 end subroutine master_node_init
@@ -531,7 +534,8 @@ enddo
  			do j = 1, 3
 				dip_momE(j,iw) = sum(dip_momEt(j,iw,:))/Nbeads
 			enddo
-			write(26,'(3(1x,f12.4))') dip_momE(:,iw)*DEBYE/CHARGECON 
+			 write(22,'(4(1x,f12.4))') dip_momE(:,iw) , & 
+				 dsqrt(dot_product(dip_momE(:,iw), dip_momE(:, iw))) 
  		     enddo
 	   	endif 
 	endif
@@ -575,14 +579,15 @@ subroutine quantum_virial_estimators(RRt, virial, virialc, qEnergy, qPress, sys_
  !and that Upot is in kcal/mol and that sys_temp is in Kelvin 
  !This pressure estimator assumes that the potential energy does not have volume dependence
  
- KE = 1.5*Natoms*kb*sys_temp*Nbeads!kinetic energy in kcal/mol
+ KE = 1.5*Natoms*kb*sys_temp!kinetic energy in kcal/mol
+
 
  !writwe(*,*) virial, virialc
 
  !convert to kcal/(mole of mol H2O) by dividing by Nwaters
- qEnergy = ( KE + .5*(virial - nbeads*virialc ) + Upot )/(Nwaters*Nbeads) 
+ qEnergy = ( KE  +  .5*(virial -  virialc ) + Upot )/(Nwaters*Nbeads) 
 
- qPress  =  PRESSCON2*(1/(3*volume))*( 2*KE - virialc )/Nwaters !factor of 1/3 not in Tuckerman's book. (book is wrong!!)
+ qPress  =  PRESSCON2*(1/(3*volume))*( 2*KE - virialc )/(Nwaters*Nbeads) !factor of 1/3 not in Tuckerman's book. (book is wrong!!)
 
 
 end subroutine quantum_virial_estimators
@@ -743,8 +748,10 @@ subroutine print_basic_run_info
  write(TPoutStream,'(a50, f8.4,a25,f8.4)') "  mass of oxygen = ", massO
  if (CONTRACTION) write(TPoutStream,'(a50,a)') "ring polymer contraction to centroid = ", "yes"
  if (.not. CONTRACTION) write(TPoutStream,'(a50,a)') "ring polymer contraction to centroid = ", "no"
- if (THERMOSTAT) write(TPoutStream,'(a50, f10.3,a3)') "Nose-Hoover tau = ", tau, " ps"
- if (.not. THERMOSTAT) write(TPoutStream,'(a50, a3)') "Nose-Hoover tau = ", "n/a"
+ if (THERMOSTAT) write(TPoutStream,'(a50, a )')  " type of global thermostat = ", "Nose-Hoover"
+ if (.not. THERMOSTAT) write(TPoutStream,'(a50, a )')  " type of global thermostat = ", "none"
+ if (.not. THERMOSTAT) write(TPoutStream,'(a50, a3)') "global thermostat tau = ", "n/a"
+ if (THERMOSTAT) write(TPoutStream,'(a50, f10.3,a3)') "global thermostat tau = ", tau, " ps"
  if (BEADTHERMOSTAT) write(TPoutStream,'(a50, a )')  " type of bead thermostat = ", bead_thermostat_type
  if (CENTROIDTHERMOSTAT) write(TPoutStream,'(a50, a )')  " centroid thermostating = ", "yes"
  if (.not. CENTROIDTHERMOSTAT) write(TPoutStream,'(a50, a )')  " centroid thermostating = ", "no"

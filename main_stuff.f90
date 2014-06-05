@@ -320,11 +320,10 @@ else if ( (.not. GENVEL) .and. (.not. INPCONFIGURATION)) then
 endif 
 
 end subroutine initialize_velocities
-
-
+!---------------------------------------------------------------------------------
+!------------------------------ calc total kinetic energy -----------------------
+!---------------------------------------------------------------------------------
 subroutine calc_uk
-
-
 
  uk = 0 
  do j = 1, Nbeads
@@ -338,6 +337,9 @@ subroutine calc_uk
 
 end subroutine calc_uk
 
+!---------------------------------------------------------------------------------
+!------------------------------ calc bead kinetic energy -----------------------
+!---------------------------------------------------------------------------------
 subroutine calc_uk_centroid
  uk = 0
  do i = 1,Nwaters
