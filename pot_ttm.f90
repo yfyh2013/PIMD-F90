@@ -31,7 +31,7 @@ integer , save :: pr_Natoms
 double precision, dimension(5) :: tmp_arr5
 integer, intent(in) :: t
 logical :: EWALD = .true.
-type(t_neigh) :: neigh , neighc
+type(t_neigh) :: neigh 
 
 if (.not. allocated(R) .or. Natoms/=pr_Natoms .or. &
       dsqrt(dot_product(box-pr_box, box-pr_box))>1.d-12) then
@@ -316,7 +316,7 @@ do iter=1, polar_maxiter
          Rij = neigh % Rij(1:3, j)
          dRsq = neigh % R2(j)
          Rij0 = Rij - R(1:3, iO) + R(1:3, jO)!????????????????????
-	! Rij0 = Rij0 - box(1)*anint(Rij0*boxi(1)) !PBC
+	 Rij0 = Rij0 - box(1)*anint(Rij0*boxi(1)) !PBC
          do isp=fdI, ldI
             iat = iO + (isp-1)*Nwaters
             polfacI = aDD*polfac(isp)
@@ -404,7 +404,7 @@ do iw=1, Nwaters
       Rij = neigh % Rij(1:3, j)
       dRsq = neigh % R2(j)
       Rij0 = Rij - R(1:3, iO) + R(1:3, jO)! PBCs are implemented through Rij0
-      !Rij0 = Rij0 - box(1)*anint(Rij0*boxi) !PBC
+      Rij0 = Rij0 - box(1)*anint(Rij0*boxi) !PBC
       
 
 	do isp=1, 4

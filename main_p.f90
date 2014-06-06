@@ -122,7 +122,7 @@ do t = 1, num_timesteps + eq_timesteps
 		!Propagate NH chains 
 		if (BEADTHERMOSTAT) call bead_thermostat
 
-		call calc_uk_centroid
+		call calc_uk 
 
 		if (THERMOSTAT)     then 
 			call Nose_Hoover(s, uk, global_chain_length, vxi_global, tau, delt2, 3*Natoms*Nbeads, temp*Nbeads)
