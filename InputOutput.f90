@@ -172,27 +172,23 @@ if ( .not.( (bead_thermostat_type .eq. 'Langevin') .or. (bead_thermostat_type .e
 endif
 
 if ((CENTROIDTHERMOSTAT .or. BEADTHERMOSTAT) .and. (Nbeads .eq. 1)) then
-	write(*,*) "WARNING: Bead/centroid thermostating does not make much sense with 1 bead."
+	write(TPoutStream,*) "WARNING: Bead/centroid thermostating does not make much sense with 1 bead."
 	write(*,*) "The dynamics will be unphysical since every atomic DOF will be thermostated. "
 endif
 
 if (BEADTHERMOSTAT .and. .not. (THERMOSTAT)) then
-	write(*,*) "WARNING: running bead thermostating without a global thermostat is not recommended."
+	write(TPoutStream,*) "WARNING: running bead thermostating without a global thermostat is not recommended."
 	write(*,*) "You may observe abnormally large temperature fluctuations in the system."
 endif
 
 if (CENTROIDTHERMOSTAT.and. .not. (BEADTHERMOSTAT)) then
-	write(*,*) "WARNING: You are thermostating the centroid but not thermostating the other modes."
+	write(TPoutStream,*) "WARNING: You are thermostating the centroid but not thermostating the other modes."
 	write(*,*) "There is not really any good reason for doing this. Consider a different scheme." 
 endif
 
-if (.not. ( (box(1).eq.box(2)) .and. (box(2).eq.box(3)) ) ) then
-	write(*,*) 'ERROR: program can only handle square boxes.(it can be adapted for non-square but has not so far)'
-	stop 
-endif   
 
-if ( Rc .gt. box(1)/2 ) then
-	write(*,*) 'WARNING: cutoff radius is larger than half box size'
+if ( Rc .gt. min(box)/2 ) then
+	write(TPoutStream,*) 'ERROR: cutoff radius is greater than half the smallest box dimension (', min(box), ')'
 	stop
 endif  
 
@@ -423,6 +419,22 @@ subroutine write_out
 
  sys_temp = TEMPFACTOR*uk/(Natoms*Nbeads*Nbeads)
 
+ call calc_uk_centroid
+ write(*,*) "centroid temp =", TEMPFACTOR*uk/(Natoms)
+
+
+ uk = 0 
+ do j = 1, Nbeads
+	do i = 1,Nwaters
+		uk = uk + imassO*sum( PPt(:,3*i-2,j)**2 ) 
+		uk = uk + imassH*sum( PPt(:,3*i-1,j)**2 ) 
+		uk = uk + imassH*sum( PPt(:,3*i-0,j)**2 ) 
+	enddo
+ enddo	
+ uk = .5d0*uk 
+
+ write(*,*) "naive bead temp =", TEMPFACTOR*uk/(Natoms)
+
  !- pressure / total energy calculation : old classical case -
  !sys_press =  PRESSCON*(1/(3*volume))*( 2*uk -	 MASSCON*( virt(1,1)+virt(2,2)+virt(3,3) )  )
 
@@ -498,7 +510,7 @@ enddo
 	endif 
 
 	!feature to output the current density (for debugging the barostat) 
-	write(TPoutStream,'(1x,f10.6)',advance='no') Nwaters*(massO+2*massH)*amu2grams/((a2m*box(1)*100)**3)
+	write(TPoutStream,'(1x,f10.6)',advance='no') Nwaters*(massO+2*massH)*amu2grams/(box(1)*box(2)*box(3)*(a2m*100)**3)
 
 	!advance to next line
 	write(TPoutStream,'(a)') ""
@@ -550,8 +562,8 @@ endif
 !box size output stuff 
 if (BAROSTAT) then 
         !for accuracy, box size computed at every timestep
-        sum_box  = sum_box + box(1)
-        sum_box2 = sum_box2 + box(1)**2
+        sum_box  = sum_box + box
+        sum_box2 = sum_box2 + box**2
         if (BOXSIZEOUT .and. (mod(t,t_freq) .eq. 0) ) write(25,*) sum_box/t
 endif 
 
@@ -618,9 +630,9 @@ subroutine simple_quantum_estimators(RRt, virial, qEnergy, qPress, sys_temp, Upo
 		endif
 		do i = 1, 3
 			if (k .eq. 1) then
-				K0 = K0 + MassScaleFactor(k)*mass*( RRt(i,j,k) - RRt(i,j,Nbeads) )**2
+				K0 = K0 + mass*( RRt(i,j,k) - RRt(i,j,Nbeads) )**2
 			else
-				K0 = K0 + MassScaleFactor(k)*mass*( RRt(i,j,k) - RRt(i,j,k-1) )**2
+				K0 = K0 + mass*( RRt(i,j,k) - RRt(i,j,k-1) )**2
 			endif
 		enddo
 	enddo
@@ -676,7 +688,7 @@ write(TPoutStream,'(a50, f10.2)') "ps/day = ",  (  (num_timesteps + eq_timesteps
         avg_box  = sum_box/t 
 
         isotherm_compress = (avg_box2**3 - (avg_box**3)**2 )*(10d-7)/(1.38d0*avg_temp*avg_box)
-	write(TPoutStream,'(a50, f10.6)') "average box size (over entire run) (Ang) = ", avg_box
+	write(TPoutStream,'(a50, 3f10.6)') "average box size (over entire run) (Ang) = ", avg_box
  !      write(TPoutStream,'(a50, f10.2)') "Isothermal compressibility (only valid in NPT)=", isotherm_compress
  else 
 !       write(TPoutStream,'(a50, a4)') "Isothermal compressibility (only valid in NPT)=", " n/a"
@@ -699,9 +711,9 @@ write(TPoutStream,'(a50, f10.2)') "ps/day = ",  (  (num_timesteps + eq_timesteps
 
 
  if (PRINTFINALCONFIGURATION) then 
-	open(41, file='out_'//TRIM(fsave)//'_fin_image.xyz', status='unknown')
+	open(40, file='out_'//TRIM(fsave)//'_fin_image.xyz', status='unknown')
 		call save_configuration(40, RRt, PPt, Upot, t,delt) 
-	close(41)
+	close(40)
  endif
 
  if (coord_out) then

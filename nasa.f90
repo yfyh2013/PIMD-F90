@@ -27,13 +27,13 @@ double precision :: P1, P2, PL1, PL2, PC0
 double precision, dimension(3) :: box, boxi
 
 ROH1(:) = r1(1:3, 2) - r1(1:3,1) 
-ROH1(:) = ROH1(:) - box(1)*anint(ROH1*boxi)!PBC 
+ROH1(:) = ROH1(:) - box*anint(ROH1*boxi)!PBC 
 
 ROH2(:) = r1(1:3, 3) - r1(1:3,1) 
-ROH2(:) = ROH2(:) - box(1)*anint(ROH2*boxi)!PBC
+ROH2(:) = ROH2(:) - box*anint(ROH2*boxi)!PBC
 
 RHH(:)  = r1(1:3, 2) - r1(1:3,3)
-RHH(:)  = RHH(:) - box(1)*anint(RHH*boxi) !PBC
+RHH(:)  = RHH(:) - box*anint(RHH*boxi) !PBC
 
 dROH1 = dsqrt(dot_product(ROH1, ROH1))
 dROH2 = dsqrt(dot_product(ROH2, ROH2))
@@ -145,13 +145,13 @@ costhe = -.24780227221366464506d0
 
 
 ROH1(:) = r1(1:3, 2) - r1(1:3,1) 
-ROH1(:) = ROH1(:) - box(1)*anint(ROH1*boxi)!PBC 
+ROH1(:) = ROH1(:) - box*anint(ROH1*boxi)!PBC 
 
 ROH2(:) = r1(1:3, 3) - r1(1:3,1) 
-ROH2(:) = ROH2(:) - box(1)*anint(ROH2*boxi)!PBC
+ROH2(:) = ROH2(:) - box*anint(ROH2*boxi)!PBC
 
 RHH(:)  = r1(1:3, 2) - r1(1:3,3)
-RHH(:)  = RHH(:) - box(1)*anint(RHH*boxi) !PBC
+RHH(:)  = RHH(:) - box*anint(RHH*boxi) !PBC
 
 
 dROH1 = dsqrt(dot_product(ROH1, ROH1))

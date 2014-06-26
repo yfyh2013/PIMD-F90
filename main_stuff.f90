@@ -1,4 +1,4 @@
-module main_stuff
+	module main_stuff
 use consts
 use system_mod !more global variables
 use mpi
@@ -21,7 +21,7 @@ integer, external :: iargc
  character(len=125) :: finp, fconfig, fsave 
 !-new variables:--------------------------------------------
 double precision, dimension(:,:), allocatable :: VV, dRRold, dRRnew
-double precision, dimension(3) :: summom, sumvel, sum_dip
+double precision, dimension(3) :: summom, sumvel, sum_dip, avg_box, avg_box2, sum_box, sum_box2
 double precision :: delt, delt2,  uk,  imassO, imassH
 double precision :: temp, sum_temp, sum_press, sys_temp, avg_vel, init_energy, sum_RMSenergy
 double precision :: tot_energy, sum_tot_energy, sum_energy2, sum_simple_energy, simple_energy
@@ -29,7 +29,7 @@ double precision :: specific_heat, avg_temp, init_temp, sum_dip2, sum_simple_pre
 double precision :: dielectric_constant, diel_prefac, dielectric_error
 double precision, dimension(1000)  :: dielectric_running
 integer                    :: dielectric_index = 1
-double precision :: avg_box, avg_box2, sum_box, sum_box2, isotherm_compress
+double precision ::  isotherm_compress
 integer, dimension(:), allocatable :: seed
  character(len=125) :: dip_file
  character(len=11)  :: bead_thermostat_type
@@ -87,7 +87,7 @@ subroutine PBCs(RRt, RRc)
  integer :: i
 
 	!store the shifts here 
-	shifts = box(1)*anint(RRc*boxi(1))
+	shifts = box*anint(RRc*boxi)
 
  	!Correct the centroids first
 	RRc = RRc - shifts
@@ -276,9 +276,9 @@ if (GENVEL) then
 
 	do i=1, Nwaters
 		!generate the bead momenta from the canonical distribution for a free ring polymer
-		Call gen_rand_ring_momenta(PPt(:,3*i-2,:),massO,temp,Nbeads)	
-		Call gen_rand_ring_momenta(PPt(:,3*i-1,:),massH,temp,Nbeads)	
-		Call gen_rand_ring_momenta(PPt(:,3*i-0,:),massH,temp,Nbeads)
+		Call gen_rand_ring_momenta(PPt(:,3*i-2,:),massO,temp*Nbeads,Nbeads)	
+		Call gen_rand_ring_momenta(PPt(:,3*i-1,:),massH,temp*Nbeads,Nbeads)	
+		Call gen_rand_ring_momenta(PPt(:,3*i-0,:),massH,temp*Nbeads,Nbeads)
 		!sum up the bead momenta		
 		do j = 1, Nbeads	
 			summom = summom + PPt(:,3*i-2,j) + PPt(:,3*i-1,j) + PPt(:,3*i-0,j)
@@ -296,17 +296,11 @@ if (GENVEL) then
 	PPc = sum(PPt, 3)/Nbeads !centroid momenta
 
 	!update kinetic energy 
-	uk = 0
-	do i = 1,Nwaters
-		uk = uk + imassO*sum( PPc(:,3*i-2)**2 )
-		uk = uk + imassH*sum( PPc(:,3*i-1)**2 )
-		uk = uk + imassH*sum( PPc(:,3*i-0)**2 )
-	enddo	
-	uk = .5d0*uk 
+	call calc_uk_centroid
 	
-	sys_temp = TEMPFACTOR*uk/Natoms
+	sys_temp = TEMPFACTOR*uk/(Natoms)
 
-	!write(*,*) sys_temp
+	write(*,*) sys_temp
 
 	if ( abs(sys_temp - temp) .lt. 1 ) then
 		exit
@@ -324,16 +318,44 @@ end subroutine initialize_velocities
 !------------------------------ calc total kinetic energy -----------------------
 !---------------------------------------------------------------------------------
 subroutine calc_uk
+ use NormalModes
+ double precision, dimension(3,Nbeads) :: PPtr 
+
+
+if (setNMfreq .eq. 0) then 
+
 
  uk = 0 
  do j = 1, Nbeads
 	do i = 1,Nwaters
-		uk = uk + imassO*sum( PPt(:,3*i-2,j)**2 )
-		uk = uk + imassH*sum( PPt(:,3*i-1,j)**2 )
-		uk = uk + imassH*sum( PPt(:,3*i-0,j)**2 )
+		uk = uk + imassO*sum( PPt(:,3*i-2,j)**2 ) 
+		uk = uk + imassH*sum( PPt(:,3*i-1,j)**2 ) 
+		uk = uk + imassH*sum( PPt(:,3*i-0,j)**2 ) 
 	enddo
  enddo	
  uk = .5d0*uk 
+
+
+else
+!if using CMD then transform into normal mode space to calculate kinetic energy.. 
+ uk = 0  
+ do i = 1,Nwaters
+	PPtr =  real2NM(PPt(:,3*i-2,:),Nbeads) 
+	do j = 1, Nbeads
+		uk = uk + imassO*sum( PPtr(:,j)**2 )/MassScaleFactor(j)
+	enddo
+	PPtr =  real2NM(PPt(:,3*i-1,:),Nbeads) 
+	do j = 1, Nbeads
+		uk = uk + imassH*sum( PPtr(:,j)**2 )/MassScaleFactor(j)
+	enddo	
+	PPtr =  real2NM(PPt(:,3*i-0,:),Nbeads) 
+	do j = 1, Nbeads
+		uk = uk + imassH*sum( PPtr(:,j)**2 )/MassScaleFactor(j)
+	enddo
+  enddo
+  uk = .5d0*uk 
+
+endif
 
 end subroutine calc_uk
 

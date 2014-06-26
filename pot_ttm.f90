@@ -61,19 +61,19 @@ do iw=1, Nwaters
   
 !.... determine M-site positions for R
    roh1 = R(1:3, iH1) - R(1:3,iO)
-   roh1 = roh1 - box(1)*anint(roh1*boxi(1))!PBC
+   roh1 = roh1 - box*anint(roh1*boxi)!PBC
 
    roh2 = R(1:3, iH2) - R(1:3,iO)
-   roh2 = roh2 - box(1)*anint(roh2*boxi(1))!PBC
+   roh2 = roh2 - box*anint(roh2*boxi)!PBC
 
    R(1:3, iM) = 0.5d0*gammaM*( roh1(:) + roh2(:) ) + R(:,iO)
 
 !.... determine M-site positions for RRRc
    roh1 = RRRc(1:3, iH1) - RRRc(1:3,iO)
-   roh1 = roh1 - box(1)*anint(roh1*boxi(1))!PBC
+   roh1 = roh1 - box*anint(roh1*boxi)!PBC
 
    roh2 = RRRc(1:3, iH2) - RRRc(1:3,iO)
-   roh2 = roh2 - box(1)*anint(roh2*boxi(1))!PBC
+   roh2 = roh2 - box*anint(roh2*boxi)!PBC
 
    RRRc(:, iM) = 0.5d0*gammaM*( roh1(:) + roh2(:) ) + RRRc(:,iO)
 
@@ -109,11 +109,11 @@ do iw=1, Nwaters
    if (CONTRACTION .eqv. .false.) then
    	!add term to virial
   	 roh1 = r1(:,2) - r1(:,1)
-   	 roh1 = roh1 - box(1)*anint(roh1*boxi(1)) !PBC
+   	 roh1 = roh1 - box*anint(roh1*boxi) !PBC
    	 roh2 = r1(:,3) - r1(:,1)
-   	 roh2 = roh2 - box(1)*anint(roh2*boxi(1)) !PBC
+   	 roh2 = roh2 - box*anint(roh2*boxi) !PBC
 	 rhh  = r1(:,3) - r1(:,2) 
-	 rhh  = rhh  - box(1)*anint(rhh*boxi(1)) !PBC
+	 rhh  = rhh  - box*anint(rhh*boxi) !PBC
 
   	 virt(:,1)=virt(:,1) + roh1*dr1(1,2) + roh2*dr1(1,3)! + rhh*dr1(1,3)
    	 virt(:,2)=virt(:,2) + roh1*dr1(2,2) + roh2*dr1(2,3)! + rhh*dr1(2,3)
@@ -122,9 +122,9 @@ do iw=1, Nwaters
  	 !repeat for centroid virial
  	 r1(1:3, 1:3) = RRRc(1:3, (/iO, ih1, ih2/) )
  	 roh1 = r1(:,2) - r1(:,1)
- 	 roh1 = roh1 - box(1)*anint(roh1*boxi(1)) !PBC
+ 	 roh1 = roh1 - box*anint(roh1*boxi) !PBC
   	 roh2 = r1(:,3) - r1(:,1)
-  	 roh2 = roh2 - box(1)*anint(roh2*boxi(1)) !PBC
+  	 roh2 = roh2 - box*anint(roh2*boxi) !PBC
 
  	 virialc = virialc + dot_product(roh1, dr1(:,2)) 
   	 virialc = virialc + dot_product(roh2, dr1(:,3)) 
@@ -204,7 +204,7 @@ do iw=1, Nwaters
             jat = jO + (jsp-1)*Nwaters
             qj = charge(jat)
             Rij = Ri - R(1:3, jat) !PBCs implemented through Rij0 here 
-	    !Rij = Rij - box(1)*anint(Rij*boxi(1)) !PBC
+	    Rij = Rij - box*anint(Rij*boxi) !PBC
 
             dRsq = Rij(1)*Rij(1) + Rij(2)*Rij(2) + Rij(3)*Rij(3)
             call PBCsmear01(dRsq, polfacI*polfac(jsp), aewald, ts0, ts1)
@@ -239,7 +239,7 @@ do iw=1, Nwaters
       do jsp=isp+1, 4
          jat=iw + (jsp-1)*Nwaters
          Rij=R(:,iat)-R(:,jat)
-	 Rij = Rij - box(1)*anint(Rij*boxi(1)) !PBC
+	 Rij = Rij - box*anint(Rij*boxi) !PBC
 	 dRsq = Rij(1)*Rij(1) + Rij(2)*Rij(2) + Rij(3)*Rij(3)
          call self1(dRsq, aewald, ts0, ts1)
          phi(iat)=phi(iat)+ts0*charge(jat)
@@ -316,7 +316,7 @@ do iter=1, polar_maxiter
          Rij = neigh % Rij(1:3, j)
          dRsq = neigh % R2(j)
          Rij0 = Rij - R(1:3, iO) + R(1:3, jO)!????????????????????
-	 Rij0 = Rij0 - box(1)*anint(Rij0*boxi(1)) !PBC
+	 Rij0 = Rij0 - box*anint(Rij0*boxi) !PBC
          do isp=fdI, ldI
             iat = iO + (isp-1)*Nwaters
             polfacI = aDD*polfac(isp)
@@ -326,7 +326,7 @@ do iter=1, polar_maxiter
                jat = jO + (jsp-1)*Nwaters
                dj = dip(1:3, jat)
                Rij = Ri - R(1:3, jat)
-		Rij = Rij - box(1)*anint(Rij*boxi(1)) !PBC
+		Rij = Rij - box*anint(Rij*boxi) !PBC
                dRsq = Rij(1)*Rij(1) + Rij(2)*Rij(2) + Rij(3)*Rij(3)
                call PBCsmear2(dRsq, polfacI*polfac(jsp), aewald, ts1DD, ts2DD)
                call get_dd3(Rij, ts1DD, ts2DD, dd3)
@@ -350,8 +350,8 @@ do iter=1, polar_maxiter
             jat=iw + (jsp-1)*Nwaters
             dj = dip(1:3, jat)
             Rij=(R(:,iat)-R(:,jat))
-		Rij = Rij - box(1)*anint(Rij*boxi) !PBC
-		dRsq=Rij(1)*Rij(1)+Rij(2)*Rij(2) + Rij(3)*Rij(3)
+	    Rij = Rij - box*anint(Rij*boxi) !PBC
+	    dRsq=Rij(1)*Rij(1)+Rij(2)*Rij(2) + Rij(3)*Rij(3)
             call PBCsmear2(dRsq, polfacI*polfac(jsp), aewald, ts1DD, ts2DD)
             call get_dd3(Rij, ts1DD, ts2DD, dd3)
             Efd(1,iat) = Efd(1,iat)+dd3(1,1)*dj(1)+dd3(2,1)*dj(2)+dd3(3,1)*dj(3)
@@ -404,7 +404,7 @@ do iw=1, Nwaters
       Rij = neigh % Rij(1:3, j)
       dRsq = neigh % R2(j)
       Rij0 = Rij - R(1:3, iO) + R(1:3, jO)! PBCs are implemented through Rij0
-      Rij0 = Rij0 - box(1)*anint(Rij0*boxi) !PBC
+      Rij0 = Rij0 - box*anint(Rij0*boxi) !PBC
       
 
 	do isp=1, 4
@@ -417,7 +417,7 @@ do iw=1, Nwaters
          do jsp=1, 4
             jat = jO + (jsp-1)*Nwaters
             Rij = Ri - R(1:3, jat)
-            !Rij = Rij - box(1)*anint(Rij*boxi) !PBC
+            Rij = Rij - box*anint(Rij*boxi) !PBC
             dRsq = Rij(1)*Rij(1) + Rij(2)*Rij(2) + Rij(3)*Rij(3)
             qj = charge(jat)
             dj = 0.d0; if (jsp>=fdI .and. jsp<=ldI) dj = dip(1:3, jat)
@@ -490,10 +490,10 @@ do iw=1, Nwaters
 	 ! dj=0.d0; if (jsp<=3) dj = dip(1:3, jat)
          dj = 0.d0; if (jsp>=fdI .and. jsp<=ldI) dj = dip(1:3, jat)
          Rij= R(:,iat) - R(:,jat)
-	Rij = Rij - box(1)*anint(Rij*boxi) !PBC
+	Rij = Rij - box*anint(Rij*boxi) !PBC
 
 	Rcij = RRRc(1:3, iat) - RRRc(1:3, jat)
-     	Rcij = Rcij - box(1)*anint(Rcij*boxi) !PBC
+     	Rcij = Rcij - box*anint(Rcij*boxi) !PBC
 
 	dRsq = Rij(1)*Rij(1) + Rij(2)*Rij(2) + Rij(3)*Rij(3)
          !....... dipole-dipole interaction (SELF)
@@ -563,9 +563,9 @@ do iw=1, Nwaters
    dR(:,iH2)=dR(:,iH2)+dgrad(:,3)
    dR(:,iO )=dR(:,iO )+dgrad(:,1)
    Roh1=R(:,ih1)-R(:,io)
-   Roh1 = Roh1 - box(1)*anint(Roh1*boxi) !PBC
+   Roh1 = Roh1 - box*anint(Roh1*boxi) !PBC
    Roh2=R(:,ih2)-R(:,io)
-   Roh2 = Roh2 - box(1)*anint( Roh2*boxi) !PBC
+   Roh2 = Roh2 - box*anint( Roh2*boxi) !PBC
    do ix=1, 3
       do iy=1, 3
          virt(ix,iy) = virt(ix, iy) + roh1(ix)*dgrad(iy,2) + roh2(ix)*dgrad(iy,3)
@@ -573,9 +573,9 @@ do iw=1, Nwaters
    enddo
    !do same thing for centroid virial tensor 
    Roh1=RRRc(:,ih1)-RRRc(:,io)
-   Roh1 = Roh1 - box(1)*anint(Roh1*boxi) !PBC
+   Roh1 = Roh1 - box*anint(Roh1*boxi) !PBC
    Roh2=RRRc(:,ih2)-RRRc(:,io)
-   Roh2 = Roh2 - box(1)*anint( Roh2*boxi) !PBC
+   Roh2 = Roh2 - box*anint(Roh2*boxi) !PBC
 
    virialc = virialc + roh1(1)*dgrad(1,2) + roh2(1)*dgrad(1,3)
    virialc = virialc + roh1(2)*dgrad(2,2) + roh2(2)*dgrad(2,3)
@@ -606,13 +606,13 @@ do iw=1, Nwaters
    iO=fO+iw-1; iH1=iO+Nwaters; iH2=iO+2*Nwaters; iM=iO+3*Nwaters
    !Rewritten to include PBCs
    rh1m=R(:,iH1)-R(:,iM)
-   rh1m = rh1m - box(1)*anint(rh1m*boxi) !PBC
+   rh1m = rh1m - box*anint(rh1m*boxi) !PBC
 
    rh2m=R(:,iH2)-R(:,iM)
-   rh2m = rh2m - box(1)*anint(rh2m*boxi) !PBC
+   rh2m = rh2m - box*anint(rh2m*boxi) !PBC
 
    rmO =R(:,iM) - R(:,iO)
-   rmO = rmO - box(1)*anint(rmO*boxi) !PBC
+   rmO = rmO - box*anint(rmO*boxi) !PBC
    
    dip_momI(1:3, iw) = charge(iH1)*rh1m + charge(iH2)*rh2m
  

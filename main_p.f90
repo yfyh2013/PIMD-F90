@@ -35,12 +35,12 @@ call init_pot
 
 !------------------Master node stuff --------------------------------------------
 if (pid .eq. 0) then
+	call open_files
 	call master_node_init
 	call read_coords           ! Read in coord data to RRc 
 	call initialize_beads      ! Initialize RRt
 	call initialize_velocities ! Initialize PPt
 	call calc_uk 		    ! Initalize kinetic energy
-	call open_files
 	call MPItimer(1,'start',seconds)
 endif!(pid .eq. 0)
 
@@ -109,7 +109,7 @@ do t = 1, num_timesteps + eq_timesteps
 	if (pid .eq. 0) then
 
 		!update kinetic energy 
-		call calc_uk
+		call calc_uk 
 
 		!write stuff out if necessary 
 		call MPItimer(3, 'start', secondsIO)

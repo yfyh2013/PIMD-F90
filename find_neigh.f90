@@ -38,7 +38,7 @@ subroutine find_neigh(iO, RR, neigh)
 
 !      do j=iO+1, Nwaters
 !        Rij = Ri - RR(1:3, j)
-!	! Rij = Rij - box(1)*anint(Rij/box(1)) !PBC
+!	! Rij = Rij - box*anint(Rij/box) !PBC
 !         R2 = Rij(1)*Rij(1) + Rij(2)*Rij(2) + Rij(3)*Rij(3)
 !         if (R2<Rc2) then
 !            N = N+1
@@ -74,7 +74,7 @@ subroutine find_neigh(iO, RR, neigh)
 !note that the loop only goes over the atoms with j>i0. This is because the neighbor routine is called within a loop in the force/potential calculation. 
 	do j=iO+1, Nwaters
         	Rij = Ri - RR(1:3, j)
-		Rij = Rij - box(1)*anint(Rij*boxi(1)) !PBC
+		Rij = Rij - box*anint(Rij*boxi) !PBC
 		
 	           !----------------------------------
 		   !Alternate method of implementing PBCs. 

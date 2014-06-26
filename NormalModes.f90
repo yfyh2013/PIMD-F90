@@ -239,21 +239,16 @@ end subroutine gen_rand_ring
 subroutine gen_rand_ring_momenta(PP,mass,temp,Nbeads)
  use math
  Implicit None
- double precision, parameter :: hbar=6.35077993041d0 !hbar in amu*ang^2/ps
  double precision, parameter :: KB_amuA2ps2perK = .831447148d0
  double precision, dimension(3,Nbeads), intent(out) :: PP
  double precision, dimension(3,Nbeads)	         :: PPtr
  double precision, intent(in) :: mass, temp
- double precision 		 :: std_dev, omega, omegan
- integer 			 		 :: j, k, l
- integer, intent(in) 		 :: Nbeads
-
- omegan = KB_amuA2ps2perK*temp*Nbeads/hbar
-
+ integer 			 :: j, k
+ integer, intent(in) 	 :: Nbeads
 
  do j = 1,Nbeads
 	do k = 1, 3
-		PPtr(k,j) = rand_norm(Sqrt(KB_amuA2ps2perK*mass*MassScaleFactor(j)*Nbeads*temp))
+		PPtr(k,j) = rand_norm(Sqrt(KB_amuA2ps2perK*mass*MassScaleFactor(j)*temp))
 	enddo
  enddo
 

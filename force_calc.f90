@@ -182,9 +182,9 @@ subroutine contracted_forces
 
 		!do centroid virial first
 		roh1 = RRc(1:3, ih1) - RRc(1:3, iO)
-		roh1 = roh1 - box(1)*anint(roh1*boxi(1)) !PBC
+		roh1 = roh1 - box*anint(roh1*boxi) !PBC
 		roh2 = RRc(1:3, ih2) - RRc(1:3, iO)
-		roh2 = roh2 - box(1)*anint(roh2*boxi(1)) !PBC
+		roh2 = roh2 - box*anint(roh2*boxi) !PBC
 
 		virialcmon = virialcmon + dot_product(roh1, dr1(:,2)) 
 		virialcmon = virialcmon + dot_product(roh2, dr1(:,3)) 
@@ -192,9 +192,9 @@ subroutine contracted_forces
 
 		!do virial
 		roh1 = RRt(1:3, ih1, j) - RRt(1:3, iO, j)
-       		roh1 = roh1 - box(1)*anint(roh1*boxi(1)) !PBC
+       		roh1 = roh1 - box*anint(roh1*boxi) !PBC
 		roh2 = RRt(1:3, ih2, j) - RRt(1:3, iO, j)
-       		roh2 = roh2 - box(1)*anint(roh2*boxi(1)) !PBC
+       		roh2 = roh2 - box*anint(roh2*boxi) !PBC
 
 		virialmon = virialmon + dot_product(roh1, dr1(:,2))
 		virialmon = virialmon + dot_product(roh2, dr1(:,3)) 

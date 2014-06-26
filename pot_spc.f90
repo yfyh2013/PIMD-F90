@@ -71,8 +71,8 @@ if (pot_model==4) then !  Harmonic oscillators (qspcfw)
       iO=fO+iw-1; iH1=iO+Nwaters; iH2=iO+2*Nwaters
       r1(1:3, 1:3) = R(1:3, (/iO, ih1, ih2/) )
 !...............
-      ROH1(:)=r1(1:3,2)-r1(1:3,1);roh1=roh1-box*anint(roh1/box(1));dROH1=dsqrt(dot_product(ROH1, ROH1))
-      ROH2(:)=r1(1:3,3)-r1(1:3,1);roh2=roh2-box(1)*anint(roh2/box(1));dROH2=dsqrt(dot_product(ROH2, ROH2))
+      ROH1(:)=r1(1:3,2)-r1(1:3,1);roh1=roh1-box*anint(roh1/box);dROH1=dsqrt(dot_product(ROH1, ROH1))
+      ROH2(:)=r1(1:3,3)-r1(1:3,1);roh2=roh2-box*anint(roh2/box);dROH2=dsqrt(dot_product(ROH2, ROH2))
       AxB(1) = ROH1(2)*ROH2(3) - ROH1(3)*ROH2(2)
       AxB(2) =-ROH1(1)*ROH2(3) + ROH1(3)*ROH2(1)
       AxB(3) = ROH1(1)*ROH2(2) - ROH1(2)*ROH2(1)
@@ -110,9 +110,9 @@ else if (pot_model==5) then   ! More oscillators (spcfw) JCP 106 2400
       iO=fO+iw-1; iH1=iO+Nwaters; iH2=iO+2*Nwaters
       r1(1:3, 1:3) = R(1:3, (/iO, ih1, ih2/) )
 !...............
-      ROH1(:)=r1(1:3,1)-r1(1:3,2);roh1=roh1-box(1)*anint(roh1/box(1));dROH1=dsqrt(dot_product(ROH1, ROH1))!PBC
-      ROH2(:)=r1(1:3,1)-r1(1:3,3);roh2=roh2-box(1)*anint(roh2/box(1));dROH2=dsqrt(dot_product(ROH2, ROH2))!PBC
-      RHH(:) =r1(1:3,2)-r1(1:3,3);rhh =rhh -box(1)*anint(rhh /box(1));dRhh =dsqrt(dot_product(Rhh , Rhh ))!PBC
+      ROH1(:)=r1(1:3,1)-r1(1:3,2);roh1=roh1-box*anint(roh1/box);dROH1=dsqrt(dot_product(ROH1, ROH1))!PBC
+      ROH2(:)=r1(1:3,1)-r1(1:3,3);roh2=roh2-box*anint(roh2/box);dROH2=dsqrt(dot_product(ROH2, ROH2))!PBC
+      RHH(:) =r1(1:3,2)-r1(1:3,3);rhh =rhh -box*anint(rhh /box);dRhh =dsqrt(dot_product(Rhh , Rhh ))!PBC
       dROH1=dsqrt(ROH1(1)*ROH1(1) + ROH1(2)*ROH1(2) + ROH1(3)*ROH1(3) )
       dROH2=dsqrt(ROH2(1)*ROH2(1) + ROH2(2)*ROH2(2) + ROH2(3)*ROH2(3) )
       dRHH =dsqrt(RHH (1)*RHH (1) + RHH (2)*RHH (2) + RHH (3)*RHH (3) )
@@ -169,7 +169,7 @@ endif
                jat = jO +  (jsp-1)*Nwaters
                qj = charge(jat)
                Rij = Ri - R(1:3, jat) 
-	       Rij = Rij - box(1)*anint(Rij*boxi(1)) !PBC
+	       Rij = Rij - box*anint(Rij*boxi) !PBC
                drsq = Rij(1)*Rij(1) + Rij(2)*Rij(2) + Rij(3)*Rij(3)
                dd  = dsqrt(drsq)
                expon = dexp(-(aewald*aewald*dRsq))
@@ -208,7 +208,7 @@ do iw=1, Nwaters
       do jsp=isp+1, 3
          jat=iw + (jsp-1)*Nwaters
          Rij=(R(:,iat)-R(:,jat))
-	 Rij=Rij - box(1)*anint( Rij/box(1) )!PBC	
+	 Rij=Rij - box*anint( Rij/box )!PBC	
 	 dRsq = Rij(1)*Rij(1) + Rij(2)*Rij(2) + Rij(3)*Rij(3)
 !....
          dd = dsqrt(drsq)
@@ -258,10 +258,10 @@ do iw=1, Nwaters
    iO=fO+iw-1; iH1=iO+Nwaters; iH2=iO+2*Nwaters  
    !Rewritten to include PBCs
    rh1O=R(:,iH1)-R(:,iO)
-   rh1O = rh1O - box(1)*anint(rh1O/box(1)) !PBC
+   rh1O = rh1O - box*anint(rh1O/box) !PBC
    
    rh2O=R(:,iH2)-R(:,iO)
-   rh2O = rh2O - box(1)*anint(rh2O/box(1)) !PB
+   rh2O = rh2O - box*anint(rh2O/box) !PBC
 
    dip_momI(1:3, iw) = charge(iH1)*rh1O + charge(iH2)*rh2O  
 
