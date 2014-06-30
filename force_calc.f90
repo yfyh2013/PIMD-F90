@@ -107,17 +107,17 @@ subroutine contracted_forces
 	!update momenta with fast forces
         PPt = PPt - MASSCON*dRRfast*delt2fast
 
-		call MPItimer(2,'start',secondsNM)
 	!update positions with fast forces
+	call MPItimer(2,'start',secondsNM)
 	do i = 1, Nwaters
         	Call EvolveRing(RRt(:,3*i-2,:), PPt(:,3*i-2,:), Nbeads, massO)
         	Call EvolveRing(RRt(:,3*i-1,:), PPt(:,3*i-1,:), Nbeads, massH)
         	Call EvolveRing(RRt(:,3*i-0,:), PPt(:,3*i-0,:), Nbeads, massH)
 	enddo
-		call MPItimer(2, 'stop ', secondsNM)
+	call MPItimer(2, 'stop ', secondsNM)
+
 	!update fast forces (intramolecular forces)
 	!masternode calcuates the intramolecular forces, puts them in dRRfast
-
 	Umonomers = 0 
 	virialmon = 0 
 	virialcmon = 0 
@@ -131,7 +131,7 @@ subroutine contracted_forces
 
 			dRRfast(1:3, (/iO, iH1, iH2/), j) = dr1
 
-			!if last timestep in loop update energies 
+			!if last timestep in loop update monomer energy 
 			if (tintra .eq. intra_timesteps) then
 				Umonomers = Umonomers + e1
 			endif
@@ -153,27 +153,12 @@ subroutine contracted_forces
  call PBCs(RRt, RRc)
 
  !intermolecular force calculation
-  !if (Nnodes .gt. 1) then 
-	!send the centroid coords out to be processed 
-!	Call MPI_Send(RRc(:,:), counti, MPI_DOUBLE_PRECISION, 1, 0, MPI_COMM_WORLD, ierr)   
-	!masternode recieve forces on centroid		
-!	call MPI_Recv(dRRc, counti, MPI_DOUBLE_PRECISION, 1, 0, MPI_COMM_WORLD, status2, ierr)
-	!masternode receive intermolecular energy 
-!	call MPI_Recv(Upot, 1, MPI_DOUBLE_PRECISION, 1, 0, MPI_COMM_WORLD, status2, ierr)	
-	!masternode receive virials
-!	call MPI_Recv(virialt(k), 1, MPI_DOUBLE_PRECISION, 1, 0, MPI_COMM_WORLD, status2, ierr)		
-	!masternode recieve centroid based dipole moments		
-	!if (dip_out .or. TD_out) call MPI_Recv(dip_momIt(:,:,k), 3*Nwaters, MPI_DOUBLE_PRECISION, i, 0, MPI_COMM_WORLD, status2, ierr)
-	!if (Edip_out) call MPI_Recv(dip_momEt(:,:,k), 3*Nwaters, MPI_DOUBLE_PRECISION, i, 0, MPI_COMM_WORLD, status2, ierr)
- !  else 
-	!if only one node then masternode calculates forces on centroid
-	call potential(RRc, RRc, Upot, dRRc, virt, virialc, dip_momI, dip_momE, chg, t, BAROSTAT)
-  ! endif
+ call potential(RRc, RRc, Upot, dRRc, virt, virialc, dip_momI, dip_momE, chg, t, BAROSTAT)
 
-   !update dRRt
-   do j = 1, Nbeads
+ !update dRRt
+ do j = 1, Nbeads
 	dRRt(:,:,j) = dRRc
-   enddo
+ enddo
 
   !calculate dipole moments and virial
   do j = 1, Nbeads
@@ -219,27 +204,6 @@ subroutine contracted_forces
 
  endif
  
-
-
-
-
-!slave node stuff
- if (pid .eq. 1) then
-	!slavenode recieve centroid coords from master node
-	call MPI_Recv(RRc, counti, MPI_DOUBLE_PRECISION, 0, 0, MPI_COMM_WORLD, status2, ierr)
-	!slavenode force calculation
-	call potential(RRc, RRc, Upot, dRRc, virt, virialc, dip_momI, dip_momE, chg, t, BAROSTAT)
-	!slavenode send back centroid derivatives
-	call MPI_Send(dRR, counti, MPI_DOUBLE_PRECISION, 0, 0, MPI_COMM_WORLD, ierr) 
-	!slavenode send back centroid energy
-	call MPI_Send(Upot, 1, MPI_DOUBLE_PRECISION, 0, 0, MPI_COMM_WORLD, ierr) 
-	!slavenode send back virial
-	call MPI_Send(virial, 1, MPI_DOUBLE_PRECISION, 0, 0, MPI_COMM_WORLD, ierr) 
-	!slavenode send back dipole moments  
-	!if (dip_out .or. TD_out) call MPI_Send(dip_momI, 3*Nwaters, MPI_DOUBLE_PRECISION, 0, 0, MPI_COMM_WORLD, ierr)
-	!if (Edip_out) call MPI_Send(dip_momE, 3*Nwaters, MPI_DOUBLE_PRECISION, 0, 0, MPI_COMM_WORLD, ierr)
- endif
-
 
 end subroutine contracted_forces
 
