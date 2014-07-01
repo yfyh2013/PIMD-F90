@@ -19,6 +19,7 @@ OUTPUT OPTIONS
 .f.			 ! Temp/Press (.t. = to file, .f. = to terminal) 
 .t.			 ! avg. radius of gyration (in Temp/Press file) 
 .t.			 ! output dielectric constant (running average in Temp/Press file)
+.f.                      ! write out charges in seperate file? 
 .f.			 ! write final configuration of all beads to seperate file? 
 1			 ! Total dipole output frequency 
 10  			 ! Temp/Press output frequency

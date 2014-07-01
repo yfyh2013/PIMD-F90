@@ -38,6 +38,7 @@ read(11,*)BOXSIZEOUT
 read(11,*)TP_out
 read(11,*)CALC_RADIUS_GYRATION
 read(11,*)DIELECTRICOUT
+read(11,*)CHARGESOUT
 read(11,*)PRINTFINALCONFIGURATION
 read(11,*)td_freq
 read(11,*)tp_freq
@@ -146,7 +147,7 @@ endif
 !--- All-node allocations ------ 
 allocate(dip_momI(3, Nwaters))
 allocate(dip_momE(3, Nwaters))
-allocate(chg (Natoms))
+allocate(chg(Natoms))
 !allocate(tx_dip(3,4*Nwaters, 4))
 allocate(RRc(3, Natoms))
 
@@ -187,8 +188,8 @@ if (CENTROIDTHERMOSTAT.and. .not. (BEADTHERMOSTAT)) then
 endif
 
 
-if ( Rc .gt. min(box)/2 ) then
-	write(TPoutStream,*) 'ERROR: cutoff radius is greater than half the smallest box dimension (', min(box), ')'
+if ( Rc .gt. minval(box)/2 ) then
+	write(TPoutStream,*) 'ERROR: cutoff radius is greater than half the smallest box dimension (', minval(box), ')'
 	stop
 endif  
 
@@ -359,6 +360,10 @@ subroutine open_files
  if (BOXSIZEOUT) then 
 	open(25, file='out_'//TRIM(fsave)//'_box.dat', status='unknown')
  endif
+ if (CHARGESOUT) then
+	open(28, file='out_'//TRIM(fsave)//'_chgs.dat', status='unknown')
+ endif
+
  if (TP_out) then 
 	TPoutStream = 24
 	open(TPoutStream, file='out_'//TRIM(fsave)//'_TempPress.dat', status='unknown')
@@ -390,6 +395,7 @@ end subroutine open_files
 !----------------------------------------------------------------------------------!
 subroutine write_out 
  Implicit none
+
  !for accuracy, pressure is computed at every timestep, since P fluctuations are large
  !total energy and temperature is also calculated every timestep
  !in some instances, slight speedups were sacrificed for code readability 
@@ -419,21 +425,21 @@ subroutine write_out
 
  sys_temp = TEMPFACTOR*uk/(Natoms*Nbeads*Nbeads)
 
- call calc_uk_centroid
- write(*,*) "centroid temp =", TEMPFACTOR*uk/(Natoms)
+! call calc_uk_centroid
+! write(*,*) "centroid temp =", TEMPFACTOR*uk/(Natoms)
 
 
- uk = 0 
- do j = 1, Nbeads
-	do i = 1,Nwaters
-		uk = uk + imassO*sum( PPt(:,3*i-2,j)**2 ) 
-		uk = uk + imassH*sum( PPt(:,3*i-1,j)**2 ) 
-		uk = uk + imassH*sum( PPt(:,3*i-0,j)**2 ) 
-	enddo
- enddo	
- uk = .5d0*uk 
+ !uk = 0 
+ !do j = 1, Nbeads
+!	do i = 1,Nwaters
+!		uk = uk + imassO*sum( PPt(:,3*i-2,j)**2 ) 
+!		uk = uk + imassH*sum( PPt(:,3*i-1,j)**2 ) 
+!		uk = uk + imassH*sum( PPt(:,3*i-0,j)**2 ) 
+!	enddo
+ !enddo	
+ !uk = .5d0*uk 
 
- write(*,*) "naive bead temp =", TEMPFACTOR*uk/(Natoms)
+! write(*,*) "naive bead temp =", TEMPFACTOR*uk/(Natoms)
 
  !- pressure / total energy calculation : old classical case -
  !sys_press =  PRESSCON*(1/(3*volume))*( 2*uk -	 MASSCON*( virt(1,1)+virt(2,2)+virt(3,3) )  )
@@ -546,6 +552,12 @@ enddo
 				 dsqrt(dot_product(dip_momE(:,iw), dip_momE(:, iw))) 
  		     enddo
 	   	endif 
+		!charges out
+                if (CHARGESOUT) then
+			do iw = 1, 3*Nwaters
+				write(28,*) chg(iw)*0.20819434d0*DEBYE/CHARGECON 
+ 		        enddo
+		endif
 	endif
 	!images output
 	if (mod(t,ti_freq)  == 0 .and. OUTPUTIMAGES) then 
@@ -687,7 +699,7 @@ write(TPoutStream,'(a50, f10.2)') "ps/day = ",  (  (num_timesteps + eq_timesteps
         avg_box2 = sum_box2/t
         avg_box  = sum_box/t 
 
-        isotherm_compress = (avg_box2**3 - (avg_box**3)**2 )*(10d-7)/(1.38d0*avg_temp*avg_box)
+       !isotherm_compress = (avg_box2 - (avg_box**3)**2 )*(10d-7)/(1.38d0*avg_temp*avg_box)
 	write(TPoutStream,'(a50, 3f10.6)') "average box size (over entire run) (Ang) = ", avg_box
  !      write(TPoutStream,'(a50, f10.2)') "Isothermal compressibility (only valid in NPT)=", isotherm_compress
  else 
@@ -739,6 +751,9 @@ write(TPoutStream,'(a50, f10.2)') "ps/day = ",  (  (num_timesteps + eq_timesteps
  endif
  if (TP_out) then 
 	close(24)
+ endif
+ if (CHARGESOUT) then 
+	close(28)
  endif
 end subroutine print_run
 

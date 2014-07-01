@@ -2,44 +2,44 @@
 
 BASIC INFO
 'input_128.xyz'          ! input filename - either a centroid .xyz or a full bead configuration
-'test'    ! run name - this will be appended to all the output files
+'TTM3F_128_1beadD20'    ! run name - this will be appended to all the output files
 32	 		 ! Number of beads 
-10		         ! number of steps to equilibrate		 
-100	            	 ! number of steps to run
-1                  	 ! timestep (delt) (fs)
+2000		         ! number of steps to equilibrate		 
+500000	            	 ! number of steps to run
+.1                	 ! timestep (delt) (fs)
 
 OUTPUT OPTIONS 
-.f.       		 ! centroid coordinates 
-.f.			 ! centroid momenta  
+.t.       		 ! centroid coordinates 
+.t.			 ! centroid momenta  
 .f.			 ! all images
-.f.		         ! all dipoles 
+.t.		         ! all dipoles 
 .f.			 ! all polarization dipoles 
 .f.			 ! total dipole 
-.t.			 ! box size running average  
+.f.			 ! box size running average  
 .f.			 ! Temp/Press (.t. = to file, .f. = to terminal) 
 .t.			 ! avg. radius of gyration (in Temp/Press file) 
 .t.			 ! output dielectric constant (running average in Temp/Press file)
-.f.                      ! write out charges in seperate file? 
+.f.			 ! write out charges in seperate file?
 .f.			 ! write final configuration of all beads to seperate file? 
 10			 ! Total dipole output frequency 
-50			 ! Temp/Press output frequency
-40			 ! all images output frequency 
-20       		 ! Output frequency for everything else
+1			 ! Temp/Press output frequency
+500			 ! all images output frequency 
+500      		 ! Output frequency for everything else
 
 MD OPTIONS 
 3                        ! Model: 2=ttm21f 3=ttm3f 4= qspcfw 5=spcf
 7d0 3d0 1.d-6           ! realspace cutoff (Ang), start of VdW force switch (Ang) (TTM3F only), eps for aewald
-15  0.7  1.d-2 .f.  .f.     ! params for dipole iterative procedure: Max iterations, pol factor, accuracy, guess initial?, debug output
+15  0.7  1.d-4 .t.  .f.     ! params for dipole iterative procedure: Max iterations, pol factor, accuracy, guess initial?, debug output
 .t.			 ! generate initial velocities? 
 .f. 		         ! input initial configuration? 
 .t.                 	 ! Global thermostat? t/f
-.t.                      ! Thermostat non-centroid modes ? 
-.t.			 ! Thermostat centroid mode ?
+.f.                      ! Thermostat non-centroid modes ? 
+.f.			 ! Thermostat centroid mode ?
 'Langevin'               ! type of bead thermostat - 'Nose-Hoover', 'Langevin' or 'none'
 .01			 ! tau for global thermostat (ps)
-.01			 ! tau for centroid thermostat (ps)
-5			 ! global Nose-Hoover chain length
-5			 ! bead Nose-Hoover chain length
+.1			 ! tau for centroid thermostat (ps)
+10			 ! global Nose-Hoover chain length
+3			 ! bead Nose-Hoover chain length
 300	                 ! temperature (Kelvin)
 .f.			 ! Berendson barostat ?
 .2      		 ! tau for barostat (ps)
@@ -48,7 +48,7 @@ MD OPTIONS
 
 MORE RUN OPTIONS
 0			 ! frequency (inverse cm) to set NMs to ( or enter 0 for none/RPMD)
-.t.			 ! Ring polymer contraction (evalulate intermolecular forces on cetroid, intramolecular on beads)
+.f.			 ! Ring polymer contraction (evalulate intermolecular forces on cetroid, intramolecular on beads)
 5			 ! ratio of slow timestep / fast timestep for contraction scheme
 15.994			 ! mass of Oxygen (au)
-1.008			 ! mass of Hyrdrogen
+2.016			 ! mass of Hyrdrogen

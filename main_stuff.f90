@@ -37,7 +37,7 @@ integer :: num_timesteps, t, t_freq, tp_freq, td_freq, ti_freq, m, clock, eq_tim
 logical :: dip_out, coord_out, TD_out, vel_out, TP_out, Edip_out 
 logical :: BAROSTAT, PEQUIL, BOXSIZEOUT, THERMOSTAT, GENVEL, INPCONFIGURATION
 logical :: DIELECTRICOUT, PRINTFINALCONFIGURATION, OUTPUTIMAGES, SIMPLE_ENERGY_ESTIMATOR
-logical ::  BEADTHERMOSTAT, CENTROIDTHERMOSTAT, CALC_RADIUS_GYRATION
+logical ::  BEADTHERMOSTAT, CENTROIDTHERMOSTAT, CALC_RADIUS_GYRATION, CHARGESOUT
 
 !N-H variables
 double precision, save :: tau, tau_centroid, s, sbead
@@ -87,7 +87,7 @@ subroutine PBCs(RRt, RRc)
  integer :: i
 
 	!store the shifts here 
-	shifts = box*anint(RRc*boxi)
+	shifts = box(1)*anint(RRc*boxi(1)) !assume square box for now
 
  	!Correct the centroids first
 	RRc = RRc - shifts
@@ -300,7 +300,7 @@ if (GENVEL) then
 	
 	sys_temp = TEMPFACTOR*uk/(Natoms)
 
-	write(*,*) sys_temp
+	!write(*,*) sys_temp
 
 	if ( abs(sys_temp - temp) .lt. 1 ) then
 		exit
