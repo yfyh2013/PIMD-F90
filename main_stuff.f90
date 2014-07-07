@@ -12,7 +12,7 @@ double precision, dimension(:), allocatable :: chg
 double precision, dimension(3,3) :: virt
 double precision, dimension(3) :: dip_mom
 double precision, dimension(:,:), allocatable :: dip_momI, dip_momE
-double precision :: Upot, sys_press
+double precision ::  sys_press
 double precision :: tolg, tolx, stpmx
 integer :: i, iw, iat,  iO, ih1, ih2, narg, ia, read_method
 integer :: ix, iy, iz 
@@ -56,7 +56,8 @@ double precision :: tau_P, ref_P, press, CompFac, scale_factor
 double precision, dimension(:,:,:), allocatable :: RRt, PPt, dip_momIt, dip_momEt, dRRt
 double precision, dimension(:,:), allocatable :: RRc, PPc
 double precision, dimension(:), allocatable :: Upott, Virialt, virialct
-double precision ::  omegan, kTN, iNbeads, setNMfreq, virial, virialc
+double precision, dimension(1) :: Upot,  virial, virialc
+double precision ::  omegan, kTN, iNbeads, setNMfreq
 double precision :: radiusH, radiusO
 integer :: Nnodes, Nbeads, pid, j, k, ierr, Nbatches, counti, bat
 integer :: status2(MPI_STATUS_SIZE)
@@ -69,8 +70,6 @@ integer :: intra_timesteps
 double precision   :: deltfast, delt2fast  
 
 contains
-
-
 
 !----------------------------------------------------------------------------------!
 !---------- Periodic Boundary conditions for the beads ----------------------------

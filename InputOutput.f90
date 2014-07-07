@@ -590,7 +590,8 @@ subroutine quantum_virial_estimators(RRt, virial, virialc, qEnergy, qPress, sys_
  use consts 
  Implicit none
  double precision, dimension(3,Natoms,Nbeads),intent(in)  :: RRt 
- double precision, intent(in)      :: virial, virialc, sys_temp, Upot
+ double precision, intent(in)      ::  sys_temp 
+ double precision, intent(in), dimension(1) :: Upot, virial, virialc
  double precision, intent(out)     :: qPress, qEnergy 
  double precision 		   :: qVirial, qVirial2, KE
  integer :: i, j, k 
@@ -605,9 +606,9 @@ subroutine quantum_virial_estimators(RRt, virial, virialc, qEnergy, qPress, sys_
  !writwe(*,*) virial, virialc
 
  !convert to kcal/(mole of mol H2O) by dividing by Nwaters
- qEnergy = ( KE  +  .5*(virial -  virialc ) + Upot )/(Nwaters*Nbeads) 
+ qEnergy = ( KE  +  .5*(sum(virial) -  sum(virialc) ) + sum(Upot) )/(Nwaters*Nbeads) 
 
- qPress  =  PRESSCON2*(1/(3*volume))*( 2*KE - virialc )/(Nwaters*Nbeads) !factor of 1/3 not in Tuckerman's book. (book is wrong!!)
+ qPress  =  PRESSCON2*(1/(3*volume))*( 2*KE - sum(virialc) )/(Nwaters*Nbeads) !factor of 1/3 not in Tuckerman's book. (book is wrong!!)
 
 
 end subroutine quantum_virial_estimators
@@ -622,10 +623,11 @@ subroutine simple_quantum_estimators(RRt, virial, qEnergy, qPress, sys_temp, Upo
  Implicit none
  double precision, dimension(3,Natoms,Nbeads),intent(in)  :: RRt  !coords in Ang
  double precision, intent(in)      :: sys_temp       !temp in Kelvin
- double precision, intent(in)      ::  Upot 	!potential energy in kcal/mol
+ double precision, dimension(1), intent(in)   ::  Upot 	!potential energy in kcal/mol
+ double precision, dimension(1), intent(in)   ::  virial 	!virial
  double precision, intent(out)     :: qEnergy  	!energy out in kcal/mol
  double precision, intent(out)     :: qPress  	!pressure out in bar
- double precision 		      :: KE, K0, mass, virial
+ double precision 		      :: KE, K0, mass
  integer :: i, j, k 
 
  !Note on units : it is assumed that dRRt is in
@@ -653,8 +655,8 @@ subroutine simple_quantum_estimators(RRt, virial, qEnergy, qPress, sys_temp, Upo
  KE = 1.5*Natoms*Nbeads*kb*sys_temp*Nbeads !kinetic energy of the beads in kcal/mol
  K0 = .5*K0*(omegan**2)*MASSCONi   !quantum correction to kinetic energy - convert from Ang,amu,ps to kcal/mol
 
- qEnergy = (KE - K0 + Upot )/(Nwaters*Nbeads)   		    !kcal/(mole of mol)
- qPress  = PRESSCON2*(1/(3*volume))*(  2*(KE - K0) - virial )/Nwaters  !subtract virial to convert derivative to force
+ qEnergy = (KE - K0 + sum(Upot) )/(Nwaters*Nbeads)   		    !kcal/(mole of mol)
+ qPress  = PRESSCON2*(1/(3*volume))*(  2*(KE - K0) - sum(virial) )/Nwaters  !subtract virial to convert derivative to force
 
 end subroutine simple_quantum_estimators
 
@@ -836,7 +838,8 @@ use system_mod
 use consts
 implicit none
 double precision, dimension(3, Natoms), intent(in) :: RR
-double precision :: Upot,delt
+double precision, dimension(1) :: Upot 
+double precision ::  delt
 integer ::  i, iO, ih1, ih2, t
 integer :: iun, read_method
 
@@ -874,7 +877,8 @@ use system_mod
 use consts
 implicit none
 double precision, dimension(3, Natoms,Nbeads), intent(in) :: RRt, PPt
-double precision :: Upot,delt
+double precision :: delt
+double precision, dimension(1) :: Upot
 integer ::  i, j, iO, ih1, ih2, t
 integer, intent(in) :: iun 
 

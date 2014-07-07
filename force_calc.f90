@@ -63,7 +63,7 @@ subroutine full_bead_forces
 		if (Edip_out) call MPI_Send(dip_momE, 3*Nwaters, MPI_DOUBLE_PRECISION, 0, 0, MPI_COMM_WORLD, ierr)
     endif
     Call MPI_Barrier(MPI_COMM_WORLD, ierr)
-
+  
  enddo! j = 0, Nbatches - 1 !batch index
 
 if (pid .eq. 0) then
@@ -85,15 +85,19 @@ end subroutine full_bead_forces
 !-- then the inner timestep is .1 ps
 
 subroutine contracted_forces
- use main_stuff 
+ use main_stuff
  use NormalModes
+ use pot_mod 
  Implicit None 
- double precision :: e1, virialmon, virialcmon, Umonomers
+ double precision :: e1, virialmon, virialcmon, Umonomers, chgH1, chgH2, tmp
  double precision, dimension(3,Natoms,Nbeads)  ::  dRRfast
  double precision, dimension(3,Natoms) :: dRRc
  double precision, dimension(3,3)      :: dr1, r1
- double precision, dimension(3)        :: roh1, roh2, rh1m, rh2m, rM
- integer :: tintra
+ double precision, dimension(3,3,3) :: dq3
+ double precision, dimension(3)        :: roh1, roh2, rh1m, rh2m, rM, q3
+ integer :: tintra, iM
+
+ tmp = 0.5d0*gammaM/(1.d0-gammaM)
 
  if (pid .eq. 0) then
 
@@ -130,13 +134,36 @@ subroutine contracted_forces
 		  	call pot_nasa(r1, dr1, e1, box, boxi)  
 
 			dRRfast(1:3, (/iO, iH1, iH2/), j) = dr1
-
-			!if last timestep in loop update monomer energy 
+			!if last timestep in loop update monomer energy
+			!and calculate dipole moments using dip. mom. surface 
 			if (tintra .eq. intra_timesteps) then
 				Umonomers = Umonomers + e1
+
+				!get charges
+				call dms_nasa(r1, q3, dq3,box,boxi)
+
+				q3 = q3*CHARGECON
+
+				chgH1 = q3(2) + tmp*(q3(2)+q3(3))
+				chgH2 = q3(3) + tmp*(q3(2)+q3(3))
+
+				!get m site position
+				roh1 = RRt(:, iH1, j) - RRt(:, iO, j)
+   				roh1 = roh1 - box*anint(roh1*boxi)!PBC
+				roh2 = RRt(:, iH2, j) - RRt(:, iO, j)
+  				roh2 = roh2 - box*anint(roh2*boxi)!PBC
+ 				Rm = 0.5d0*gammaM*( roh1(:) + roh2(:) ) + RRt(:, iO, j)
+	
+				rh1m = RRt(:, iH1, j) - Rm
+   				rh1m = rh1m - box*anint(rh1m*boxi)!PBC
+				rh2m = RRt(:, iH2, j) - Rm
+   				rh2m = rh2m - box*anint(rh2m*boxi)!PBC
+  	
+				dip_momIt(:,iw,j) = chgH1*rh1m + chgH2*rh2m
 			endif
 		enddo
 	enddo
+	
 
         !update momenta with fast forces
         PPt = PPt - MASSCON*dRRfast*delt2fast
@@ -160,7 +187,7 @@ subroutine contracted_forces
 	dRRt(:,:,j) = dRRc
  enddo
 
-  !calculate dipole moments and virial
+  !calculate virial
   do j = 1, Nbeads
 	do iw = 1, Nwaters
 		iO=3*iw-2; iH1 = 3*iw-1; iH2=3*iw-0
@@ -183,14 +210,6 @@ subroutine contracted_forces
 
 		virialmon = virialmon + dot_product(roh1, dr1(:,2))
 		virialmon = virialmon + dot_product(roh2, dr1(:,3)) 
-
-		!do dipole moments
-		rM(:) = 0.5d0*0.46d0*( roh1(:) + roh2(:) ) + RRt(1:3, iO, j)
-
-		rh1m = RRt(1:3, ih1, j) - rM(:)
-  		rh2m = RRt(1:3, ih2, j) - rM(:)
-
-		dip_momIt(:,iw,j) = chg(iH1)*rh1m + chg(iH2)*rh2m
 	enddo
 	!add polarization dipoles
    	dip_momIt(:,:,j) = dip_momIt(:,:,j) + dip_momE
