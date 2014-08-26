@@ -62,7 +62,8 @@ end subroutine
 
 
 function MPI_Wtime()
-
+	double precision ::  MPI_Wtime
+        call cpu_time(MPI_Wtime)
 end function
 
 

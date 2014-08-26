@@ -30,10 +30,11 @@ read(11,*)
 read(11,*)
 read(11,*)coord_out
 read(11,*)vel_out
-read(11,*)OUTPUTIMAGES
 read(11,*)dip_out
 read(11,*)Edip_out
 read(11,*)TD_out
+read(11,*)OUTPUTIMAGES
+read(11,*)IMAGEDIPOLESOUT
 read(11,*)BOXSIZEOUT		
 read(11,*)TP_out
 read(11,*)CALC_RADIUS_GYRATION
@@ -215,7 +216,7 @@ if ( Nnodes .gt. Nbeads) then
 	stop
 endif
 
-if ( (pot_model .gt. 4) .or. (pot_model .lt. 1) ) then 
+if ( (pot_model .gt. 5) .or. (pot_model .lt. 1) ) then 
 	write(*,*) "ERROR: Invalid potential model !"
 	stop
 endif
@@ -363,6 +364,9 @@ subroutine open_files
  if (CHARGESOUT) then
 	open(28, file='out_'//TRIM(fsave)//'_chgs.dat', status='unknown')
  endif
+ if (IMAGEDIPOLESOUT) then
+	open(29, file='out_'//TRIM(fsave)//'_images_dip.dat', status='unknown')
+ endif
 
  if (TP_out) then 
 	TPoutStream = 24
@@ -371,6 +375,7 @@ subroutine open_files
  else 
 	 TPoutStream = 6
  endif 
+
 
  !write Temp/Press file header
  call print_basic_run_info
@@ -438,7 +443,6 @@ subroutine write_out
 !	enddo
  !enddo	
  !uk = .5d0*uk 
-
 ! write(*,*) "naive bead temp =", TEMPFACTOR*uk/(Natoms)
 
  !- pressure / total energy calculation : old classical case -
@@ -455,7 +459,7 @@ subroutine write_out
  sum_energy2       = sum_energy2 + tot_energy**2
  sum_RMSenergy     = sum_RMSenergy + (tot_energy - sum_tot_energy/tr)**2
 
- !debug options
+ !!debug options
   !write(*,*) "Upot   " , Upot
   !write(*,*) "virial " , virial
   !write(*,*) "virialc" , virialc
@@ -468,15 +472,15 @@ subroutine write_out
  !caculate dipole moments only if necessary 
  !if ( (DIELECTRICOUT .and. (mod(t,10).eq.0) )  .or. ( (t .gt. eq_timesteps) .and. ( (TD_out) .or. ( dip_out.and.(mod(t,t_freq).eq.0) ) ) )  then 
  
+ !first, convert dipoles in all images into Debye
+ dip_momIt = dip_momIt*DEBYE/CHARGECON   
+
  !calculate dipole moment by averaging over all beads
  do iw=1,Nwaters
 	do j = 1, 3
 		dip_momI(j,iw) = sum(dip_momIt(j,iw,:))/Nbeads
 	enddo
-enddo
-
- !convert into Debye here
- dip_momI = dip_momI*DEBYE/CHARGECON   
+ enddo
 
  !caculate total dipole moment (in Debye)
  dip_mom(:) = sum(dip_momI(:,:), dim=2)
@@ -560,10 +564,20 @@ enddo
 		endif
 	endif
 	!images output
-	if (mod(t,ti_freq)  == 0 .and. OUTPUTIMAGES) then 
-		do i = 1, Nbeads
-			call save_XYZ(27, RRt(:,:,i), Upot, read_method, t, delt) 
-		enddo
+	if (mod(t,ti_freq)  == 0) then
+		if (OUTPUTIMAGES) then  
+			do i = 1, Nbeads
+				call save_XYZ(27, RRt(:,:,i), Upot, read_method, t, delt) 
+			enddo
+		endif 
+		if (IMAGEDIPOLESOUT) then 
+			do i = 1, Nbeads
+				do iw = 1,Nwaters
+			 		write(29,'(4(1x,f12.4))') dip_momIt(:,iw,i), & 
+				 		dsqrt(dot_product(dip_momIt(:,iw,i), dip_momIt(:,iw,i))) 
+				enddo
+			enddo
+		endif
 	endif
 	!total dipole moment output 
 	if (mod(t,td_freq)  == 0 .and. TD_out ) then 

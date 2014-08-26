@@ -11,10 +11,11 @@ BASIC INFO
 OUTPUT OPTIONS 
 .t.       		 ! centroid coordinates 
 .t.			 ! centroid momenta  
-.f.			 ! all images
-.t.		         ! all dipoles 
-.f.			 ! all polarization dipoles 
+.t.		         ! dipoles 
+.f.			 ! polarization dipoles 
 .f.			 ! total dipole 
+.f.			 ! coordinates for all images
+.f.			 ! dipoles for all images 
 .f.			 ! box size running average  
 .f.			 ! Temp/Press (.t. = to file, .f. = to terminal) 
 .t.			 ! avg. radius of gyration (in Temp/Press file) 

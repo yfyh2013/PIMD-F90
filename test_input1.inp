@@ -9,12 +9,13 @@ BASIC INFO
 .5                  	 ! timestep (delt) (fs)
 
 OUTPUT OPTIONS 
-.f.       		 ! centroid coordinates 
-.f.			 ! centroid momenta  
-.f.			 ! all images
-.f.		         ! all dipoles 
-.f.			 ! all polarization dipoles 
+.t.       		 ! centroid coordinates 
+.t.			 ! centroid momenta  
+.t.		         ! dipoles 
+.f.			 ! polarization dipoles 
 .f.			 ! total dipole 
+.f.			 ! coordinates for all images
+.f.			 ! dipoles for all images 
 .f.			 ! box size running average  
 .f.			 ! Temp/Press (.t. = to file, .f. = to terminal) 
 .t.			 ! avg. radius of gyration (in Temp/Press file) 
@@ -22,7 +23,7 @@ OUTPUT OPTIONS
 .f.                      ! write out charges in seperate file? 
 .f.			 ! write final configuration of all beads to seperate file? 
 1			 ! Total dipole output frequency 
-10  			 ! Temp/Press output frequency
+1  			 ! Temp/Press output frequency
 40			 ! all images output frequency 
 20       		 ! Output frequency for everything else
 
@@ -48,7 +49,7 @@ MD OPTIONS
 
 MORE RUN OPTIONS
 0			 ! frequency (inverse cm) to set NMs to ( or enter 0 for none/RPMD)
-.f.			 ! Ring polymer contraction (evalulate intermolecular forces on cetroid, intramolecular on beads)
+.t.			 ! Ring polymer contraction (evalulate intermolecular forces on cetroid, intramolecular on beads)
 5			 ! ratio of slow timestep / fast timestep for contraction scheme
 15.994			 ! mass of Oxygen (au)
 1.008			 ! mass of Hyrdrogen

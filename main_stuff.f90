@@ -35,7 +35,7 @@ integer, dimension(:), allocatable :: seed
  character(len=11)  :: bead_thermostat_type
 integer :: num_timesteps, t, t_freq, tp_freq, td_freq, ti_freq, m, clock, eq_timesteps, TPoutStream,  ttt, tr 
 logical :: dip_out, coord_out, TD_out, vel_out, TP_out, Edip_out 
-logical :: BAROSTAT, PEQUIL, BOXSIZEOUT, THERMOSTAT, GENVEL, INPCONFIGURATION
+logical :: BAROSTAT, PEQUIL, BOXSIZEOUT, THERMOSTAT, GENVEL, INPCONFIGURATION, IMAGEDIPOLESOUT
 logical :: DIELECTRICOUT, PRINTFINALCONFIGURATION, OUTPUTIMAGES, SIMPLE_ENERGY_ESTIMATOR
 logical ::  BEADTHERMOSTAT, CENTROIDTHERMOSTAT, CALC_RADIUS_GYRATION, CHARGESOUT
 
@@ -100,7 +100,7 @@ end subroutine PBCs
 
 
 !----------------------------------------------------------------------------------!
-!-------------- calling thermostat for the beads ---------------------------------- 
+!-------------- calling bead thermostat ------------------------------------------- 
 !----------------------------------------------------------------------------------!
 subroutine bead_thermostat
  use NormalModes
@@ -109,11 +109,12 @@ subroutine bead_thermostat
  double precision, dimension(3,Nbeads) :: PPtr 
  double precision :: uk_bead, tau, imass
  Integer :: i, j, k 
-! Calling Langevin thermostat 
+!- Calling Langevin thermostat -----------------------------------------------------
  if (bead_thermostat_type .eq. 'Langevin') then
 	call Langevin_NM(PPt, Nbeads)
  endif
-! Nose-Hoover coupling in normal mode space ---------------------------------------
+
+!- Nose-Hoover coupling in normal mode space ---------------------------------------
  if (bead_thermostat_type .eq. 'Nose-Hoover') then
    do i = 1,Natoms
 	if (mod(i+2,3) .eq. 0) then
@@ -177,8 +178,7 @@ subroutine calc_radius_of_gyration(RRt, RRc)
 	iO = 3*i-2;  iH1 = 3*i-1;  iH2=3*i
 	do j = 1, Nbeads
 	radiusO = radiusO + sqrt( sum( (RRt(:,iO ,j) - RRc(:,iO ))**2, 1)  )	
-	!write(*,*) i, RRt(1,iO,j), RRc(1,iO)
-	radiusH = radiusH + sqrt( sum( (RRt(:,iH1,j)  - RRc(:,iH1))**2, 1)  )
+	radiusH = radiusH + sqrt( sum( (RRt(:,iH1,j) - RRc(:,iH1))**2, 1)  )
 	radiusH = radiusH + sqrt( sum( (RRt(:,iH2,j) - RRc(:,iH2))**2, 1)  )
 	enddo
  enddo

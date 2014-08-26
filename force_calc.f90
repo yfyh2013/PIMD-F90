@@ -78,10 +78,10 @@ end subroutine full_bead_forces
 !--------------------------------------------------------------------------------------------
 !----------------- Contracted force calculation with intermolecular forces on monomer-------
 !--------------------------------------------------------------------------------------------
-!-- This subroutine performs evaluates only the intramoleculari (fast) forces on the beads and 
+!-- This subroutine performs evaluates only the intramolecular (fast) forces on the beads and 
 !-- evaluates the intermolecular (slow) forces on the centroid. It also uses a multiple timestep method
-!-- (See Tuckerman, pg 118). The momentum and positions will be updated with the intramolecular forces
-!-- intra_timesteps times. For instance if the 'outer timestep' (normal timestep) is .5 ps and intra_timesteps = 5
+!-- (see Tuckerman, pg 118). The momentum and positions will be updated with the intramolecular forces
+!-- every intra_timesteps times. For instance if the 'outer timestep' (normal timestep) is .5 ps and intra_timesteps = 5
 !-- then the inner timestep is .1 ps
 
 subroutine contracted_forces
@@ -105,7 +105,7 @@ subroutine contracted_forces
    virialmon = 0 
    virialcmon = 0 
 	   
-   !---  intramolecular (fast) forces --------------------------------------------------- 
+   !---  intramolecular (fast) forces -------------------------------------------------
    do tintra = 1, intra_timesteps
 
 	!update momenta with fast forces
@@ -134,6 +134,7 @@ subroutine contracted_forces
 		  	call pot_nasa(r1, dr1, e1, box, boxi)  
 
 			dRRfast(1:3, (/iO, iH1, iH2/), j) = dr1
+
 			!if last timestep in loop update monomer energy
 			!and calculate dipole moments using dip. mom. surface 
 			if (tintra .eq. intra_timesteps) then
@@ -164,7 +165,6 @@ subroutine contracted_forces
 		enddo
 	enddo
 	
-
         !update momenta with fast forces
         PPt = PPt - MASSCON*dRRfast*delt2fast
 
@@ -187,8 +187,8 @@ subroutine contracted_forces
 	dRRt(:,:,j) = dRRc
  enddo
 
-  !calculate virial
-  do j = 1, Nbeads
+ !calculate virial
+ do j = 1, Nbeads
 	do iw = 1, Nwaters
 		iO=3*iw-2; iH1 = 3*iw-1; iH2=3*iw-0
 

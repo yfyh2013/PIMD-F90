@@ -9,12 +9,13 @@ BASIC INFO
 .5                  	 ! timestep (delt) (fs)
 
 OUTPUT OPTIONS 
-.f.       		 ! centroid coordinates 
-.f.			 ! centroid momenta  
-.f.			 ! all images
-.f.		         ! all dipoles 
-.f.			 ! all polarization dipoles 
+.t.       		 ! centroid coordinates 
+.t.			 ! centroid momenta  
+.t.		         ! dipoles 
+.f.			 ! polarization dipoles 
 .f.			 ! total dipole 
+.f.			 ! coordinates for all images
+.f.			 ! dipoles for all images 
 .f.			 ! box size running average  
 .f.			 ! Temp/Press (.t. = to file, .f. = to terminal) 
 .t.			 ! avg. radius of gyration (in Temp/Press file) 
