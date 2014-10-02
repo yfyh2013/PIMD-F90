@@ -29,7 +29,7 @@ logical, intent(in) :: BAROSTAT
 !if (BAROSTAT) call ewald_set(.false.)
 
 if (pot_model==2 .or. pot_model==3) then
-    call pot_ttm(RR, RRc, Upot, dRR, virt, virialc, dip_momI,Edip_mom, chg,t)
+    call pot_ttm(RR, RRc, Upot, dRR, virt, virialc, dip_momI, Edip_mom, chg,t)
 
 else if (pot_model==4 .or. pot_model==5) then
     call pot_spc(RR, Upot, dRR, virt, dip_momI, chg)

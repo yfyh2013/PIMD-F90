@@ -474,6 +474,7 @@ subroutine write_out
  
  !first, convert dipoles in all images into Debye
  dip_momIt = dip_momIt*DEBYE/CHARGECON   
+ dip_momEt = dip_momEt*DEBYE/CHARGECON   
 
  !calculate dipole moment by averaging over all beads
  do iw=1,Nwaters
