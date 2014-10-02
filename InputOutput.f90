@@ -552,7 +552,7 @@ subroutine write_out
  			do j = 1, 3
 				dip_momE(j,iw) = sum(dip_momEt(j,iw,:))/Nbeads
 			enddo
-			 write(22,'(4(1x,f12.4))') dip_momE(:,iw) , & 
+			 write(26,'(4(1x,f12.4))') dip_momE(:,iw) , & 
 				 dsqrt(dot_product(dip_momE(:,iw), dip_momE(:, iw))) 
  		     enddo
 	   	endif 
