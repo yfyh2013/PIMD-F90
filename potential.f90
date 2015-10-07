@@ -1,5 +1,5 @@
 !---------------------------------------------------------------------!
-!-----------------Call correct potential -----------------------------
+!-----------------Call correct potential ----------------------------
 !---------------------------------------------------------------------!
 subroutine potential(RR, RRc, Upot, dRR, virt, virialc, dip_momI, Edip_mom, chg, t, BAROSTAT)
 use consts
@@ -111,7 +111,6 @@ else if (pot_model==3) then
 	shiftA = - (10*Rc - 7*rc1 )/(Rc**8 * (Rc - rc1)**2) 
    	shiftB =   (9*Rc - 7*rc1 )/ (Rc**8 * (Rc - rc1)**3)
    endif
-
 
    !Coloumb shift parameters (not used & not recommended!)
    !shiftAc = -(5*Rc - 2*rc1 )/(Rc**3 * (Rc - rc1)**2 )

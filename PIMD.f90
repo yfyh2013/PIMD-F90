@@ -1,6 +1,7 @@
-program ttm3p
+program PIMD
 !----------------------------------------------------------------------------------
-!----------------- PIMD / RPMD program 
+!----------------- PIMD / RPMD program -------------------------------------------
+!----------------------------------------------------------------------------------
 !Changelog: 
 !TTM3F code edited and expanded by Dan Elton 2/13
 !Added PIMD parallelization 12/13
@@ -21,7 +22,7 @@ implicit none
 !Variables for main can be found in main_stuff.f90
 
 !---------------------- Read in input file ----------------------------------------
-call read_input_file 
+call read_input_file
 
 !---------------------- Start MPI and find number of nodes and pid --------------
 call MPI_Init(ierr)
@@ -155,4 +156,4 @@ endif
 Call MPI_Barrier(MPI_COMM_WORLD, ierr)
 Call MPI_Finalize(ierr)
 
-end program 
+end program PIMD

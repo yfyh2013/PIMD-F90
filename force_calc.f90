@@ -1,6 +1,6 @@
 module force_calc
-
 contains
+
 !--------------------------------------------------------------------------------------------
 !---------------------------------- Default MPI force calculation --------------------------
 !--------------------------------------------------------------------------------------------
@@ -200,7 +200,6 @@ subroutine contracted_forces
 
 		virialcmon = virialcmon + dot_product(roh1, dr1(:,2)) 
 		virialcmon = virialcmon + dot_product(roh2, dr1(:,3)) 
-
 
 		!do virial
 		roh1 = RRt(1:3, ih1, j) - RRt(1:3, iO, j)

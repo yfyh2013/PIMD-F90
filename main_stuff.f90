@@ -1,6 +1,6 @@
-	module main_stuff
+module main_stuff
 use consts
-use system_mod !more global variables
+use system_mod 
 use mpi
 Implicit none
 !----------------------------------------------------------------------------------!
@@ -28,16 +28,22 @@ double precision :: tot_energy, sum_tot_energy, sum_energy2, sum_simple_energy, 
 double precision :: specific_heat, avg_temp, init_temp, sum_dip2, sum_simple_press, simple_sys_press
 double precision :: dielectric_constant, diel_prefac, dielectric_error
 double precision, dimension(1000)  :: dielectric_running
-integer                    :: dielectric_index = 1
+integer  :: dielectric_index = 1
 double precision ::  isotherm_compress
 integer, dimension(:), allocatable :: seed
  character(len=125) :: dip_file
  character(len=11)  :: bead_thermostat_type
-integer :: num_timesteps, t, t_freq, tp_freq, td_freq, ti_freq, m, clock, eq_timesteps, TPoutStream,  ttt, tr 
+integer :: num_timesteps, t, t_freq, tp_freq, td_freq, ti_freq, m, clock, eq_timesteps, ttt, tr 
 logical :: dip_out, coord_out, TD_out, vel_out, TP_out, Edip_out 
 logical :: BAROSTAT, PEQUIL, BOXSIZEOUT, THERMOSTAT, GENVEL, INPCONFIGURATION, IMAGEDIPOLESOUT
 logical :: DIELECTRICOUT, PRINTFINALCONFIGURATION, OUTPUTIMAGES, SIMPLE_ENERGY_ESTIMATOR
 logical ::  BEADTHERMOSTAT, CENTROIDTHERMOSTAT, CALC_RADIUS_GYRATION, CHARGESOUT
+
+!logical i/o units
+integer :: lun, lunXYZ, lunBOXSIZEOUT, lunIMAGES, lunDIELECTRIC, lunCHARGES
+integer :: lundip_out, luncoord_out, lunCHARGESOUT, lunvel_out,  lunTP_out
+integer :: lunEdip_out, lunIMAGEDIPOLESOUT, lunTD_out, lunOUTPUTIMAGES
+
 
 !N-H variables
 double precision, save :: tau, tau_centroid, s, sbead

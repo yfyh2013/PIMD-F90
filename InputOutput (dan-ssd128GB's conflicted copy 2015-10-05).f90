@@ -178,23 +178,23 @@ if ( .not.( (bead_thermostat_type .eq. 'Langevin') .or. (bead_thermostat_type .e
 endif
 
 if ((CENTROIDTHERMOSTAT .or. BEADTHERMOSTAT) .and. (Nbeads .eq. 1)) then
-	write(lunTP_out,*) "WARNING: Bead/centroid thermostating does not make much sense with 1 bead."
+	write(lunTPout,*) "WARNING: Bead/centroid thermostating does not make much sense with 1 bead."
 	write(*,*) "The dynamics will be unphysical since every atomic DOF will be thermostated. "
 endif
 
 if (BEADTHERMOSTAT .and. .not. (THERMOSTAT)) then
-	write(lunTP_out,*) "WARNING: running bead thermostating without a global thermostat is not recommended."
+	write(lunTPout,*) "WARNING: running bead thermostating without a global thermostat is not recommended."
 	write(*,*) "You may observe abnormally large temperature fluctuations in the system."
 endif
 
 if (CENTROIDTHERMOSTAT.and. .not. (BEADTHERMOSTAT)) then
-	write(lunTP_out,*) "WARNING: You are thermostating the centroid but not thermostating the other modes."
+	write(lunTPout,*) "WARNING: You are thermostating the centroid but not thermostating the other modes."
 	write(*,*) "There is not really any good reason for doing this. Consider a different scheme." 
 endif
 
 
 if ( Rc .gt. minval(box)/2 ) then
-	write(lunTP_out,*) 'ERROR: cutoff radius is greater than half the smallest box dimension (', minval(box), ')'
+	write(lunTPout,*) 'ERROR: cutoff radius is greater than half the smallest box dimension (', minval(box), ')'
 	stop
 endif  
 
@@ -337,7 +337,7 @@ end subroutine read_coords
 subroutine open_files
  Implicit none 
  logical :: EXISTS
-
+luncoord_out, lunVEL_OUT, lunOUTPUTIMAGES
  if (coord_out) then
 	call io_assign(luncoord_out)
 	open(luncoord_out, file='out_'//TRIM(fsave)//'_coord.xyz', status='unknown')
@@ -361,7 +361,7 @@ subroutine open_files
 	endif
  endif
  if (TD_out) then 
-	call io_assign(lunTD_out)
+	io_assign(lunTD_out)
 	inquire(file='out_'//TRIM(fsave)//'_tot_dip.dat', exist=EXISTS)
   	if (EXISTS) then
 		write(*,*) "Total dipole file already exists, appending to end of file"
@@ -388,26 +388,26 @@ subroutine open_files
  endif
 
  if (TP_out) then 
-	call io_assign(lunTP_out)
-	open(lunTP_out, file='out_'//TRIM(fsave)//'_TempPress.dat', status='unknown')
+	call io_assign(lunTPout)
+	open(lunTPout, file='out_'//TRIM(fsave)//'_TempPress.dat', status='unknown')
 	write(*,*) "Supressing further terminal output to file"
  else 
-	call io_get_stdout(lunTP_out)
+	 call io_get_stdout(lunTPout)
  endif 
 
 
  !write Temp/Press file header
  call print_basic_run_info
 
- write(lunTP_out,'(a)') "all energies are in kcal/(mole H2O)"
+ write(lunTPout,'(a)') "all energies are in kcal/(mole H2O)"
 
- write(lunTP_out,'(a,a,a,a,a,a,a,a)',advance='no') " time (ps) ","  temp (K) ", "  press.(bar)  ", & 
+ write(lunTPout,'(a,a,a,a,a,a,a,a)',advance='no') " time (ps) ","  temp (K) ", "  press.(bar)  ", & 
 		 " avg temp "," avg press ", " Pot E  "," Tot E "," avg Tot E  " 
 
- if (SIMPLE_ENERGY_ESTIMATOR) write(lunTP_out,'(a,a)',advance='no')  " Tot E (simple) ", " Avg tot E (simple) "
- if (CALC_RADIUS_GYRATION)    write(lunTP_out,'(a,a)',advance='no')  " r_O ", " r_H "
- if (DIELECTRICOUT)           write(lunTP_out,'(a)',advance='no') " eps(0) "
- write(lunTP_out,'(a)')  ""
+ if (SIMPLE_ENERGY_ESTIMATOR) write(lunTPout,'(a,a)',advance='no')  " Tot E (simple) ", " Avg tot E (simple) "
+ if (CALC_RADIUS_GYRATION)    write(lunTPout,'(a,a)',advance='no')  " r_O ", " r_H "
+ if (DIELECTRICOUT)           write(lunTPout,'(a)',advance='no') " eps(0) "
+ write(lunTPout,'(a)')  ""
 
 
 end subroutine open_files
@@ -426,7 +426,7 @@ subroutine write_out
 
  !reset averaging after equilbration ends
  if  (t .eq. eq_timesteps) then
- 	write(lunTP_out,*) "#----end of equilibration---restarting averages----------------------------------"
+ 	write(lunTPout,*) "#----end of equilibration---restarting averages----------------------------------"
 	!store average temp during equil and final energy after equil
 	init_energy = tot_energy 
 	init_temp = sum_temp/tr
@@ -517,22 +517,22 @@ subroutine write_out
  !print out temperature, pressure, average press, energies & dielectric constant
  if (mod(t,tp_freq) == 0) then
 
-	write(lunTP_out,'(1f10.4,f10.2,f11.2,5f10.2)',advance='no') tr*delt, sys_temp, sys_press, & 
+	write(lunTPout,'(1f10.4,f10.2,f11.2,5f10.2)',advance='no') tr*delt, sys_temp, sys_press, & 
 		sum_temp/tr, sum_press/tr, Upot, tot_energy , sum_tot_energy/tr
 
   	if (SIMPLE_ENERGY_ESTIMATOR) then 
-	 write(lunTP_out,'(4f10.2)',advance='no') simple_sys_press, sum_simple_press/tr, simple_energy, sum_simple_energy/tr
+	 write(lunTPout,'(4f10.2)',advance='no') simple_sys_press, sum_simple_press/tr, simple_energy, sum_simple_energy/tr
 	endif
 
 	if (CALC_RADIUS_GYRATION) then
 		call calc_radius_of_gyration(RRt,RRc) 
-		write(lunTP_out,'(1x,f6.4,1x,f6.4)',advance='no')  radiusO, radiusH
+		write(lunTPout,'(1x,f6.4,1x,f6.4)',advance='no')  radiusO, radiusH
 	endif
 
 	!calculate dielectric constant using current volume and average temperature of the run
 	if (DIELECTRICOUT) then 
 		dielectric_constant = diel_prefac*(  sum_dip2/ttt - sum( (sum_dip/ttt)**2 )  )/volume/(sum_temp/tr)
-		write(lunTP_out,'(1x,f6.2)',advance='no') dielectric_constant
+		write(lunTPout,'(1x,f6.2)',advance='no') dielectric_constant
 		!if (mod(t,num_timesteps/1000) .eq. 0) then
 		!	dielectric_running(dielectric_index) = dielectric_constant
 		!	dielectric_index = dielectric_index + 1
@@ -540,10 +540,10 @@ subroutine write_out
 	endif 
 
 	!feature to output the current density (for debugging the barostat) 
-	write(lunTP_out,'(1x,f10.6)',advance='no') Nwaters*(massO+2*massH)*amu2grams/(box(1)*box(2)*box(3)*(a2m*100)**3)
+	write(lunTPout,'(1x,f10.6)',advance='no') Nwaters*(massO+2*massH)*amu2grams/(box(1)*box(2)*box(3)*(a2m*100)**3)
 
 	!advance to next line
-	write(lunTP_out,'(a)') ""
+	write(lunTPout,'(a)') ""
 
  endif 
 
@@ -703,58 +703,58 @@ Implicit none
 
 call print_basic_run_info
 
-write(lunTP_out,*) "#-----------  timing report ----------------------------"
-write(lunTP_out,'(a50, i5, a7, i3, a9, i3, a8)') "Total elapsed time = ", int(real(seconds)/3600), " hours ",  & 
+write(lunTPout,*) "#-----------  timing report ----------------------------"
+write(lunTPout,'(a50, i5, a7, i3, a9, i3, a8)') "Total elapsed time = ", int(real(seconds)/3600), " hours ",  & 
 			int(mod(seconds,3600d0)/60), " minutes ", int(mod(seconds,60d0)), " seconds" 
-write(lunTP_out,'(a50, i5, a7, i3, a9, i3, a9, i3, a3)') "Time spent on normal modes = ", int(real(secondsNM)/3600), " hours ", & 
+write(lunTPout,'(a50, i5, a7, i3, a9, i3, a9, i3, a3)') "Time spent on normal modes = ", int(real(secondsNM)/3600), " hours ", & 
 			int(mod(secondsNM,3600d0)/60), " minutes ", int(mod(secondsNM,60d0)), " seconds ", &
 			int(10*mod(secondsNM,1d0)), " ms"
-write(lunTP_out,'(a50, i5, a7, i3, a9, i3, a9, i3, a3)') "Time spent writing stuff out = ", int(real(secondsIO)/3600)," hours ",& 
+write(lunTPout,'(a50, i5, a7, i3, a9, i3, a9, i3, a3)') "Time spent writing stuff out = ", int(real(secondsIO)/3600)," hours ",& 
 			int(mod(secondsIO,3600d0)/60), " minutes ", int(mod(secondsIO,60d0)), " seconds ", int(1000d0*mod(secondsNM,1d0)), " ms"
 
-write(lunTP_out,'(a50, f10.2)') "ps/hour = ", (  (num_timesteps + eq_timesteps)*delt/seconds  )*3600
-write(lunTP_out,'(a50, f10.2)') "ps/day = ",  (  (num_timesteps + eq_timesteps)*delt/seconds  )*3600*24
+write(lunTPout,'(a50, f10.2)') "ps/hour = ", (  (num_timesteps + eq_timesteps)*delt/seconds  )*3600
+write(lunTPout,'(a50, f10.2)') "ps/day = ",  (  (num_timesteps + eq_timesteps)*delt/seconds  )*3600*24
 
 
 
- write(lunTP_out,*) "#------------------------------------------------------"
+ write(lunTPout,*) "#------------------------------------------------------"
  avg_temp =  sum_temp/tr
 
- write(lunTP_out,'(a50, 3f10.2)') "Average temperature during run (K) = ", avg_temp/Nbeads
- write(lunTP_out,'(a50, 3f10.2)') "Average pressure during run (bar) = ", sum_press/tr
- write(lunTP_out,'(a50, 3f10.2)') "Average total energy during run (kcal/mole) = ", sum_tot_energy/tr
- write(lunTP_out,'(a50, 3f10.2)') "Estimated energy drift (kcal/mole/ps) = ",(tot_energy - init_energy)/(num_timesteps*delt)
- write(lunTP_out,'(a50, 3f10.2)') "Temp drift (K/ps) = ", (avg_temp - init_temp)/(num_timesteps*delt)
- write(lunTP_out,'(a50, 3f10.2)') "RMS energy fluctuation  (kcal/mol) = ", dsqrt( sum_RMSenergy/tr )
+ write(lunTPout,'(a50, 3f10.2)') "Average temperature during run (K) = ", avg_temp/Nbeads
+ write(lunTPout,'(a50, 3f10.2)') "Average pressure during run (bar) = ", sum_press/tr
+ write(lunTPout,'(a50, 3f10.2)') "Average total energy during run (kcal/mole) = ", sum_tot_energy/tr
+ write(lunTPout,'(a50, 3f10.2)') "Estimated energy drift (kcal/mole/ps) = ",(tot_energy - init_energy)/(num_timesteps*delt)
+ write(lunTPout,'(a50, 3f10.2)') "Temp drift (K/ps) = ", (avg_temp - init_temp)/(num_timesteps*delt)
+ write(lunTPout,'(a50, 3f10.2)') "RMS energy fluctuation  (kcal/mol) = ", dsqrt( sum_RMSenergy/tr )
  
  specific_heat = dsqrt(  sum_energy2/tr - (sum_tot_energy/tr)**2  ) /( kb*avg_temp )
 
-!write(lunTP_out,'(a50, f10.2)') "Specific heat C_V (only valid in NVT) (cal/g) = ", specific_heat/(lunXYZ00*(massO+2*massH))
+!write(lunTPout,'(a50, f10.2)') "Specific heat C_V (only valid in NVT) (cal/g) = ", specific_heat/(lunXYZ00*(massO+2*massH))
 
  if (BAROSTAT) then
         avg_box2 = sum_box2/t
         avg_box  = sum_box/t 
 
        !isotherm_compress = (avg_box2 - (avg_box**3)**2 )*(lunXYZd-7)/(1.38d0*avg_temp*avg_box)
-	write(lunTP_out,'(a50, 3f10.6)') "average box size (over entire run) (Ang) = ", avg_box
- !      write(lunTP_out,'(a50, f10.2)') "Isothermal compressibility (only valid in NPT)=", isotherm_compress
+	write(lunTPout,'(a50, 3f10.6)') "average box size (over entire run) (Ang) = ", avg_box
+ !      write(lunTPout,'(a50, f10.2)') "Isothermal compressibility (only valid in NPT)=", isotherm_compress
  else 
-!       write(lunTP_out,'(a50, a4)') "Isothermal compressibility (only valid in NPT)=", " n/a"
+!       write(lunTPout,'(a50, a4)') "Isothermal compressibility (only valid in NPT)=", " n/a"
  endif
 	
- write(lunTP_out,'(a50, f10.2)') "average density (g/cm^3) = ", Nwaters*(massO+2*massH)*amu2grams/(volume*(a2m*100)**3)
+ write(lunTPout,'(a50, f10.2)') "average density (g/cm^3) = ", Nwaters*(massO+2*massH)*amu2grams/(volume*(a2m*100)**3)
  
  if (DIELECTRICOUT) then 
-	write(lunTP_out,'(a50, f10.2)') " dielectric constant ", dielectric_constant
+	write(lunTPout,'(a50, f10.2)') " dielectric constant ", dielectric_constant
 	if (num_timesteps .gt. 1000) then 
 		dielectric_error = sum( (dielectric_running(500:1000) - dielectric_constant)**2 ) /500
-	  	write(lunTP_out,'(a50, f16.2)') "estimated error = +/-", dielectric_error
+	  	write(lunTPout,'(a50, f16.2)') "estimated error = +/-", dielectric_error
 	endif	
-	write(lunTP_out,'(a50, f16.2)') " sum M^2 (Debye^2) ", sum_dip2 
-	write(lunTP_out,'(a50, f16.2)') " sum M (Debye^2) ", sum_dip
-	write(lunTP_out,'(a50, f16.2)') " average <M^2> (Debye^2) ", sum_dip2/ttt
-	write(lunTP_out,'(a50, f16.2)') " average <M>^2 (Debye^2) ", sum(sum_dip**2)/ttt
-	write(lunTP_out,'(a50, i5)') " points used to compute dielectric constant: ", ttt
+	write(lunTPout,'(a50, f16.2)') " sum M^2 (Debye^2) ", sum_dip2 
+	write(lunTPout,'(a50, f16.2)') " sum M (Debye^2) ", sum_dip
+	write(lunTPout,'(a50, f16.2)') " average <M^2> (Debye^2) ", sum_dip2/ttt
+	write(lunTPout,'(a50, f16.2)') " average <M>^2 (Debye^2) ", sum(sum_dip**2)/ttt
+	write(lunTPout,'(a50, i5)') " points used to compute dielectric constant: ", ttt
  endif
 
 
@@ -798,35 +798,35 @@ end subroutine print_run
 !----------Print basic information about the run ----------------------------------
 !----------------------------------------------------------------------------------!
 subroutine print_basic_run_info
- if (pot_model .eq. 2) write(lunTP_out,'(a50,a)') "Model = ", "TTM2F"
- if (pot_model .eq. 3) write(lunTP_out,'(a50,a)') "Model = ", "TTM3F"
- if (pot_model .eq. 4) write(lunTP_out,'(a50,a)') "Model = ", "qSPCfw"
- if (pot_model .eq. 5) write(lunTP_out,'(a50,a)') "Model = ", "SPCf"
- write(lunTP_out,'(a50,i4,a,i4,a)') "Running with ", Nbeads, " beads on ", Nnodes, " nodes"
- write(lunTP_out,'(a50, f10.3,a3)') "timestep = ", delt*1000, " fs"
- write(lunTP_out,'(a50, f8.4,a25,f8.4)') "mass of hydrogen = ", massH
- write(lunTP_out,'(a50, f8.4,a25,f8.4)') "  mass of oxygen = ", massO
- if (CONTRACTION) write(lunTP_out,'(a50,a)') "ring polymer contraction to centroid = ", "yes"
- if (.not. CONTRACTION) write(lunTP_out,'(a50,a)') "ring polymer contraction to centroid = ", "no"
- if (THERMOSTAT) write(lunTP_out,'(a50, a )')  " type of global thermostat = ", "Nose-Hoover"
- if (.not. THERMOSTAT) write(lunTP_out,'(a50, a )')  " type of global thermostat = ", "none"
- if (.not. THERMOSTAT) write(lunTP_out,'(a50, a3)') "global thermostat tau = ", "n/a"
- if (THERMOSTAT) write(lunTP_out,'(a50, f10.3,a3)') "global thermostat tau = ", tau, " ps"
- if (BEADTHERMOSTAT) write(lunTP_out,'(a50, a )')  " type of bead thermostat = ", bead_thermostat_type
- if (CENTROIDTHERMOSTAT) write(lunTP_out,'(a50, a )')  " centroid thermostating = ", "yes"
- if (.not. CENTROIDTHERMOSTAT) write(lunTP_out,'(a50, a )')  " centroid thermostating = ", "no"
- if (.not. BEADTHERMOSTAT) write(lunTP_out,'(a50, a )')  " type of bead thermostat = ", "none"
- if (BEADTHERMOSTAT) write(lunTP_out,'(a50, f10.3,a3)')  " centroid thermostat tau = ", tau_centroid, " ps"
- if (.not. BEADTHERMOSTAT) write(lunTP_out,'(a50, a3)') " centroid thermostat tau = ", "n/a"
- if (BAROSTAT) write(lunTP_out,'(a50, f10.3,a3)') "Barostat tau = ", tau_p, " ps"
- if (.not. BAROSTAT) write(lunTP_out,'(a50, a3)') "Barostat tau = ", "n/a"
+ if (pot_model .eq. 2) write(lunTPout,'(a50,a)') "Model = ", "TTM2F"
+ if (pot_model .eq. 3) write(lunTPout,'(a50,a)') "Model = ", "TTM3F"
+ if (pot_model .eq. 4) write(lunTPout,'(a50,a)') "Model = ", "qSPCfw"
+ if (pot_model .eq. 5) write(lunTPout,'(a50,a)') "Model = ", "SPCf"
+ write(lunTPout,'(a50,i4,a,i4,a)') "Running with ", Nbeads, " beads on ", Nnodes, " nodes"
+ write(lunTPout,'(a50, f10.3,a3)') "timestep = ", delt*1000, " fs"
+ write(lunTPout,'(a50, f8.4,a25,f8.4)') "mass of hydrogen = ", massH
+ write(lunTPout,'(a50, f8.4,a25,f8.4)') "  mass of oxygen = ", massO
+ if (CONTRACTION) write(lunTPout,'(a50,a)') "ring polymer contraction to centroid = ", "yes"
+ if (.not. CONTRACTION) write(lunTPout,'(a50,a)') "ring polymer contraction to centroid = ", "no"
+ if (THERMOSTAT) write(lunTPout,'(a50, a )')  " type of global thermostat = ", "Nose-Hoover"
+ if (.not. THERMOSTAT) write(lunTPout,'(a50, a )')  " type of global thermostat = ", "none"
+ if (.not. THERMOSTAT) write(lunTPout,'(a50, a3)') "global thermostat tau = ", "n/a"
+ if (THERMOSTAT) write(lunTPout,'(a50, f10.3,a3)') "global thermostat tau = ", tau, " ps"
+ if (BEADTHERMOSTAT) write(lunTPout,'(a50, a )')  " type of bead thermostat = ", bead_thermostat_type
+ if (CENTROIDTHERMOSTAT) write(lunTPout,'(a50, a )')  " centroid thermostating = ", "yes"
+ if (.not. CENTROIDTHERMOSTAT) write(lunTPout,'(a50, a )')  " centroid thermostating = ", "no"
+ if (.not. BEADTHERMOSTAT) write(lunTPout,'(a50, a )')  " type of bead thermostat = ", "none"
+ if (BEADTHERMOSTAT) write(lunTPout,'(a50, f10.3,a3)')  " centroid thermostat tau = ", tau_centroid, " ps"
+ if (.not. BEADTHERMOSTAT) write(lunTPout,'(a50, a3)') " centroid thermostat tau = ", "n/a"
+ if (BAROSTAT) write(lunTPout,'(a50, f10.3,a3)') "Barostat tau = ", tau_p, " ps"
+ if (.not. BAROSTAT) write(lunTPout,'(a50, a3)') "Barostat tau = ", "n/a"
 
 end subroutine print_basic_run_info
 
 !----------------------------------------------------------------------------------!
 !----------Print information about the potential-----------------------------------
 !----------------------------------------------------------------------------------!
-subroutine print_pot(RR, Upot, dRR, virt, dip_momI, chg, lunTP_out) 
+subroutine print_pot(RR, Upot, dRR, virt, dip_momI, chg, lunTPout) 
 use system_mod
 use consts
 implicit none
@@ -837,21 +837,21 @@ double precision, dimension(3,3), intent(in) :: virt
 double precision, dimension(3, Nwaters), intent(in) :: dip_momI
 double precision, dimension(3 ) :: dip_mom
 double precision, dimension( Natoms ), intent(in) :: chg
-integer, intent(in) :: lunTP_out
+integer, intent(in) :: lunTPout
 integer :: iw
 
 dip_mom(1:3) = sum(dip_momI(1:3, 1:Nwaters), dim=2)
 
-write( lunTP_out,'(a50,f14.6)')"Potential Energy (kcal/mol) = ", Upot
-write( lunTP_out,'(a50,f14.6)')"Estimated Enthalpy of Vaporization &
+write( lunTPout,'(a50,f14.6)')"Potential Energy (kcal/mol) = ", Upot
+write( lunTPout,'(a50,f14.6)')"Estimated Enthalpy of Vaporization &
 (kJ/mol) = ", Upot*4.184 + 1000*8.3144 
-write( lunTP_out,'(a50,f14.6)')"monomer Energy = ", Umon
-write( lunTP_out,'(a50,f14.6)')"vdw Energy = ", Uvdw
-write( lunTP_out,'(a50,f14.6)')"Long range vdw Energy = ", Uvdw_lrc
-write( lunTP_out,'(a50,f14.6)')"electrostatic  Energy = ", Uelec
-write( lunTP_out,'(a50,f14.6)')"induced Energy = ", Uind
-write( lunTP_out,'(a50,3(1x,f12.3))')"Dipole moment [Debye] : ",dip_mom*DEBYE/CHARGECON
-write( lunTP_out,'(a/3(10x,f14.5,1x))')"Virial tensor",virt(1:3,1:3)
+write( lunTPout,'(a50,f14.6)')"monomer Energy = ", Umon
+write( lunTPout,'(a50,f14.6)')"vdw Energy = ", Uvdw
+write( lunTPout,'(a50,f14.6)')"Long range vdw Energy = ", Uvdw_lrc
+write( lunTPout,'(a50,f14.6)')"electrostatic  Energy = ", Uelec
+write( lunTPout,'(a50,f14.6)')"induced Energy = ", Uind
+write( lunTPout,'(a50,3(1x,f12.3))')"Dipole moment [Debye] : ",dip_mom*DEBYE/CHARGECON
+write( lunTPout,'(a/3(10x,f14.5,1x))')"Virial tensor",virt(1:3,1:3)
 !write(*,'(/a/)')"DERIVATIVES"
 !do iw=1, Nwaters
 !   write(*,'(a2,3x,3(f12.6,2x))')"O ",dRR(1:3, 3*iw-2)

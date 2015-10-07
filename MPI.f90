@@ -1,4 +1,8 @@
-!This is a module of stub functions/variables for MPI for running on serial machines
+!----------------------------------------------------------------------------------------
+!This is a module of stub functions/variables which 
+!allow the MPI code to be compiled and run on serial machines
+!Copyright 2014 Dan Elton 
+!----------------------------------------------------------------------------------------
 module mpi
 Integer, parameter :: MPI_STATUS_SIZE=1
 Integer, parameter :: MPI_COMM_WORLD=1
