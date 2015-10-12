@@ -2,6 +2,9 @@ module InputOutput
 use consts
 use main_stuff
 use lun_management
+#ifdef siesta
+use fsiesta
+#endif
 Implicit none 
 
  contains
@@ -38,7 +41,7 @@ read(lun,*)Edip_out
 read(lun,*)TD_out
 read(lun,*)OUTPUTIMAGES
 read(lun,*)IMAGEDIPOLESOUT
-read(lun,*)BOXSIZEOUT		
+read(lun,*)BOXSIZEOUT
 read(lun,*)TP_out
 read(lun,*)CALC_RADIUS_GYRATION
 read(lun,*)DIELECTRICOUT
@@ -88,6 +91,16 @@ end subroutine read_input_file
 !---------------- Initialize some variables for all nodes ------------------------
 !----------------------------------------------------------------------------------!
 subroutine initialize_all_node_variables
+
+!Initialize potential-related variables
+if (SIESTA) then 
+#ifdef siesta  
+  call siesta_launch( 'PIMD', Nnodes, MPI_COMM_WORLD)
+  call siesta_units( 'Ang', 'kcal/mol' )
+#endif
+else
+  call init_pot
+endif 
 
 !---  read the number of atoms, dimension of box and atomic coordinates 
 call io_assign(lunXYZ)

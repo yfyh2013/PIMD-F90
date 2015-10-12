@@ -18,6 +18,9 @@ use InputOutput
 use NormalModes
 use mpi
 use force_calc
+#ifdef siesta
+use fsiesta
+#endif
 implicit none
 !Variables for main can be found in main_stuff.f90
 
@@ -32,7 +35,6 @@ call MPI_Comm_rank(MPI_COMM_WORLD, pid, ierr)
 
 !---------------- Initialize / allocate some variables -------------------------
 call initialize_all_node_variables
-call init_pot
 
 !------------------Master node stuff --------------------------------------------
 if (pid .eq. 0) then
@@ -41,7 +43,7 @@ if (pid .eq. 0) then
 	call read_coords           ! Read in coord data to RRc 
 	call initialize_beads      ! Initialize RRt
 	call initialize_velocities ! Initialize PPt
-	call calc_uk 		    ! Initalize kinetic energy
+	call calc_uk 		   ! Initalize kinetic energy
 	call MPItimer(1,'start',seconds)
 endif!(pid .eq. 0)
 
@@ -101,7 +103,6 @@ do t = 1, num_timesteps + eq_timesteps
 	!------ call force routine ------------------------------------ 
 	if (CONTRACTION .eqv. .false.) then	
 		call full_bead_forces
-
 	else 	
 		call contracted_forces
 	endif 
@@ -144,14 +145,9 @@ if (pid .eq. 0)  then
 	call print_run
 endif
 
-!if (pid .eq. 0) then
-!	deallocate(RRc)
-!	deallocate(VVc)
-!	deallocate(RRt)
-!	deallocate(VVt)
-!	deallocate(RRc)
-!	deallocate(RRdev)
-!endif 
+#ifdef siesta
+if (SIESTA) call siesta_quit( 'h2o' )
+#endif
 
 Call MPI_Barrier(MPI_COMM_WORLD, ierr)
 Call MPI_Finalize(ierr)
