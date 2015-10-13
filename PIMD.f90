@@ -145,10 +145,8 @@ if (pid .eq. 0)  then
 	call print_run
 endif
 
-#ifdef siesta
-if (SIESTA) call siesta_quit( 'h2o' )
-#endif
-
+if (pot_model == 6) call siesta_quit( 'h2o' )
+ 
 Call MPI_Barrier(MPI_COMM_WORLD, ierr)
 Call MPI_Finalize(ierr)
 

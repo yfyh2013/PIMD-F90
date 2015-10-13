@@ -87,18 +87,26 @@ end subroutine full_bead_forces
 subroutine contracted_forces
  use main_stuff
  use NormalModes
- use pot_mod 
  Implicit None 
- double precision :: e1, virialmon, virialcmon, Umonomers, chgH1, chgH2, tmp
+ double precision :: e1, virialmon, virialcmon, Umonomers, chgH1, chgH2, tmp, gammaM
  double precision, dimension(3,Natoms,Nbeads)  ::  dRRfast
  double precision, dimension(3,Natoms) :: dRRc
  double precision, dimension(3,3)      :: dr1, r1
- double precision, dimension(3,3,3) :: dq3
+ double precision, dimension(3,3,3)    :: dq3
  double precision, dimension(3)        :: roh1, roh2, rh1m, rh2m, rM, q3
  integer :: tintra, iM
 
- tmp = 0.5d0*gammaM/(1.d0-gammaM)
-
+ !TTM charge mixing parameter
+ if (pot_model==2) then  
+     gammaM = 0.426706882d0
+     tmp = 0.5d0*gammaM/(1.d0-gammaM)
+ elseif (pot_model==3) then 
+     gammaM = 0.46d0
+     tmp = 0.5d0*gammaM/(1.d0-gammaM)
+ else 
+     tmp = 0 
+ endif
+ 
  if (pid .eq. 0) then
 
    Umonomers = 0 
@@ -224,5 +232,55 @@ subroutine contracted_forces
  
 
 end subroutine contracted_forces
+
+!---------------------------------------------------------------------!
+!-----------------Call correct potential ----------------------------
+!---------------------------------------------------------------------!
+subroutine potential(RR, RRc, Upot, dRR, virt, virialc, dip_momI, Edip_mom, chg, t, BAROSTAT)
+use consts
+use system_mod
+use pot_mod
+use fsiesta
+implicit none
+double precision, dimension(3, Natoms), intent(in) :: RR, RRc
+double precision, intent(out) :: Upot, virialc
+double precision, dimension(3, Natoms), intent(out) :: dRR
+double precision, dimension(3, 3), intent(out) :: virt
+double precision, dimension(Natoms), intent(out)  :: chg
+double precision, dimension(3, NWaters), intent(out)  ::  dip_momI, Edip_mom
+double precision, dimension(3) :: dip_mom
+integer, intent(in) :: t
+logical, intent(in) :: BAROSTAT
+
+!All the stuff that depends on volume needs to be rescaled. 
+ p4V = FOURPI/volume
+
+!scale VdW long range correction due to box size change and add correction
+!multiplying by a correction factor is slightly more efficient than recalculating the entire Uvdw_lrc term each timestep
+ Uvdw_lrc = Uvdw_lrc0*(volume_init/volume)
+
+!If the volume is changing than the Ewald k-vectors have to be reset every timestep
+!if (BAROSTAT) call ewald_set(.false.)
+
+if (pot_model==2 .or. pot_model==3) then
+    call pot_ttm(RR, RRc, Upot, dRR, virt, virialc, dip_momI, Edip_mom, chg,t)
+else if (pot_model==4 .or. pot_model==5) then
+    call pot_spc(RR, Upot, dRR, virt, dip_momI, chg)
+else if (pot_model==6) then 
+    call siesta_forces( trim(sys_label), Natoms, RR, energy=Upot, fa=dRR)
+endif
+
+end subroutine potential
+
+
+
+
+
+
+
+
+
+
+
 
 end module force_calc

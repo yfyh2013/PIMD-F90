@@ -15,8 +15,9 @@ module system_mod
    integer :: Natoms, Nwaters 
    integer, dimension(:,:), allocatable :: neigh_list
    integer :: predict_step
-  double precision :: const_ts1, const_ts2, const_ts3
+   double precision :: const_ts1, const_ts2, const_ts3
 
-  logical :: CONTRACTION 
+   logical :: CONTRACTION 
+   character(len=200) :: sys_label 
 
 end module system_mod

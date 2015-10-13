@@ -34,9 +34,9 @@ logical :: EWALD = .true.
 type(t_neigh) :: neigh 
 
 if (.not. allocated(R) .or. Natoms/=pr_Natoms .or. &
-      dsqrt(dot_product(box-pr_box, box-pr_box))>1.d-12) then
-pr_Natoms = Natoms
-   pr_box = box
+    dsqrt(dot_product(box-pr_box, box-pr_box))>1.d-12) then
+	pr_Natoms = Natoms
+    pr_box = box
 endif
 
 virt = 0.d0

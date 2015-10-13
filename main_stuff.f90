@@ -35,7 +35,6 @@ integer, dimension(:), allocatable :: seed
  character(len=11)  :: bead_thermostat_type
 integer :: num_timesteps, t, t_freq, tp_freq, td_freq, ti_freq, m, clock, eq_timesteps, ttt, tr 
 logical :: dip_out, coord_out, TD_out, vel_out, TP_out, Edip_out 
-logical :: SIESTA
 logical :: BAROSTAT, PEQUIL, BOXSIZEOUT, THERMOSTAT, GENVEL, INPCONFIGURATION, IMAGEDIPOLESOUT
 logical :: DIELECTRICOUT, PRINTFINALCONFIGURATION, OUTPUTIMAGES, SIMPLE_ENERGY_ESTIMATOR
 logical ::  BEADTHERMOSTAT, CENTROIDTHERMOSTAT, CALC_RADIUS_GYRATION, CHARGESOUT
@@ -63,8 +62,7 @@ double precision :: tau_P, ref_P, press, CompFac, scale_factor
 double precision, dimension(:,:,:), allocatable :: RRt, PPt, dip_momIt, dip_momEt, dRRt
 double precision, dimension(:,:), allocatable :: RRc, PPc
 double precision, dimension(:), allocatable :: Upott, Virialt, virialct
-double precision, dimension(1) :: Upot,  virial, virialc
-double precision ::  omegan, kTN, iNbeads, setNMfreq
+double precision ::  Upot,  virial, virialc, omegan, kTN, iNbeads, setNMfreq
 double precision :: radiusH, radiusO
 integer :: Nnodes, Nbeads, pid, j, k, ierr, Nbatches, counti, bat
 integer :: status2(MPI_STATUS_SIZE)
@@ -76,7 +74,7 @@ double precision :: seconds, secondsNM, secondsIO
 integer :: intra_timesteps 
 double precision   :: deltfast, delt2fast  
 
-contains
+ contains
 
 !----------------------------------------------------------------------------------!
 !---------- Periodic Boundary conditions for the beads ----------------------------
