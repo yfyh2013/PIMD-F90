@@ -2,9 +2,8 @@ module InputOutput
 use consts
 use main_stuff
 use lun_management
-#ifdef siesta
 use fsiesta
-#endif
+
 Implicit none 
 
  contains
@@ -91,15 +90,7 @@ end subroutine read_input_file
 !---------------- Initialize some variables for all nodes ------------------------
 !----------------------------------------------------------------------------------!
 subroutine initialize_all_node_variables
-
-!Initialize potential-related variables
-if (pot_model == 6) then
-  call siesta_launch( 'PIMD', Nnodes, MPI_COMM_WORLD)
-  call siesta_units( 'Ang', 'kcal/mol' )
-else
-  call init_pot
-endif 
-
+ 
 !---  read the number of atoms, dimension of box and atomic coordinates 
 call io_assign(lunXYZ)
 
@@ -167,12 +158,21 @@ allocate(chg(Natoms))
 !allocate(tx_dip(3,4*Nwaters, 4))
 allocate(RRc(3, Natoms))
 
+!Initialize potential-related variables
+if (pot_model .eq. 6) then
+  sys_label = 'h2o'
+  !!call siesta_units( "ang", 'kcal/mol' ) ! The combination of ang and kcal/mol doesn't work with Siesta for some reason
+  call siesta_launch( trim(sys_label)) !launch serial SIESTA process (Nnodes, MPI_COMM_WORLD) 
+else
+  call init_pot
+endif 
+
 end subroutine initialize_all_node_variables
 
 
-!----------------------------------------------------------------------------------!
-!---------- Error handling  / master node allocations ----------------------------- 
-!----------------------------------------------------------------------------------!
+!----------------------------------------------------------------------------------
+!---------- Error handling  / master node allocations ---------------------------- 
+!----------------------------------------------------------------------------------
 subroutine master_node_init
 	use Langevin 
 	use NormalModes
@@ -206,6 +206,7 @@ endif
 
 if ( Rc .gt. minval(box)/2 ) then
 	write(lunTP_out,*) 'ERROR: cutoff radius is greater than half the smallest box dimension (', minval(box), ')'
+	write(lunTP_out,*) 'suggest changing to', minval(box)/2.0
 	stop
 endif  
 
@@ -231,7 +232,7 @@ if ( Nnodes .gt. Nbeads) then
 	stop
 endif
 
-if ( (pot_model .gt. 5) .or. (pot_model .lt. 1) ) then 
+if ( (pot_model .gt. 6) .or. (pot_model .lt. 1) ) then 
 	write(*,*) "ERROR: Invalid potential model !"
 	stop
 endif
@@ -271,8 +272,8 @@ endif
 	seed = clock + 357 * (/ (i - 1, i = 1, m) /)
  	call random_seed(put = seed)  !put in the seed
  		
-	write(*,'(a,i4,a,i4,a)') "Running with ", Nbeads, " beads on ", Nnodes, " nodes"
-
+	write(lunTP_out,'(a,i4,a,i4,a)') "Running with ", Nbeads, " beads on ", Nnodes, " nodes"
+	
 	!Master node allocations
 	!only the master node (pid = 0) stores a fully copy of the
 	! coords / vel for all beads and the centroid
@@ -292,9 +293,9 @@ endif
  	if (CONTRACTION) delt2fast = deltfast/2d0
 
 	if (CONTRACTION) then
-		call InitNormalModes(Nbeads, omegan, deltfast, setNMfreq)
+		call InitNormalModes(Nbeads, omegan, deltfast, setNMfreq, lunTP_out)
 	else
-		call InitNormalModes(Nbeads, omegan, delt, setNMfreq)
+		call InitNormalModes(Nbeads, omegan, delt, setNMfreq, lunTP_out)
 	endif
 
 	if (THERMOSTAT)  then
@@ -348,6 +349,14 @@ end subroutine read_coords
 subroutine open_files
  Implicit none 
  logical :: EXISTS
+ 
+ if (TP_out) then 
+	call io_assign(lunTP_out)
+	open(lunTP_out, file='out_'//TRIM(fsave)//'_TempPress.dat', status='unknown')
+	!write(*,*) "Terminal output suppressed to file: ", 'out_'//TRIM(fsave)//'_TempPress.dat'
+ else 
+	lunTP_out = io_get_stdout()
+ endif 
 
  if (coord_out) then
 	call io_assign(luncoord_out)
@@ -365,7 +374,7 @@ subroutine open_files
    	call io_assign(lundip_out)
 	inquire(file='out_'//TRIM(fsave)//'_dip.dat', exist=EXISTS)
   	if (EXISTS) then
-		write(*,*) "Dipoles file already exists, appending to end of file"
+		write(lunTP_out,*) "NOTE: Dipoles file already exists, appending to end of file"
    		open(lundip_out, file='out_'//TRIM(fsave)//'_dip.dat', status="old", position="append", action="write")
   	else
     		open(lundip_out, file='out_'//TRIM(fsave)//'_dip.dat', status="unknown")
@@ -375,7 +384,7 @@ subroutine open_files
 	call io_assign(lunTD_out)
 	inquire(file='out_'//TRIM(fsave)//'_tot_dip.dat', exist=EXISTS)
   	if (EXISTS) then
-		write(*,*) "Total dipole file already exists, appending to end of file"
+		write(lunTP_out,*) "Total dipole file already exists, appending to end of file"
    		open(lunTD_out, file='out_'//TRIM(fsave)//'_tot_dip.dat', status="old", position="append", action="write")
   	else
     		open(lunTD_out, file='out_'//TRIM(fsave)//'_tot_dip.dat', status="unknown")
@@ -398,13 +407,6 @@ subroutine open_files
 	open(lunIMAGEDIPOLESOUT, file='out_'//TRIM(fsave)//'_images_dip.dat', status='unknown')
  endif
 
- if (TP_out) then 
-	call io_assign(lunTP_out)
-	open(lunTP_out, file='out_'//TRIM(fsave)//'_TempPress.dat', status='unknown')
-	write(*,*) "Supressing further terminal output to file"
- else 
-	call io_get_stdout(lunTP_out)
- endif 
 
 
  !write Temp/Press file header
@@ -419,7 +421,6 @@ subroutine open_files
  if (CALC_RADIUS_GYRATION)    write(lunTP_out,'(a,a)',advance='no')  " r_O ", " r_H "
  if (DIELECTRICOUT)           write(lunTP_out,'(a)',advance='no') " eps(0) "
  write(lunTP_out,'(a)')  ""
-
 
 end subroutine open_files
 
@@ -461,7 +462,7 @@ subroutine write_out
  sys_temp = TEMPFACTOR*uk/(Natoms*Nbeads*Nbeads)
 
 ! call calc_uk_centroid
-! write(*,*) "centroid temp =", TEMPFACTOR*uk/(Natoms)
+! write(lunTP_out,*) "centroid temp =", TEMPFACTOR*uk/(Natoms)
 
 
  !uk = 0 
@@ -473,7 +474,7 @@ subroutine write_out
 !	enddo
  !enddo	
  !uk = .5d0*uk 
-! write(*,*) "naive bead temp =", TEMPFACTOR*uk/(Natoms)
+! write(lunTP_out,*) "naive bead temp =", TEMPFACTOR*uk/(Natoms)
 
  !- pressure / total energy calculation : old classical case -
  !sys_press =  PRESSCON*(1/(3*volume))*( 2*uk -	 MASSCON*( virt(1,1)+virt(2,2)+virt(3,3) )  )
@@ -646,14 +647,10 @@ subroutine quantum_virial_estimators(RRt, virial, virialc, qEnergy, qPress, sys_
  
  KE = 1.5*Natoms*kb*sys_temp*Nbeads!kinetic energy in kcal/mol
 
-
- !writwe(*,*) virial, virialc
-
  !convert to kcal/(mole of mol H2O) by dividing by Nwaters
  qEnergy = ( KE  +  .5*(virial -  virialc ) +  Upot )/(Nwaters*Nbeads) 
 
  qPress  =  PRESSCON2*(1/(3*volume))*( 2*KE - virialc )/(Nwaters*Nbeads) !factor of 1/3 not in Tuckerman's book. (book is wrong!!)
-
 
 end subroutine quantum_virial_estimators
 
@@ -804,15 +801,17 @@ write(lunTP_out,'(a50, f10.2)') "ps/day = ",  (  (num_timesteps + eq_timesteps)*
  endif
 end subroutine print_run
 
-!----------------------------------------------------------------------------------!
-!----------Print basic information about the run ----------------------------------
-!----------------------------------------------------------------------------------!
+!----------------------------------------------------------------------------------
+!----------Print basic information about the run ---------------------------------
+!----------------------------------------------------------------------------------
 subroutine print_basic_run_info
  if (pot_model .eq. 2) write(lunTP_out,'(a50,a)') "Model = ", "TTM2F"
  if (pot_model .eq. 3) write(lunTP_out,'(a50,a)') "Model = ", "TTM3F"
  if (pot_model .eq. 4) write(lunTP_out,'(a50,a)') "Model = ", "qSPCfw"
  if (pot_model .eq. 5) write(lunTP_out,'(a50,a)') "Model = ", "SPCf"
+ if (pot_model .eq. 6) write(lunTP_out,'(a50,a,a)') "Model = ", "SIESTA  sys_label = ", trim(sys_label)
  write(lunTP_out,'(a50,i4,a,i4,a)') "Running with ", Nbeads, " beads on ", Nnodes, " nodes"
+ write(lunTP_out,'(a50, i6)') "Num Molecules = ", Nwaters
  write(lunTP_out,'(a50, f10.3,a3)') "timestep = ", delt*1000, " fs"
  write(lunTP_out,'(a50, f8.4,a25,f8.4)') "mass of hydrogen = ", massH
  write(lunTP_out,'(a50, f8.4,a25,f8.4)') "  mass of oxygen = ", massO
@@ -830,7 +829,6 @@ subroutine print_basic_run_info
  if (.not. BEADTHERMOSTAT) write(lunTP_out,'(a50, a3)') " centroid thermostat tau = ", "n/a"
  if (BAROSTAT) write(lunTP_out,'(a50, f10.3,a3)') "Barostat tau = ", tau_p, " ps"
  if (.not. BAROSTAT) write(lunTP_out,'(a50, a3)') "Barostat tau = ", "n/a"
-
 end subroutine print_basic_run_info
 
 !----------------------------------------------------------------------------------!
@@ -975,6 +973,23 @@ integer, intent(in) :: iun
  enddo
 end subroutine load_configuration
 
+
+subroutine shutdown 
+use system_mod
+
+if (pid .eq. 0)  then
+	call MPItimer(1,'write',seconds) 
+	call MPItimer(2,'write',secondsNM) 
+	call MPItimer(3,'write',secondsIO) 
+	call print_run
+endif
+
+if (pot_model == 6) call siesta_quit( trim(sys_label) )
+ 
+Call MPI_Barrier(MPI_COMM_WORLD, ierr)
+Call MPI_Finalize(ierr)
+
+end subroutine shutdown
 
 
 

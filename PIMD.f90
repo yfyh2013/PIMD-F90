@@ -6,6 +6,7 @@ program PIMD
 !TTM3F code edited and expanded by Dan Elton 2/13
 !Added PIMD parallelization 12/13
 !Switched from velocity to momentum variables 3/14
+!Addition of SIESTA 10/15
 !
 !To run the program use the following : 
 ! serial   : ./main.x inputfilename
@@ -18,18 +19,16 @@ use InputOutput
 use NormalModes
 use mpi
 use force_calc
-#ifdef siesta
-use fsiesta
-#endif
+
 implicit none
-!Variables for main can be found in main_stuff.f90
+!main variables can be found in main_stuff.f90
 
 !---------------------- Read in input file ----------------------------------------
 call read_input_file
 
 !---------------------- Start MPI and find number of nodes and pid --------------
 call MPI_Init(ierr)
-if (.not. (ierr .eq. 0))	write(*,*) "WARNING: MPI did not intialize correctly"
+if (.not. (ierr .eq. 0))	write(*,*) "WARNING: MPI did not intialize correctly."
 call MPI_Comm_size(MPI_COMM_WORLD, Nnodes, ierr)
 call MPI_Comm_rank(MPI_COMM_WORLD, pid, ierr)
 
@@ -46,6 +45,8 @@ if (pid .eq. 0) then
 	call calc_uk 		   ! Initalize kinetic energy
 	call MPItimer(1,'start',seconds)
 endif!(pid .eq. 0)
+
+
 
 !---------------------------------------------------------------------------------
 !----------- MD Part of the program ---------------------------------------------
@@ -65,7 +66,7 @@ do t = 1, num_timesteps + eq_timesteps
 		PPt = PPt - MASSCON*dRRt*delt2
 		
 		!Normal modes stuff
-	      if (.not. (CONTRACTION)) then
+	    if (.not. (CONTRACTION)) then
 	
 		call MPItimer(2,'start',secondsNM)
 		
@@ -97,7 +98,7 @@ do t = 1, num_timesteps + eq_timesteps
 		!check PBCs
 		call PBCs(RRt, RRc)
 
-	      endif!.not. (CONTRACTION)
+	    endif!.not. (CONTRACTION)
 	
 	endif!if (pid .eq. 0) 
 	!------ call force routine ------------------------------------ 
@@ -138,16 +139,8 @@ do t = 1, num_timesteps + eq_timesteps
 
 enddo!t = 1, num_timesteps + eq_timesteps
 
-if (pid .eq. 0)  then
-	call MPItimer(1,'write',seconds) 
-	call MPItimer(2,'write',secondsNM) 
-	call MPItimer(3,'write',secondsIO) 
-	call print_run
-endif
 
-if (pot_model == 6) call siesta_quit( 'h2o' )
- 
-Call MPI_Barrier(MPI_COMM_WORLD, ierr)
-Call MPI_Finalize(ierr)
+call shutdown 
+
 
 end program PIMD

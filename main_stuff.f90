@@ -7,29 +7,29 @@ Implicit none
 !-------------- "global" variables used by main.f90 and the subroutines below ---
 !----------------------------------------------------------------------------------!
 !-old variables:---------------------------------------
-double precision, dimension(:,:), allocatable :: RR, dRR
-double precision, dimension(:), allocatable :: chg
-double precision, dimension(3,3) :: virt
-double precision, dimension(3) :: dip_mom
-double precision, dimension(:,:), allocatable :: dip_momI, dip_momE
-double precision ::  sys_press
-double precision :: tolg, tolx, stpmx
+real(8), dimension(:,:), allocatable :: RR, dRR
+real(8), dimension(:), allocatable :: chg
+real(8), dimension(3,3) :: virt
+real(8), dimension(3) :: dip_mom
+real(8), dimension(:,:), allocatable :: dip_momI, dip_momE
+real(8) ::  sys_press
+real(8) :: tolg, tolx, stpmx
 integer :: i, iw, iat,  iO, ih1, ih2, narg, ia, read_method
 integer :: ix, iy, iz 
 integer, external :: iargc
  character(len=2) :: ch2
  character(len=125) :: finp, fconfig, fsave 
 !-new variables:--------------------------------------------
-double precision, dimension(:,:), allocatable :: VV, dRRold, dRRnew
-double precision, dimension(3) :: summom, sumvel, sum_dip, avg_box, avg_box2, sum_box, sum_box2
-double precision :: delt, delt2,  uk,  imassO, imassH
-double precision :: temp, sum_temp, sum_press, sys_temp, avg_vel, init_energy, sum_RMSenergy
-double precision :: tot_energy, sum_tot_energy, sum_energy2, sum_simple_energy, simple_energy
-double precision :: specific_heat, avg_temp, init_temp, sum_dip2, sum_simple_press, simple_sys_press
-double precision :: dielectric_constant, diel_prefac, dielectric_error
-double precision, dimension(1000)  :: dielectric_running
+real(8), dimension(:,:), allocatable :: VV, dRRold, dRRnew
+real(8), dimension(3) :: summom, sumvel, sum_dip, avg_box, avg_box2, sum_box, sum_box2
+real(8) :: delt, delt2,  uk,  imassO, imassH
+real(8) :: temp, sum_temp, sum_press, sys_temp, avg_vel, init_energy, sum_RMSenergy
+real(8) :: tot_energy, sum_tot_energy, sum_energy2, sum_simple_energy, simple_energy
+real(8) :: specific_heat, avg_temp, init_temp, sum_dip2, sum_simple_press, simple_sys_press
+real(8) :: dielectric_constant, diel_prefac, dielectric_error
+real(8), dimension(1000)  :: dielectric_running
 integer  :: dielectric_index = 1
-double precision ::  isotherm_compress
+real(8) ::  isotherm_compress
 integer, dimension(:), allocatable :: seed
  character(len=125) :: dip_file
  character(len=11)  :: bead_thermostat_type
@@ -46,33 +46,33 @@ integer :: lunEdip_out, lunIMAGEDIPOLESOUT, lunTD_out, lunOUTPUTIMAGES
 
 
 !N-H variables
-double precision, save :: tau, tau_centroid, s, sbead
+real(8), save :: tau, tau_centroid, s, sbead
 integer, save           :: global_chain_length, bead_chain_length 
 
 !Nose-Hoover chain velocities for all beads are stored here
-double precision, dimension(:,:,:,:), allocatable :: vxi_beads
+real(8), dimension(:,:,:,:), allocatable :: vxi_beads
 
 !Nose-Hoover global chain velocities are stored here
-double precision, dimension(:), allocatable     :: vxi_global
+real(8), dimension(:), allocatable     :: vxi_global
 
 !-Berendsen thermostat variables
-double precision :: tau_P, ref_P, press, CompFac, scale_factor
+real(8) :: tau_P, ref_P, press, CompFac, scale_factor
 
 !- Variables for the paralleziation / PIMD
-double precision, dimension(:,:,:), allocatable :: RRt, PPt, dip_momIt, dip_momEt, dRRt
-double precision, dimension(:,:), allocatable :: RRc, PPc
-double precision, dimension(:), allocatable :: Upott, Virialt, virialct
-double precision ::  Upot,  virial, virialc, omegan, kTN, iNbeads, setNMfreq
-double precision :: radiusH, radiusO
+real(8), dimension(:,:,:), allocatable :: RRt, PPt, dip_momIt, dip_momEt, dRRt
+real(8), dimension(:,:), allocatable :: RRc, PPc
+real(8), dimension(:), allocatable :: Upott, Virialt, virialct
+real(8) ::  Upot,  virial, virialc, omegan, kTN, iNbeads, setNMfreq
+real(8) :: radiusH, radiusO
 integer :: Nnodes, Nbeads, pid, j, k, ierr, Nbatches, counti, bat
 integer :: status2(MPI_STATUS_SIZE)
 
 ! timing variables
-double precision :: seconds, secondsNM, secondsIO
+real(8) :: seconds, secondsNM, secondsIO
 
 !variables for multiple timestep / contraction
 integer :: intra_timesteps 
-double precision   :: deltfast, delt2fast  
+real(8)   :: deltfast, delt2fast  
 
  contains
 
@@ -85,9 +85,9 @@ double precision   :: deltfast, delt2fast
 !where beads are outside the box
 subroutine PBCs(RRt, RRc)
  Implicit none 
- double precision, dimension(3, Natoms,Nbeads), intent(inout) :: RRt
- double precision, dimension(3, Natoms), intent(inout) :: RRc
- double precision, dimension(3, Natoms) :: shifts 
+ real(8), dimension(3, Natoms,Nbeads), intent(inout) :: RRt
+ real(8), dimension(3, Natoms), intent(inout) :: RRc
+ real(8), dimension(3, Natoms) :: shifts 
  integer :: i
 
 	!store the shifts here 
@@ -111,8 +111,8 @@ subroutine bead_thermostat
  use NormalModes
  use Langevin 
  Implicit None
- double precision, dimension(3,Nbeads) :: PPtr 
- double precision :: uk_bead, tau, imass
+ real(8), dimension(3,Nbeads) :: PPtr 
+ real(8) :: uk_bead, tau, imass
  Integer :: i, j, k 
 !- Calling Langevin thermostat -----------------------------------------------------
  if (bead_thermostat_type .eq. 'Langevin') then
@@ -172,8 +172,8 @@ end subroutine bead_thermostat
 !----------------------------------------------------------------------------------!
 subroutine calc_radius_of_gyration(RRt, RRc) 
  Implicit None
- double precision, dimension(3,Natoms,Nbeads),intent(in)  :: RRt
- double precision, dimension(3,Natoms),intent(in)         :: RRc
+ real(8), dimension(3,Natoms,Nbeads),intent(in)  :: RRt
+ real(8), dimension(3,Natoms),intent(in)         :: RRc
  integer    	    :: i, j, iH1, iH2, iO
 
  radiusH = 0d0 
@@ -220,16 +220,16 @@ end subroutine Pcouple
 !----------------------------------------------------------------------------------!
 subroutine initialize_beads
 use NormalModes
-double precision, dimension(:,:), allocatable :: RRtemp
-double precision :: avgrO, avgrH
+real(8), dimension(:,:), allocatable :: RRtemp
+real(8) :: avgrO, avgrH
 allocate(RRtemp(3,Nbeads))
 
 !predict average radius of the ring polymer
 if (Nbeads .gt. 1) then
 	avgrO  = 2*PI*hbar/(PI*Sqrt(24*massO*KB_amuA2ps2perK*temp))
 	avgrH  = 2*PI*hbar/(PI*Sqrt(24*massH*KB_amuA2ps2perK*temp)) 
-	write(*,'(a,f10.5,a4)') "Predicted average radius of (N_beads -> infinity) Oxygen ring polymer is   ", avgrO, " Ang"
-	write(*,'(a,f10.5,a4)') "Predicted average radius of (N_beads -> infinity) Hydrogen ring polymer is ", avgrH, " Ang"
+	write(lunTP_out,'(a,f10.5,a4)') "Predicted average radius of (N_beads -> infinity) Oxygen ring polymer is   ", avgrO, " Ang"
+	write(lunTP_out,'(a,f10.5,a4)') "Predicted average radius of (N_beads -> infinity) Hydrogen ring polymer is ", avgrH, " Ang"
 endif 
 
 do i=1, Nwaters
@@ -262,11 +262,11 @@ use NormalModes
 use math
 summom = 0
 if (INPCONFIGURATION .and. .not. GENVEL) then
- write(*,*) "using velocities from configuration file"
+ write(lunTP_out,*) "NOTE: using velocities from configuration file"
 endif 
 if ( (INPCONFIGURATION) .and. (GENVEL) ) then
-	write(*,*) 'WARNING: You selected to input a configuration file and generate velocites.'
-	write(*,*) '		the velocities in the configuration file will be overwritten.'
+	write(lunTP_out,*) 'WARNING: You selected to input a configuration file and generate velocites.'
+	write(lunTP_out,*) '		the velocities in the configuration file will be overwritten.'
 endif  
 
 if (GENVEL) then
@@ -314,7 +314,7 @@ if (GENVEL) then
 else if ( (.not. GENVEL) .and. (.not. INPCONFIGURATION)) then 
   PPt = 0 
   PPc = 0 
-  write(*,*) "Initial velocities set to zero." 
+  write(lunTP_out,*) "NOTE: Initial velocities set to zero." 
 endif 
 
 end subroutine initialize_velocities
@@ -323,7 +323,7 @@ end subroutine initialize_velocities
 !---------------------------------------------------------------------------------
 subroutine calc_uk
  use NormalModes
- double precision, dimension(3,Nbeads) :: PPtr 
+ real(8), dimension(3,Nbeads) :: PPtr 
 
 
 if (setNMfreq .eq. 0) then 

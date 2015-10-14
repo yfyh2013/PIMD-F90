@@ -10,7 +10,7 @@
 Module lun_management
  implicit none
  integer, save 	    :: stdout=6, stderr=0
- integer   	    :: iostat 
+ integer   	    	:: iostat 
  integer, parameter :: min_lun=10, max_lun=99
  integer, parameter :: nunits = max_lun - min_lun+1 
  logical, save      :: lun_is_free(min_lun:max_lun)
@@ -21,11 +21,6 @@ Module lun_management
 
  contains 
  
-subroutine io_get_stdout(lun)
-  integer, intent(out) :: lun
-  lun = stdout
-end subroutine
-
 !---------------------------------------------------
 !Looks for a free unit and assigns it to lun
 !---------------------------------------------------
@@ -53,6 +48,13 @@ subroutine io_close(lun)
       close(lun)
       if ((lun .ge. min_lun) .and. (lun .le. max_lun)) lun_is_free(lun) = .true.
 end subroutine io_close
+
+!---------------------------------------------------
+!Returns the stdout unit (default = 6)
+!---------------------------------------------------
+integer function io_get_stdout()  
+	io_get_stdout = stdout
+end function
 
 !---------------------------------------------------
 !Reserve a unit (useful for compatibility with legacy code)

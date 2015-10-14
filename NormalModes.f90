@@ -1,7 +1,9 @@
-!---------------------------------------------------------------------!
+!----------------------------------------------------------------------
 !-----------------Normal mode calculation module ---------------------
 !-----------------This module is self contained ----------------------
-!---------------------------------------------------------------------!
+!
+!----------------------------------------------------------------------
+
 module NormalModes
  use consts 
  Implicit none
@@ -47,13 +49,13 @@ end subroutine EvolveRing
 !--------------------------------------------------------------------------
 !------------ Initialize Normal Mode matrices ----------------------------
 !--------------------------------------------------------------------------
-subroutine InitNormalModes(Nbeads,omegan,delta,setNMfreq)
+subroutine InitNormalModes(Nbeads,omegan,delta,setNMfreq, lunTP_out)
  use consts
  Implicit None
  double precision, intent(in) :: omegan, delta, setNMfreq
  double precision              :: omega
  integer, intent(in) 	 :: Nbeads 
- integer 			 :: i, j, k, l
+ integer 			 :: i, j, k, l, lunTP_out
 
  allocate(A11(Nbeads)) 
  allocate(A12(Nbeads)) 
@@ -137,11 +139,11 @@ subroutine InitNormalModes(Nbeads,omegan,delta,setNMfreq)
  MassScaleFactor = 1
 
 if (setNMfreq .eq. 0) then
- 	write(*,*) "Running usuing RPMD. All beads have physical mass."
- 	write(*,*) "Normal mode frequencies: (cm^-1)"
+ 	write(lunTP_out,*) "Running usuing RPMD. All beads have physical mass."
+ 	write(lunTP_out,*) "Normal mode frequencies: (cm^-1)"
  	do k = 1,Nbeads
 		omega = omegalist(k) 
-		write(*,'(f10.2)')  33.33333d0*omega/(2*PI) 
+		write(lunTP_out,'(f10.2)')  33.33333d0*omega/(2*PI) 
 	enddo
 endif 
 
@@ -163,12 +165,12 @@ if (.not. (setNMfreq .eq. 0)) then
 		else
 			MassScaleFactor(i) = (omegalist(i)/omega)**2
 		endif
-		!write(*,*) "mass scale factor", i, " = ", massScaleFactor(i)
+		!write(lunTP_out,*) "mass scale factor", i, " = ", massScaleFactor(i)
 	enddo
 
-	write(*,*) "Adiabaticity = ", omegan/omega 
- 	write(*,'(a,f8.3,a8,f10.2,a6)') "All normal modes scaled to ", omega/(2*PI), " 1/ps = ", 33.33333d0*omega/(2*PI), " cm^-1"
-	write(*,'(a,f8.2,a)') "Timestep should probably not be larger than ", 	(((2*PI)/omega)/4d0)*1000, " fs"
+	write(lunTP_out,*) "Adiabaticity = ", omegan/omega 
+ 	write(lunTP_out,'(a,f8.3,a8,f10.2,a6)') "All normal modes scaled to ", omega/(2*PI), " 1/ps = ", 33.33333d0*omega/(2*PI), " cm^-1"
+	write(lunTP_out,'(a,f8.2,a)') "Timestep should probably not be larger than ", 	(((2*PI)/omega)/4d0)*1000, " fs"
 	
   	omegalist(2:2*l+1) = omega
 	A11(2:2*l+1) = Cos(omega*delta)
@@ -191,9 +193,9 @@ endif
 !check for resonances 
  do i = 1, Nbeads
 	if ( abs(1/delta - omegalist(i)/TWOPI)/(1/delta)  .lt. .01 ) then
-		write(*,'(a,i2,a)') "WARNING: normal mode frequency", i, " differs from 1/timestep by less than 1 percent"
-		write(*,'(a,f10.4,a,f10.4)') "Normal mode frequency ", i, " = ", omegalist(i)/TWOPI, " 1/timestep = ", 1/delta
-		write(*,*) "You may encounter resonances which cause the simulation to fail"
+		write(lunTP_out,'(a,i2,a)') "WARNING: normal mode frequency", i, " differs from 1/timestep by less than 1 percent"
+		write(lunTP_out,'(a,f10.4,a,f10.4)') "WARNING: Normal mode frequency ", i, " = ", omegalist(i)/TWOPI, " 1/timestep = ", 1/delta
+		write(lunTP_out,*) "WARNING: You may encounter resonances which cause the simulation to fail"
 	endif
  enddo
 

@@ -7,6 +7,7 @@ module consts
    double precision, parameter :: MASSCONi=1d0/418.4d0
    double precision, parameter :: PRESSCON2=69477d0   ! kcal/mole/Ang**3 to bar
    double precision, parameter :: PRESSCON =166.05387280d0  ! amu/(ps^2*ang) to bar
+   double precision, parameter :: EVTOKCALPERMOLE = 23.0600d0 !ev to kcal/mol 
 !  double precision, parameter :: KCALKLVN=503.21659237841666799453d0
 !  double precision, parameter :: HBAR =0.0151704885d0 ! kcal/mol * ps
    double precision, parameter :: TEMPFACTOR =0.80181484527d0 ! factor to convert kinetic energy amu*Ang^2/ps^2 to K (using T = (2/3) 1/(k_B) * <uk>)

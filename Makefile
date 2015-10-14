@@ -2,10 +2,14 @@ FILES=fsiesta_pipes pxf consts lun_management math Nose_Hoover NormalModes MPIti
 
 OBJS=$(addsuffix .o, $(FILES))
 
+VPATH=/home/dan/Dropbox/RESEARCH/SIESTA_myMonomerCorrected/Src
+
 FC=mpif90 
 
+##Note : -DFC_HAVE_FLUSH -DFC_HAVE_ABORT  flags needed for communicating with Siesta via pipes
+
 #FFLAGS=-fpp  -O3 -C -debug -traceback 
-FFLAGS = -O3  -cpp -Dsiesta
+FFLAGS = -O3  -cpp -Dsiesta -Dparallel -DFC_HAVE_FLUSH -DFC_HAVE_ABORT 
 
 all: PIMD.x
 
@@ -18,13 +22,13 @@ profile: FFLAGS += -p
 profile: PIMD.x 
 
 #serial compilation commands
-serial: FC=gfortran 
+serial: FC=ifort
+serial: FFLAGS = -O3  -cpp -Dsiesta -DFC_HAVE_FLUSH -DFC_HAVE_ABORT 
 serial: PIMD_serial.x 
 
 
 #Siesta with pipes compilation support 
 #FSIESTA= 
-
 
 
 PIMD_serial.x: MPI.o $(OBJS)
@@ -44,3 +48,6 @@ MPI.o:
 
 clean: 
 	rm -rf *.o *.mod 
+	
+pristine: 
+	rm -rf *.o *.mod INPUT_TMP* *.log *.xml *.x  

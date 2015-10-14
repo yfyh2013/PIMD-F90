@@ -43,6 +43,7 @@ subroutine full_bead_forces
 		if (Edip_out) call MPI_Recv(dip_momEt(:,:,k), 3*Nwaters, MPI_DOUBLE_PRECISION, i, 0, MPI_COMM_WORLD, status2, ierr)
 	enddo
     else
+#ifdef parallel
 		!slavenode recieve coords from master node
 		call MPI_Recv(RR, counti, MPI_DOUBLE_PRECISION, 0, 0, MPI_COMM_WORLD, status2, ierr)
 		!slavenode recieve centroid coords from master node
@@ -61,6 +62,7 @@ subroutine full_bead_forces
 		!slavenode send back dipole moments 
 		if (dip_out .or. TD_out) call MPI_Send(dip_momI, 3*Nwaters, MPI_DOUBLE_PRECISION, 0, 0, MPI_COMM_WORLD, ierr)
 		if (Edip_out) call MPI_Send(dip_momE, 3*Nwaters, MPI_DOUBLE_PRECISION, 0, 0, MPI_COMM_WORLD, ierr)
+#endif
     endif
     Call MPI_Barrier(MPI_COMM_WORLD, ierr)
   
@@ -251,6 +253,12 @@ double precision, dimension(3, NWaters), intent(out)  ::  dip_momI, Edip_mom
 double precision, dimension(3) :: dip_mom
 integer, intent(in) :: t
 logical, intent(in) :: BAROSTAT
+double precision, dimension(3,3) :: siesta_box
+   
+siesta_box = 0.0
+siesta_box(1,1) = box(1)
+siesta_box(2,2) = box(2)
+siesta_box(3,3) = box(3) 
 
 !All the stuff that depends on volume needs to be rescaled. 
  p4V = FOURPI/volume
@@ -267,7 +275,9 @@ if (pot_model==2 .or. pot_model==3) then
 else if (pot_model==4 .or. pot_model==5) then
     call pot_spc(RR, Upot, dRR, virt, dip_momI, chg)
 else if (pot_model==6) then 
-    call siesta_forces( trim(sys_label), Natoms, RR, energy=Upot, fa=dRR)
+    call siesta_forces( trim(sys_label), Natoms, RR, cell=siesta_box, energy=Upot, fa=dRR)
+    Upot = Upot*EVTOKCALPERMOLE
+    dRR = dRR*EVTOKCALPERMOLE    
 endif
 
 end subroutine potential
