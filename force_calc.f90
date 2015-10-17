@@ -283,14 +283,4 @@ endif
 end subroutine potential
 
 
-
-
-
-
-
-
-
-
-
-
 end module force_calc

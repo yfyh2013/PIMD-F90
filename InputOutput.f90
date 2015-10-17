@@ -111,15 +111,19 @@ open(lunXYZ,file=fconfig,status='old')
 	Natoms = Natoms/Nbeads
  else 
 	!usually the box size is in the first line of a raw .xyz
-	!but it might be in the second line. 
-	read(lunXYZ,*,IOSTAT=ierr) Natoms, box(1:3)
-	read(lunXYZ,* ) 
+	!but it might be in the second line. Try a few different combos here. 
+	read(lunXYZ,*,IOSTAT=ierr) box(1:3)
+	read(lunXYZ,*) Natoms 
 	if (ierr .ne. 0) then 
 		rewind(lunXYZ)
 		read(lunXYZ,*) Natoms 
 		read(lunXYZ,*,IOSTAT=ierr) box(1:3)
 		if (ierr .ne. 0) then 
-			write(*,*) "ERROR: could not read box size from input file. Trying to continue anyway."
+			rewind(lunXYZ)
+			read(lunXYZ,*,IOSTAT=ierr) Natoms, box(1:3)
+			if (ierr .ne. 0) then 		
+				write(*,*) "ERROR: could not read box size from input file. Trying to continue anyway with box = ", box
+			endif 
 		endif
 	endif 
  endif 
@@ -384,7 +388,7 @@ subroutine open_files
 	call io_assign(lunTD_out)
 	inquire(file='out_'//TRIM(fsave)//'_tot_dip.dat', exist=EXISTS)
   	if (EXISTS) then
-		write(lunTP_out,*) "Total dipole file already exists, appending to end of file"
+		write(lunTP_out,*) "NOTE: Total dipole file already exists, appending to end of file"
    		open(lunTD_out, file='out_'//TRIM(fsave)//'_tot_dip.dat', status="old", position="append", action="write")
   	else
     		open(lunTD_out, file='out_'//TRIM(fsave)//'_tot_dip.dat', status="unknown")
@@ -831,9 +835,9 @@ subroutine print_basic_run_info
  if (.not. BAROSTAT) write(lunTP_out,'(a50, a3)') "Barostat tau = ", "n/a"
 end subroutine print_basic_run_info
 
-!----------------------------------------------------------------------------------!
-!----------Print information about the potential-----------------------------------
-!----------------------------------------------------------------------------------!
+!----------------------------------------------------------------------------------
+!----------Print information about the potential----------------------------------
+!----------------------------------------------------------------------------------
 subroutine print_pot(RR, Upot, dRR, virt, dip_momI, chg, lunTP_out) 
 use system_mod
 use consts
@@ -866,11 +870,6 @@ write( lunTP_out,'(a/3(10x,f14.5,1x))')"Virial tensor",virt(1:3,1:3)
 !   write(*,'(a2,3x,3(f12.6,2x))')"H ",dRR(1:3, 3*iw-1)
 !   write(*,'(a2,3x,3(f12.6,2x))')"H ",dRR(1:3, 3*iw-0)
 !enddo
-!write(*,'(/,"Dipole moments -X -Y -Z -MAG"/)')
-!do iw=1, Nwaters
-!   write(*,'(i4,2x,3(f12.6,1x),3x,f12.6)')iw, dip_momI(1:3,iw) / dble(nidols)  *DEBYE/CHARGECON, &
-!    dsqrt(dot_product(dip_momI(1:3, iw), dip_momI(1:3, iw))) / dble(nidols)*DEBYE/CHARGECON
-!enddo
 end subroutine print_pot
 
 
@@ -887,7 +886,8 @@ integer ::  i, iO, ih1, ih2, t
 integer :: iun, read_method
 
 write(iun,'(i10)') Natoms !, angle
-write(iun,'(f12.6,2x,f12.6,3(1x,f12.6))') t*delt, box
+write(iun,*) ""
+!write(iun,'(f12.6,2x,f12.6,3(1x,f12.6))') t*delt, box
 if (read_method==0) then
    do i=1, Nwaters
       iO = 3*i-2
@@ -974,6 +974,10 @@ integer, intent(in) :: iun
 end subroutine load_configuration
 
 
+
+!-----------------------------------------------------------------------------------------
+!--------------Shutdown program ---------------------------------------------------------
+!-----------------------------------------------------------------------------------------
 subroutine shutdown 
 use system_mod
 
