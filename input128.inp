@@ -1,12 +1,12 @@
 !Input file - this is a fixed format file, edit with caution!
 
 BASIC INFO
-'input_files/input_256.xyz'          ! input filename - either a centroid .xyz or a full bead configuration
+'input_files/input_128.xyz'          ! input filename - either a centroid .xyz or a full bead configuration
 'TTM3F_1_300_256'    ! run name - this will be appended to all the output files
-1	 		 ! Number of beads 
-20000		         ! number of steps to equilibrate		 
+1	 					 ! Number of beads 
+20000		       		 ! number of steps to equilibrate		 
 4000000	            	 ! number of steps to run
-.1                  	 ! timestep (delt) (fs)
+.5                  	 ! timestep (delt) (fs)
 
 OUTPUT OPTIONS 
 .f.                      ! centroid coordinates
@@ -29,17 +29,17 @@ OUTPUT OPTIONS
 
 MD OPTIONS 
 6                       ! Model: 2=ttm21f 3=ttm3f 4= qspcfw 5=spcf 6=SIESTA
-'h2o' 			    ! sys_label for SIESTA runs
-9d0 5d0 1.d-6           ! realspace cutoff (Ang), start of VdW force switch (Ang) (TTM3F only), eps for aewald
-15  0.7  1.d-2 .f.  .f.     ! params for dipole iterative procedure: Max iterations, pol factor, accuracy, guess initial?, debug output
-.t.					 ! generate initial velocities? 
-.f.   			     ! input initial configuration? 
-.f.    			 	! Global thermostat? t/f
-.f.      ! Thermostat non-centroid modes ? 
-.f.			 ! Thermostat centroid mode ?
-'Langevin'      ! type of bead thermostat - 'Nose-Hoover', 'Langevin' or 'none'
-.1			 ! tau for global thermostat (ps)
-.1			 ! tau for centroid thermostat (ps)
+'h2o' 			        ! sys_label for SIESTA runs
+7d0 5d0 1.d-6           ! realspace cutoff (Ang), start of VdW force switch (Ang) (TTM3F only), eps for aewald
+15  0.7  1.d-2 .f.  .f. ! params for dipole iterative procedure: Max iterations, pol factor, accuracy, guess initial?, debug output
+.t.					 	! generate initial velocities? 
+.f.   			     	! input initial configuration? 
+.t.    			 		! Global thermostat? t/f
+.f.      				! Thermostat non-centroid modes ? 
+.f.			 			! Thermostat centroid mode ?
+'Nose-Hoover'     			! type of bead thermostat - 'Nose-Hoover', 'Langevin' or 'none'
+.01			 			! tau for global thermostat (ps)
+.1			 			! tau for centroid thermostat (ps)
 4			   ! global Nose-Hoover chain length
 4			   ! bead Nose-Hoover chain length
 300	     ! temperature (Kelvin)
@@ -52,5 +52,5 @@ MORE RUN OPTIONS
 0			 ! frequency (inverse cm) to set NMs to ( or enter 0 for none/RPMD)
 .f.			 ! Ring polymer contraction (evalulate intermolecular forces on cetroid, intramolecular on beads)
 5			 ! ratio of slow timestep / fast timestep for contraction scheme
-15.994			 ! mass of Oxygen (au)
-1.008			 ! mass of Hyrdrogen
+15.994		 ! mass of Oxygen (au)
+1.008		 ! mass of Hyrdrogen
