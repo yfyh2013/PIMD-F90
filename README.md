@@ -13,13 +13,13 @@ The current repo includes routines for implementation of the TTM2-F, TTM3-F, and
 It also can use the SIESTA code for DFT force calculation, using pipes to communicate with the siesta process. 
 
 Other features: 
--- Parallelization over the beads with MPI
--- Options for a global Nose-Hoover thermostat or Anderson barostat 
--- virial energy and pressure estimators
--- many output options 
--- Choice of Langevin or Nose-Hoover bead thermostats 
--- Option to not thermostat the centroid 
--- Option to perform the PIMD on the monomer only (a subcase of the ring polymer contraction scheme, ref: JCP 129, 024105 (2008))
+* Parallelization over the beads with MPI
+* Options for a global Nose-Hoover thermostat or Anderson barostat 
+* virial energy and pressure estimators
+* many output options 
+* Choice of Langevin or Nose-Hoover bead thermostats 
+* Option to not thermostat the centroid 
+* Option to perform the PIMD on the monomer only (a subcase of the ring polymer contraction scheme, ref: JCP 129, 024105 (2008))
 
 
 The TTM / SPC force calculation routines are modification of codes written by C. J. Burnham, G. S. Fanourgakis, and S. S. Xantheas
