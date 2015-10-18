@@ -53,6 +53,7 @@ read(lun,*)t_freq
 read(lun,*) 
 read(lun,*)
 read(lun,*)pot_model 
+read(lun,*)sys_label
 read(lun,*)Rc, rc1, eps_ewald
 read(lun,*)polar_maxiter, polar_sor, polar_eps, guess_initdip, print_dipiters
 read(lun,*)GENVEL
@@ -164,7 +165,6 @@ allocate(RRc(3, Natoms))
 
 !Initialize potential-related variables
 if (pot_model .eq. 6) then
-  sys_label = 'h2o'
   !!call siesta_units( "ang", 'kcal/mol' ) ! The combination of ang and kcal/mol doesn't work with Siesta for some reason
   call siesta_launch( trim(sys_label)) !launch serial SIESTA process (Nnodes, MPI_COMM_WORLD) 
 else
@@ -411,8 +411,6 @@ subroutine open_files
 	open(lunIMAGEDIPOLESOUT, file='out_'//TRIM(fsave)//'_images_dip.dat', status='unknown')
  endif
 
-
-
  !write Temp/Press file header
  call print_basic_run_info
 
@@ -424,15 +422,15 @@ subroutine open_files
  if (SIMPLE_ENERGY_ESTIMATOR) write(lunTP_out,'(a,a)',advance='no')  " Tot E (simple) ", " Avg tot E (simple) "
  if (CALC_RADIUS_GYRATION)    write(lunTP_out,'(a,a)',advance='no')  " r_O ", " r_H "
  if (DIELECTRICOUT)           write(lunTP_out,'(a)',advance='no') " eps(0) "
- write(lunTP_out,'(a)')  ""
+ write(lunTP_out,'(a)')  "" 
+ flush(lunTP_out) !flush I/O buffer
 
 end subroutine open_files
 
 
-
-!----------------------------------------------------------------------------------!
-!-------------- Calculate thermodynamic info and write out to file(s) -------------
-!----------------------------------------------------------------------------------!
+!----------------------------------------------------------------------------------
+!-------------- Calculate thermodynamic info and write out to file(s) ------------
+!----------------------------------------------------------------------------------
 subroutine write_out 
  Implicit none
 
@@ -560,7 +558,7 @@ subroutine write_out
 
 	!advance to next line
 	write(lunTP_out,'(a)') ""
-
+    flush(lunTP_out) 
  endif 
 
 
@@ -569,7 +567,8 @@ subroutine write_out
 	if (mod(t,t_freq)  == 0 ) then 
 		!coordinate output
 		if (coord_out) then
-		     call save_XYZ(20, RRc, Upot, read_method, t, delt) 
+		     call save_XYZ(luncoord_out, RRc, Upot, read_method, t, delt) 
+		     flush(luncoord_out) 
 	  	endif
 		!velocity output
 	  	if (vel_out) then
@@ -581,6 +580,7 @@ subroutine write_out
 			 write(lundip_out,'(4(1x,f12.4))') dip_momI(:,iw) , & 
 				 dsqrt(dot_product(dip_momI(:,iw), dip_momI(:, iw))) 
  		     enddo
+ 		     flush(lundip_out) 
 	   	endif
 		!electronic dipoles output
 		if (Edip_out) then
@@ -591,6 +591,7 @@ subroutine write_out
 			 write(lunEdip_out,'(4(1x,f12.4))') dip_momE(:,iw) , & 
 				 dsqrt(dot_product(dip_momE(:,iw), dip_momE(:, iw))) 
  		     enddo
+			flush(lunEdip_out)
 	   	endif 
 		!charges out
                 if (CHARGESOUT) then
@@ -605,6 +606,7 @@ subroutine write_out
 			do i = 1, Nbeads
 				call save_XYZ(lunOUTPUTIMAGES, RRt(:,:,i), Upot, read_method, t, delt) 
 			enddo
+			flush(lunOUTPUTIMAGES)
 		endif 
 		if (IMAGEDIPOLESOUT) then 
 			do i = 1, Nbeads

@@ -2,6 +2,7 @@
 !-----------------Normal mode calculation module ---------------------
 !-----------------This module is self contained ----------------------
 !
+! Daniel C. Elton
 !----------------------------------------------------------------------
 
 module NormalModes
@@ -11,7 +12,7 @@ module NormalModes
  double precision, dimension(:), allocatable, save   :: omegalist, MassScaleFactor
  double precision, dimension(:,:), allocatable, save :: C 
 
-contains
+ contains
 !---------------------------------------------------------------------
 !----------- Evolve one ring a time period delta --------------------
 !---------------------------------------------------------------------
