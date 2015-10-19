@@ -52,6 +52,7 @@ endif!(pid .eq. 0)
 !----------- MD Part of the program ---------------------------------------------
 !---------------------------------------------------------------------------------
 do t = 1, num_timesteps + eq_timesteps
+
 	!----- Velocity-Verlet integration -------
 	if (pid .eq. 0) then
 		!Propagate NH chains 

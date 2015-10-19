@@ -277,7 +277,7 @@ else if (pot_model==4 .or. pot_model==5) then
 else if (pot_model==6) then 
     call siesta_forces( trim(sys_label), Natoms, RR, cell=siesta_box, energy=Upot, fa=dRR)
     Upot = Upot*EVTOKCALPERMOLE
-    dRR = dRR*EVTOKCALPERMOLE    
+    dRR = -1*dRR*EVTOKCALPERMOLE    
 endif
 
 end subroutine potential
