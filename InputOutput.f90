@@ -166,7 +166,9 @@ allocate(RRc(3, Natoms))
 !Initialize potential-related variables
 if (pot_model .eq. 6) then
   !!call siesta_units( "ang", 'kcal/mol' ) ! The combination of ang and kcal/mol doesn't work with Siesta for some reason
-  call siesta_launch( trim(sys_label)) !launch serial SIESTA process (Nnodes, MPI_COMM_WORLD) 
+  !call siesta_launch( trim(sys_label)) !launch serial SIESTA process
+   call siesta_launch( trim(sys_label), nnodes=Nnodes, mpi_launcher="mpirun -np" ) !launch parallel SIESTA process  
+
 else
   call init_pot
 endif 
