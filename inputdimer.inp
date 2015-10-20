@@ -50,7 +50,7 @@ MD OPTIONS
 
 MORE RUN OPTIONS
 0			 ! frequency (inverse cm) to set NMs to ( or enter 0 for none/RPMD)
-.f.			 ! Ring polymer contraction (evalulate intermolecular forces on cetroid, intramolecular on beads)
+.t.			 ! Ring polymer contraction (evalulate intermolecular forces on cetroid, intramolecular on beads)
 5			 ! ratio of slow timestep / fast timestep for contraction scheme
 15.994		 ! mass of Oxygen (au)
 1.008		 ! mass of Hyrdrogen
