@@ -242,18 +242,16 @@ if ( (pot_model .gt. 6) .or. (pot_model .lt. 1) ) then
 	stop
 endif
 
-if (.not. (pot_model .eq. 6)) then !Check if num of nodes is appropriate for non-siesta runs
-	if (.not. (CONTRACTION) ) then
-		if (.not. (mod(Nbeads,Nnodes) .eq. 0)) then
-			write(*,*) "ERROR: the number of beads must be a multiple of the number of nodes."
-			write(*,'(a,i4,a,i4,a)') "To run on ", Nnodes, " nodes I suggest using ", Nbeads - mod(Nbeads,Nnodes), " beads"
-			stop
-		endif
-	else
-		if (Nnodes .gt. 2) then 
-			write(*,*) "ERROR: When running with ring polymer contraction, a maximum of 2 nodes can be used."
-			stop
-		endif
+if (.not. (CONTRACTION) ) then
+	if (.not. (mod(Nbeads,Nnodes) .eq. 0)) then
+		write(*,*) "ERROR: the number of beads must be a multiple of the number of nodes."
+     	   write(*,'(a,i4,a,i4,a)') "To run on ", Nnodes, " nodes I suggest using ", Nbeads - mod(Nbeads,Nnodes), " beads"
+	stop
+	endif
+else
+	if (Nnodes .gt. 2) then 
+		write(*,*) "ERROR: When running with ring polymer contraction, a maximum of 2 nodes can be used."
+		stop
 	endif
 endif
 
@@ -332,9 +330,9 @@ endif
 #endif
 end subroutine master_node_init
 
-!----------------------------------------------------------------------------------
-!---------------- Read in coordinate data to RRc ---------------------------------
-!----------------------------------------------------------------------------------
+!----------------------------------------------------------------------------------!
+!---------------- Read in coordinate data to RRc ----------------------------------
+!----------------------------------------------------------------------------------!
 subroutine read_coords
 
  if (INPCONFIGURATION) then 
@@ -721,9 +719,9 @@ subroutine simple_quantum_estimators(RRt, virial, qEnergy, qPress, sys_temp, Upo
 end subroutine simple_quantum_estimators
 
 
-!----------------------------------------------------------------------------------
-!----------Print information about the run ---------------------------------------
-!----------------------------------------------------------------------------------
+!----------------------------------------------------------------------------------!
+!----------Print information about the run ----------------------------------------
+!----------------------------------------------------------------------------------!
 subroutine print_run
 Implicit none
 

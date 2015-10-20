@@ -86,7 +86,7 @@ end subroutine full_bead_forces
 !-- every intra_timesteps times. For instance if the 'outer timestep' (normal timestep) is .5 ps and intra_timesteps = 5
 !-- then the inner timestep is .1 ps
 
-subroutine contracted_MD
+subroutine contracted_forces
  use main_stuff
  use NormalModes
  Implicit None 
@@ -118,17 +118,17 @@ subroutine contracted_MD
    !---  intramolecular (fast) forces -------------------------------------------------
    do tintra = 1, intra_timesteps
 
-   call MPItimer(2,'start',secondsNM)
-
 	!update momenta with fast forces
         PPt = PPt - MASSCON*dRRfast*delt2fast
 
 	!update positions with fast forces
+	call MPItimer(2,'start',secondsNM)
 	do i = 1, Nwaters
         	Call EvolveRing(RRt(:,3*i-2,:), PPt(:,3*i-2,:), Nbeads, massO)
         	Call EvolveRing(RRt(:,3*i-1,:), PPt(:,3*i-1,:), Nbeads, massH)
         	Call EvolveRing(RRt(:,3*i-0,:), PPt(:,3*i-0,:), Nbeads, massH)
 	enddo
+	call MPItimer(2, 'stop ', secondsNM)
 
 	!update fast forces (intramolecular forces)
 	!masternode calcuates the intramolecular forces, puts them in dRRfast
@@ -145,7 +145,7 @@ subroutine contracted_MD
 
 			dRRfast(1:3, (/iO, iH1, iH2/), j) = dr1
 
-			!if last timestep in intramolecular (monomer) forces loop update monomer energy
+			!if last timestep in loop update monomer energy
 			!and calculate dipole moments using dip. mom. surface 
 			if (tintra .eq. intra_timesteps) then
 				Umonomers = Umonomers + e1
@@ -177,8 +177,6 @@ subroutine contracted_MD
 	
         !update momenta with fast forces
         PPt = PPt - MASSCON*dRRfast*delt2fast
-
-   call MPItimer(2, 'stop ', secondsNM)
 
    enddo !tintra  = 1.. 
 
@@ -235,7 +233,7 @@ subroutine contracted_MD
  endif
  
 
-end subroutine contracted_MD
+end subroutine contracted_forces
 
 !---------------------------------------------------------------------!
 !-----------------Call correct potential ----------------------------
@@ -257,10 +255,10 @@ integer, intent(in) :: t
 logical, intent(in) :: BAROSTAT
 double precision, dimension(3,3) :: siesta_box
    
- siesta_box = 0.0
- siesta_box(1,1) = box(1)
- siesta_box(2,2) = box(2)
- siesta_box(3,3) = box(3) 
+siesta_box = 0.0
+siesta_box(1,1) = box(1)
+siesta_box(2,2) = box(2)
+siesta_box(3,3) = box(3) 
 
 !All the stuff that depends on volume needs to be rescaled. 
  p4V = FOURPI/volume
