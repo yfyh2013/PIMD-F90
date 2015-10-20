@@ -74,6 +74,10 @@ real(8) :: seconds, secondsNM, secondsIO
 integer :: intra_timesteps 
 real(8)   :: deltfast, delt2fast  
 
+!variables for SIESTA
+integer :: SIESTA_COMM
+integer, dimension(:), allocatable :: siesta_comm_ranks
+
  contains
 
 !----------------------------------------------------------------------------------!

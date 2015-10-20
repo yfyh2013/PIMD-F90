@@ -176,13 +176,26 @@ subroutine master_node_init
 	use Langevin 
 	use NormalModes
 	use fsiesta
+	use mpi
 
 
 if (pot_model .eq. 6) then 
 !!call siesta_units( "ang", 'kcal/mol' ) ! The combination of ang and kcal/mol doesn't work with Siesta for some reason
   write(*,*) "launching SIESTA"
+  
+  !allocate(siesta_comm_ranks(Nnodes)) 
+  !do i = 1, Nnodes
+!	siesta_comm_ranks(i) = i-1
+ ! enddo
+    
+   !call MPI_Group_incl(MPI_GROUP_WORLD, Nnodes, siesta_comm_ranks , SIESTA_COMM, ierr)
+   !call MPI_COMM_CREATE (MPI_COMM_WORLD,MPI_Group group, MPI_Comm newcomm, ierr
+   
+   call MPI_comm_dup(MPI_COMM_WORLD,SIESTA_COMM,ierr)
+   
+   if (.not.(ierr .eq. 0)) write(*,*) "Error constructing SIESTA_COMM"
 
-   call siesta_launch( trim(sys_label)) !launch serial SIESTA process
+   call siesta_launch( trim(sys_label), mpi_comm=SIESTA_COMM) !launch serial SIESTA process
 
    write(*,*) "SIESTA LAUNCHED!!" 
    
