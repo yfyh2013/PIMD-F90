@@ -27,10 +27,10 @@ implicit none
 call read_input_file
 
 !---------------------- Start MPI and find number of nodes and pid --------------
-!call MPI_Init(ierr)
+call MPI_Init(ierr)
 if (.not. (ierr .eq. 0))	write(*,*) "WARNING: MPI did not intialize correctly."
-!call MPI_Comm_size(MPI_COMM_WORLD, Nnodes, ierr)
-!call MPI_Comm_rank(MPI_COMM_WORLD, pid, ierr)
+call MPI_Comm_size(MPI_COMM_WORLD, Nnodes, ierr)
+call MPI_Comm_rank(MPI_COMM_WORLD, pid, ierr)
 
 !---------------- Initialize / allocate some variables -------------------------
 call initialize_all_node_variables

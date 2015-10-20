@@ -90,6 +90,7 @@ end subroutine read_input_file
 !---------------- Initialize some variables for all nodes ------------------------
 !----------------------------------------------------------------------------------!
 subroutine initialize_all_node_variables
+use fsiesta
  
 !---  read the number of atoms, dimension of box and atomic coordinates 
 call io_assign(lunXYZ)
@@ -163,8 +164,13 @@ allocate(chg(Natoms))
 allocate(RRc(3, Natoms))
 
 !Initialize potential-related variables
-if (.not. (pot_model .eq. 6)) call init_pot
-
+if (pot_model .eq. 6) then
+  !!call siesta_units( "ang", 'kcal/mol' ) ! The combination of ang and kcal/mol doesn't work with Siesta for some reason
+  call siesta_launch( trim(sys_label)) !launch serial SIESTA process
+  !call siesta_launch( trim(sys_label),  ) !launch parallel SIESTA process  
+else
+  call init_pot
+endif 
 
 end subroutine initialize_all_node_variables
 
@@ -175,21 +181,6 @@ end subroutine initialize_all_node_variables
 subroutine master_node_init
 	use Langevin 
 	use NormalModes
-	use fsiesta
-
-
-if (pot_model .eq. 6) then 
-!!call siesta_units( "ang", 'kcal/mol' ) ! The combination of ang and kcal/mol doesn't work with Siesta for some reason
-  write(*,*) "launching SIESTA"
-
-   call siesta_launch( trim(sys_label)) !launch serial SIESTA process
-
-   write(*,*) "SIESTA LAUNCHED!!" 
-   
-   !call siesta_launch( trim(sys_label),  ) !launch parallel SIESTA process  
-endif
-	
-	
 
 if (Nbeads .lt. 1) then 
 	write(*,*) "ERROR : invalid number of beads!! " 
@@ -241,16 +232,17 @@ if ( (massH .lt. 0) .or. (massO .lt. 0)) then
 	stop
 endif
 
+if ( Nnodes .gt. Nbeads) then 
+	write(*,*) "ERROR : The number of processors is greater than the number of beads! Assuming this is an error! "
+	stop
+endif
+
 if ( (pot_model .gt. 6) .or. (pot_model .lt. 1) ) then 
 	write(*,*) "ERROR: Invalid potential model !"
 	stop
 endif
 
 if (.not. (pot_model .eq. 6)) then !Check if num of nodes is appropriate for non-siesta runs
-	if ( Nnodes .gt. Nbeads) then 
-		write(*,*) "ERROR : The number of processors is greater than the number of beads! Assuming this is an error! "
-		stop
-	endif
 	if (.not. (CONTRACTION) ) then
 		if (.not. (mod(Nbeads,Nnodes) .eq. 0)) then
 			write(*,*) "ERROR: the number of beads must be a multiple of the number of nodes."
@@ -258,9 +250,8 @@ if (.not. (pot_model .eq. 6)) then !Check if num of nodes is appropriate for non
 			stop
 		endif
 	else
-		if (Nnodes .gt. 1) then 
-			write(*,*) "ERROR: When running with ring polymer contraction without siesta & 
-				only one node (processor) can be utilized, ie. do not use mpirun"
+		if (Nnodes .gt. 2) then 
+			write(*,*) "ERROR: When running with ring polymer contraction, a maximum of 2 nodes can be used."
 			stop
 		endif
 	endif
