@@ -2,11 +2,11 @@
 
 BASIC INFO
 'input_files/input_dimer.xyz'          ! input filename - either a centroid .xyz or a full bead configuration
-'Siesta_dimer_1bead_NVT'           ! run name - this will be appended to all the output files
+'Siesta_dimer_1bead_contracted'           ! run name - this will be appended to all the output files
 1	 					! Number of beads 
-2		       		! number of steps to equilibrate		 
-10	            	! number of steps to run
-.1                  	! timestep (delt) (fs)
+20		       		! number of steps to equilibrate		 
+2000	            	! number of steps to run
+.5                  	! timestep (delt) (fs)
 
 OUTPUT OPTIONS 
 .t.                     ! centroid coordinates
@@ -23,9 +23,9 @@ OUTPUT OPTIONS
 .f.                     ! write out charges in seperate file?
 .f.                     ! write final configuration of all beads to seperate file?
 1					    ! Total dipole output frequency 
-1 			 	    ! Temp/Press output frequency
-1     				    ! all images output frequency 
-1       				! Output frequency for everything else
+2 			 	    ! Temp/Press output frequency
+2     				    ! all images output frequency 
+2       				! Output frequency for everything else
 
 MD OPTIONS 
 6                      ! Model: 2=ttm21f 3=ttm3f 4= qspcfw 5=spcf 6=SIESTA
@@ -50,7 +50,7 @@ MD OPTIONS
 
 MORE RUN OPTIONS
 0			 ! frequency (inverse cm) to set NMs to ( or enter 0 for none/RPMD)
-.f.			 ! Ring polymer contraction (evalulate intermolecular forces on cetroid, intramolecular on beads)
+.t.			 ! Ring polymer contraction (evalulate intermolecular forces on cetroid, intramolecular on beads)
 5			 ! ratio of slow timestep / fast timestep for contraction scheme
 15.994		 ! mass of Oxygen (au)
 1.008		 ! mass of Hyrdrogen

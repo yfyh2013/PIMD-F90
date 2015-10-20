@@ -69,47 +69,43 @@ do t = 1, num_timesteps + eq_timesteps
 		!Normal modes stuff
 	    if (.not. (CONTRACTION)) then
 	
-		call MPItimer(2,'start',secondsNM)
-		
-		if (Nbeads .gt. 1) then
-			do i = 1, Nwaters
-				!Evolve ring a full step 
-				Call EvolveRing(RRt(:,3*i-2,:), PPt(:,3*i-2,:), Nbeads, massO)
-				Call EvolveRing(RRt(:,3*i-1,:), PPt(:,3*i-1,:), Nbeads, massH)
-				Call EvolveRing(RRt(:,3*i-0,:), PPt(:,3*i-0,:), Nbeads, massH)
-			enddo
-		else 
-			do i = 1,Nwaters
-				do k = 1,Nbeads
-					RRt(:,3*i-2,k) = RRt(:,3*i-2,k) + imassO*PPt(:,3*i-2,k)*delt
-					RRt(:,3*i-1,k) = RRt(:,3*i-1,k) + imassH*PPt(:,3*i-1,k)*delt
-					RRt(:,3*i-0,k) = RRt(:,3*i-0,k) + imassH*PPt(:,3*i-0,k)*delt
+			call MPItimer(2,'start',secondsNM)
+			if (Nbeads .gt. 1) then
+				do i = 1, Nwaters
+					!Evolve ring a full step 
+					Call EvolveRing(RRt(:,3*i-2,:), PPt(:,3*i-2,:), Nbeads, massO)
+					Call EvolveRing(RRt(:,3*i-1,:), PPt(:,3*i-1,:), Nbeads, massH)
+					Call EvolveRing(RRt(:,3*i-0,:), PPt(:,3*i-0,:), Nbeads, massH)
 				enddo
-			enddo			
-		endif
+			else 
+				do i = 1,Nwaters
+					do k = 1,Nbeads
+						RRt(:,3*i-2,k) = RRt(:,3*i-2,k) + imassO*PPt(:,3*i-2,k)*delt
+						RRt(:,3*i-1,k) = RRt(:,3*i-1,k) + imassH*PPt(:,3*i-1,k)*delt
+						RRt(:,3*i-0,k) = RRt(:,3*i-0,k) + imassH*PPt(:,3*i-0,k)*delt
+					enddo
+				enddo			
+			endif
+			call MPItimer(2, 'stop ', secondsNM)
 
-		call MPItimer(2, 'stop ', secondsNM)
+			!calculate centroid positions
+			RRc = sum(RRt,3)/Nbeads
 
-		!calculate centroid positions
-		RRc = sum(RRt,3)/Nbeads
+			!calculate centroid momenta
+			PPc = sum(PPt,3)/Nbeads 
 
-		!calculate centroid momenta
-		PPc = sum(PPt,3)/Nbeads 
+			!check PBCs
+			call PBCs(RRt, RRc)
+		endif!.not. (CONTRACTION)
 
-		!check PBCs
-		call PBCs(RRt, RRc)
-
-	    endif!.not. (CONTRACTION)
-	
+		if (CONTRACTION) call contracted_MD
+	    
 	endif!if (pid .eq. 0) 
 	!------ call force routine ------------------------------------ 
-	if (CONTRACTION .eqv. .false.) then	
-		call full_bead_forces
-	else 	
-		call contracted_forces
-	endif 
-	!------ end call force routine ------------------------------------ 
+	
+	if (CONTRACTION .eqv. .false.) call full_bead_forces
 
+	!------ end call force routine ------------------------------------ 
 	if (pid .eq. 0) then
 
 		!update kinetic energy 
