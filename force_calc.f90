@@ -118,17 +118,16 @@ subroutine contracted_forces
    !---  intramolecular (fast) forces -------------------------------------------------
    do tintra = 1, intra_timesteps
 
+   	call MPItimer(2,'start',secondsNM)
 	!update momenta with fast forces
         PPt = PPt - MASSCON*dRRfast*delt2fast
 
 	!update positions with fast forces
-	call MPItimer(2,'start',secondsNM)
 	do i = 1, Nwaters
         	Call EvolveRing(RRt(:,3*i-2,:), PPt(:,3*i-2,:), Nbeads, massO)
         	Call EvolveRing(RRt(:,3*i-1,:), PPt(:,3*i-1,:), Nbeads, massH)
         	Call EvolveRing(RRt(:,3*i-0,:), PPt(:,3*i-0,:), Nbeads, massH)
 	enddo
-	call MPItimer(2, 'stop ', secondsNM)
 
 	!update fast forces (intramolecular forces)
 	!masternode calcuates the intramolecular forces, puts them in dRRfast
