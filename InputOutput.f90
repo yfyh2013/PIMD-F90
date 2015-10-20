@@ -90,8 +90,6 @@ end subroutine read_input_file
 !---------------- Initialize some variables for all nodes ------------------------
 !----------------------------------------------------------------------------------!
 subroutine initialize_all_node_variables
-	use fsiesta
-	use mpi
  
 !---  read the number of atoms, dimension of box and atomic coordinates 
 call io_assign(lunXYZ)
@@ -168,6 +166,18 @@ allocate(RRc(3, Natoms))
 if (.not. (pot_model .eq. 6)) call init_pot
 
 
+end subroutine initialize_all_node_variables
+
+
+!----------------------------------------------------------------------------------
+!---------- Error handling  / master node allocations ---------------------------- 
+!----------------------------------------------------------------------------------
+subroutine master_node_init
+	use Langevin 
+	use NormalModes
+	use fsiesta
+	use mpi
+
 
 if (pot_model .eq. 6) then 
 !!call siesta_units( "ang", 'kcal/mol' ) ! The combination of ang and kcal/mol doesn't work with Siesta for some reason
@@ -187,24 +197,12 @@ if (pot_model .eq. 6) then
 
    call siesta_launch( trim(sys_label), mpi_comm=SIESTA_COMM) !launch serial SIESTA process
 
-   write(*,*) "SIESTA LAUNCHED from node ", pid, "!!!" 
+   write(*,*) "SIESTA LAUNCHED!!" 
    
    !call siesta_launch( trim(sys_label),  ) !launch parallel SIESTA process  
 endif
-
-
-
-
-
-end subroutine initialize_all_node_variables
-
-
-!----------------------------------------------------------------------------------
-!---------- Error handling  / master node allocations ---------------------------- 
-!----------------------------------------------------------------------------------
-subroutine master_node_init
-	use Langevin 
-	use NormalModes
+	
+	
 
 if (Nbeads .lt. 1) then 
 	write(*,*) "ERROR : invalid number of beads!! " 
