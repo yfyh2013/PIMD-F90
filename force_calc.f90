@@ -280,6 +280,17 @@ else if (pot_model==6) then
     dRR = -1*dRR*EVTOKCALPERMOLE    
 endif
 
+
+!call siesta_get( trim(sys_label), property, value, units )  (MPI version only)
+!     character(len=*), intent(in) :: label      : Name of siesta process
+!     character(len=*), intent(in) :: property   : Name of required magnitude
+!     real(dp),         intent(out):: value      : Value of the magnitude
+!                                                (various dimensions overloaded)
+!     character(len=*), intent(out):: units      : Name of physical units
+!
+
+
+
 end subroutine potential
 
 

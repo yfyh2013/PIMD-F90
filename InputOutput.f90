@@ -2,7 +2,6 @@ module InputOutput
 use consts
 use main_stuff
 use lun_management
-use fsiesta
 
 Implicit none 
 
@@ -91,6 +90,7 @@ end subroutine read_input_file
 !---------------- Initialize some variables for all nodes ------------------------
 !----------------------------------------------------------------------------------!
 subroutine initialize_all_node_variables
+use fsiesta
  
 !---  read the number of atoms, dimension of box and atomic coordinates 
 call io_assign(lunXYZ)
@@ -167,9 +167,7 @@ allocate(RRc(3, Natoms))
 if (pot_model .eq. 6) then
   !!call siesta_units( "ang", 'kcal/mol' ) ! The combination of ang and kcal/mol doesn't work with Siesta for some reason
   call siesta_launch( trim(sys_label)) !launch serial SIESTA process
-  
-  !call siesta_launch( trim(sys_label), nnodes=2, mpi_launcher="mpirun -np" ) !launch parallel SIESTA process  
-
+  !call siesta_launch( trim(sys_label),  ) !launch parallel SIESTA process  
 else
   call init_pot
 endif 
@@ -995,6 +993,8 @@ end subroutine load_configuration
 !-----------------------------------------------------------------------------------------
 subroutine shutdown 
 use system_mod
+use fsiesta
+
 
 if (pid .eq. 0)  then
 	call MPItimer(1,'write',seconds) 
