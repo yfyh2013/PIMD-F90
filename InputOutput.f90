@@ -166,8 +166,9 @@ allocate(RRc(3, Natoms))
 !Initialize potential-related variables
 if (pot_model .eq. 6) then
   !!call siesta_units( "ang", 'kcal/mol' ) ! The combination of ang and kcal/mol doesn't work with Siesta for some reason
-  !call siesta_launch( trim(sys_label)) !launch serial SIESTA process
-   call siesta_launch( trim(sys_label), nnodes=Nnodes, mpi_launcher="mpirun -np" ) !launch parallel SIESTA process  
+  call siesta_launch( trim(sys_label)) !launch serial SIESTA process
+  
+  !call siesta_launch( trim(sys_label), nnodes=2, mpi_launcher="mpirun -np" ) !launch parallel SIESTA process  
 
 else
   call init_pot
@@ -278,7 +279,7 @@ endif
 	seed = clock + 357 * (/ (i - 1, i = 1, m) /)
  	call random_seed(put = seed)  !put in the seed
  		
-	write(lunTP_out,'(a,i4,a,i4,a)') "Running with ", Nbeads, " beads on ", Nnodes, " nodes"
+	!write(lunTP_out,'(a,i4,a,i4,a)') "Running with ", Nbeads, " beads on ", Nnodes, " nodes"
 	
 	!Master node allocations
 	!only the master node (pid = 0) stores a fully copy of the
@@ -314,7 +315,21 @@ endif
 	endif
 	if (bead_thermostat_type .eq. 'Langevin') call Init_Langevin_NM(delt2, CENTROIDTHERMOSTAT, tau_centroid, Nbeads, Nbeads*temp)
 
+	!write Temp/Press file header
+	call print_basic_run_info
 
+	write(lunTP_out,'(a)') "all energies are in kcal/(mole H2O)"
+
+	write(lunTP_out,'(a,a,a,a,a,a,a,a)',advance='no') " time (ps) ","  temp (K) ", "  press.(bar)  ", & 
+		 " avg temp "," avg press ", " Pot E  "," Tot E "," avg Tot E  " 
+
+	if (SIMPLE_ENERGY_ESTIMATOR) write(lunTP_out,'(a,a)',advance='no')  " Tot E (simple) ", " Avg tot E (simple) "
+	if (CALC_RADIUS_GYRATION)    write(lunTP_out,'(a,a)',advance='no')  " r_O ", " r_H "
+	if (DIELECTRICOUT)           write(lunTP_out,'(a)',advance='no') " eps(0) "
+	write(lunTP_out,'(a)')  "" 
+#ifdef FC_HAVE_FLUSH
+	call flush(lunTP_out) !flush I/O buffer	
+#endif
 end subroutine master_node_init
 
 !----------------------------------------------------------------------------------!
@@ -412,20 +427,6 @@ subroutine open_files
 	call io_assign(lunIMAGEDIPOLESOUT)
 	open(lunIMAGEDIPOLESOUT, file='out_'//TRIM(fsave)//'_images_dip.dat', status='unknown')
  endif
-
- !write Temp/Press file header
- call print_basic_run_info
-
- write(lunTP_out,'(a)') "all energies are in kcal/(mole H2O)"
-
- write(lunTP_out,'(a,a,a,a,a,a,a,a)',advance='no') " time (ps) ","  temp (K) ", "  press.(bar)  ", & 
-		 " avg temp "," avg press ", " Pot E  "," Tot E "," avg Tot E  " 
-
- if (SIMPLE_ENERGY_ESTIMATOR) write(lunTP_out,'(a,a)',advance='no')  " Tot E (simple) ", " Avg tot E (simple) "
- if (CALC_RADIUS_GYRATION)    write(lunTP_out,'(a,a)',advance='no')  " r_O ", " r_H "
- if (DIELECTRICOUT)           write(lunTP_out,'(a)',advance='no') " eps(0) "
- write(lunTP_out,'(a)')  "" 
- flush(lunTP_out) !flush I/O buffer
 
 end subroutine open_files
 
@@ -560,7 +561,9 @@ subroutine write_out
 
 	!advance to next line
 	write(lunTP_out,'(a)') ""
-    flush(lunTP_out) 
+#ifdef FC_HAVE_FLUSH
+	call flush(lunTP_out) !flush I/O buffer	
+#endif
  endif 
 
 
@@ -570,8 +573,10 @@ subroutine write_out
 		!coordinate output
 		if (coord_out) then
 		     call save_XYZ(luncoord_out, RRc, Upot, read_method, t, delt) 
-		     flush(luncoord_out) 
-	  	endif
+#ifdef FC_HAVE_FLUSH
+		     call flush(luncoord_out) 
+#endif
+		     endif
 		!velocity output
 	  	if (vel_out) then
 	   	     call save_XYZ(lunVEL_OUT, PPc, Upot, read_method, t, delt) 
@@ -582,7 +587,9 @@ subroutine write_out
 			 write(lundip_out,'(4(1x,f12.4))') dip_momI(:,iw) , & 
 				 dsqrt(dot_product(dip_momI(:,iw), dip_momI(:, iw))) 
  		     enddo
- 		     flush(lundip_out) 
+#ifdef FC_HAVE_FLUSH
+ 		     call flush(lundip_out)
+#endif
 	   	endif
 		!electronic dipoles output
 		if (Edip_out) then
@@ -593,8 +600,10 @@ subroutine write_out
 			 write(lunEdip_out,'(4(1x,f12.4))') dip_momE(:,iw) , & 
 				 dsqrt(dot_product(dip_momE(:,iw), dip_momE(:, iw))) 
  		     enddo
-			flush(lunEdip_out)
-	   	endif 
+#ifdef FC_HAVE_FLUSH
+			call flush(lunEdip_out)
+#endif
+			endif 
 		!charges out
                 if (CHARGESOUT) then
 			do iw = 1, 3*Nwaters
@@ -608,8 +617,10 @@ subroutine write_out
 			do i = 1, Nbeads
 				call save_XYZ(lunOUTPUTIMAGES, RRt(:,:,i), Upot, read_method, t, delt) 
 			enddo
+#ifdef FC_HAVE_FLUSH
 			flush(lunOUTPUTIMAGES)
-		endif 
+#endif
+			endif 
 		if (IMAGEDIPOLESOUT) then 
 			do i = 1, Nbeads
 				do iw = 1,Nwaters

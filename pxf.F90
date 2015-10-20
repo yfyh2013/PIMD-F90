@@ -34,6 +34,8 @@
 #endif
       implicit none
       integer, intent(in) :: unit
+      
+      flush(unit)
 #if defined(F2003)
       flush(unit)
 #elif defined(GFORTRAN)

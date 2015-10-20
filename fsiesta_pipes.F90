@@ -1,7 +1,6 @@
 ! 
 ! Local version of fsiesta_pipes.F90 for PIMD with some modifications: 
 ! -- all debugging output commented out)  
-! -- pxfflush() changed to flush() so pxf.F90 not needed
 ! -- "siesta" command can be changed as necessary for cluster) 
 !
 !
@@ -77,7 +76,7 @@ module fsiesta
 ! J.M.Soler and A.Garcia. Nov.2003
 
 ! *** Note ***
-! Make sure that you have a working "flush" subroutine in your system,
+! Make sure that you have a working "pxfflush" subroutine in your system,
 ! otherwise the process might hang.
 
 #ifdef __NAG__
@@ -142,7 +141,7 @@ subroutine siesta_launch( label, nnodes, mpi_comm, mpi_launcher )
   ip = idx( label )
   iu = p(ip)%iuc
   write(iu,*) 'wait'
-  call flush(iu)
+  call pxfflush(iu)
 
 ! Start siesta process
   if (present(nnodes) .and. nnodes>1) then
@@ -221,7 +220,7 @@ subroutine siesta_forces( label, na, xa, cell, energy, fa, stress )
     write(iu,*) xa(:,ia)
   end do
   write(iu,*) 'end_coords'
-  call flush(iu)
+  call pxfflush(iu)
 
 ! Read forces from pipe
   iu = p(ip)%iuf
@@ -291,7 +290,7 @@ subroutine siesta_quit_process(label)
 
     iuc = p(ip)%iuc      ! Find cooordinates pipe unit
     write(iuc,*) 'quit'  ! Send quit signal through pipe
-    call flush(iuc)
+    call pxfflush(iuc)
     iuf = p(ip)%iuf                  ! Find forces pipe unit
     read(iuf,*) message              ! Receive response from pipe
     if (message == 'quitting') then  ! Check answer

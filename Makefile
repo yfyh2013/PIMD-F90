@@ -1,4 +1,4 @@
-FILES=fsiesta_pipes consts lun_management math Nose_Hoover NormalModes MPItimer pot_mod system_mod Langevin main_stuff force_calc InputOutput nasa_mod find_neigh nasa ewald pot_spc pot_ttm potential smear PIMD
+FILES=pxf fsiesta_pipes  consts lun_management math Nose_Hoover NormalModes MPItimer pot_mod system_mod Langevin main_stuff force_calc InputOutput nasa_mod find_neigh nasa ewald pot_spc pot_ttm potential smear PIMD
 
 OBJS=$(addsuffix .o, $(FILES))
 
