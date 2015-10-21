@@ -34,17 +34,18 @@ call MPI_Comm_size(MPI_COMM_WORLD, Nnodes, ierr)
 call MPI_Comm_rank(MPI_COMM_WORLD, pid, ierr)
 
 !---------------- Initialize / allocate some variables -------------------------
-call initialize_all_node_variables
+call read_and_initialize_all_nodes
+call init_potential_all_nodes
 
 !------------------Master node stuff --------------------------------------------
 if (pid .eq. 0) then
+	call start_timer("Total time") 
 	call open_files
 	call master_node_init
 	call read_coords           ! Read in coord data to RRc 
 	call initialize_beads      ! Initialize RRt
 	call initialize_velocities ! Initialize PPt
 	call calc_uk 		       ! Initalize kinetic energy
-	call start_timer("Total time") 
 endif!(pid .eq. 0)
 
 
@@ -52,6 +53,7 @@ endif!(pid .eq. 0)
 !---------------------------------------------------------------------------------
 !----------- MD Part of the program ---------------------------------------------
 !---------------------------------------------------------------------------------
+call start_timer("MD")
 do t = 1, num_timesteps + eq_timesteps
 
 	!----- Velocity-Verlet integration -------
@@ -136,6 +138,7 @@ do t = 1, num_timesteps + eq_timesteps
 	endif!(pid .eq. 0) 
 
 enddo!t = 1, num_timesteps + eq_timesteps
+call stop_timer("MD")
 
 
 call shutdown 

@@ -34,7 +34,7 @@ integer :: num_timesteps, t, t_freq, tp_freq, td_freq, ti_freq, m, clock, eq_tim
 logical :: dip_out, coord_out, TD_out, vel_out, TP_out, Edip_out 
 logical :: BAROSTAT, PEQUIL, BOXSIZEOUT, THERMOSTAT, GENVEL, INPCONFIGURATION, IMAGEDIPOLESOUT
 logical :: DIELECTRICOUT, PRINTFINALCONFIGURATION, OUTPUTIMAGES, SIMPLE_ENERGY_ESTIMATOR
-logical ::  BEADTHERMOSTAT, CENTROIDTHERMOSTAT, CALC_RADIUS_GYRATION, CHARGESOUT
+logical ::  BEADTHERMOSTAT, CENTROIDTHERMOSTAT, CALC_RADIUS_GYRATION, CHARGESOUT, EXISTS
 
 !logical i/o units
 integer :: lun, lunXYZ, lunBOXSIZEOUT, lunIMAGES, lunDIELECTRIC, lunCHARGES
@@ -64,6 +64,8 @@ integer :: Nnodes, Nbeads, pid, j, k, ierr, Nbatches, counti, bat
 integer :: status2(MPI_STATUS_SIZE)
 
 ! timing variable
+character(8)  :: date
+character(10) :: time
 real(8) :: seconds 
 
 !variables for multiple timestep / contraction

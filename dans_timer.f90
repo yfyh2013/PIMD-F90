@@ -15,7 +15,7 @@ type timer
 end type timer
 
 integer,parameter :: MAX_NUM_TIMERS=50
-type(timer) :: timers(MAX_NUM_TIMERS)
+type(timer), save :: timers(MAX_NUM_TIMERS)
 
  contains
 
@@ -90,10 +90,10 @@ Subroutine print_timing_report(iun)
 		endif
 	
 	seconds = timers(i)%seconds
-	write(iun,'(a29, a1, i5, a7, i3, a9, i3, a8)') trim(timers(i)%name),":", & 
+	write(iun,'(a29, a1, i5, a7, i3, a9, g8.4, a8)') trim(timers(i)%name),":", & 
 			int(real(seconds)/3600), " hours ",  & 
 			int(mod(seconds,3600d0)/60), " minutes ", &
-			int(mod(seconds,60d0)), " seconds" 	
+			real(mod(seconds,60d0)), " seconds"
 	endif
  enddo 
 ! write(iun,*) "#-----------  end timing report ----------------------"
@@ -141,13 +141,16 @@ EndFunction
 !-------------------------------------------------------------------
 Double precision function get_CPU_time()
 	Implicit none 
-	double precision :: seconds
-	
+!	double precision :: seconds
+	integer, dimension(8) :: values
+
 #ifdef mpi
 	get_CPU_time = MPI_Wtime()
-#else
-	call CPU_time(seconds)
-	get_CPU_time = seconds
+#else   
+	!call CPU_time(seconds)       !very compiler/system dependent
+    call date_and_time(values=values)  !more portable intrinsic
+ 	get_CPU_time = values(3)*24*3600.d0 + values(5)*3600.d0 + values(6)*60.d0 + values(7)* values(8)*0.001d0 
+
 #endif
 
 EndFunction get_CPU_time

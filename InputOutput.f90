@@ -89,8 +89,7 @@ end subroutine read_input_file
 !----------------------------------------------------------------------------------!
 !---------------- Initialize some variables for all nodes ------------------------
 !----------------------------------------------------------------------------------!
-subroutine initialize_all_node_variables
-use fsiesta
+subroutine read_and_initialize_all_nodes
  
 !---  read the number of atoms, dimension of box and atomic coordinates 
 call io_assign(lunXYZ)
@@ -163,17 +162,42 @@ allocate(chg(Natoms))
 !allocate(tx_dip(3,4*Nwaters, 4))
 allocate(RRc(3, Natoms))
 
-!Initialize potential-related variables
-if (pot_model .eq. 6) then
-  !!call siesta_units( "ang", 'kcal/mol' ) ! The combination of ang and kcal/mol doesn't work with Siesta for some reason
+end subroutine read_and_initialize_all_nodes
+
+
+!----------------------------------------------------------------------------------
+!---------- Initialize potential-related variables ---------------------------- 
+!----------------------------------------------------------------------------------
+subroutine init_potential_all_nodes
+ use fsiesta
+ Implicit None
+ character(len=300) :: sys_command
+ character(len=300) :: pipe_name
+ 
+ if (pot_model .eq. 6) then
+
+  pipe_name = trim(sys_label)//".forces"
+  inquire(file=trim(pipe_name), exist=EXISTS) 
+ if (EXISTS .eqv. .true.) then 
+	sys_command = "rm "//pipe_name  
+	call system(trim(sys_command))
+ endif
+  pipe_name = trim(sys_label)//".coords"
+  inquire(file=trim(pipe_name), exist=EXISTS) 
+ if (EXISTS .eqv. .true.) then 
+	sys_command = "rm "//trim(pipe_name) 
+	call system(trim(sys_command))
+ endif
+
+  !! call siesta_units( "ang", 'kcal/mol' ) ! The combination of ang and kcal/mol doesn't work with Siesta for some reason
   call siesta_launch( trim(sys_label)) !launch serial SIESTA process
   !call siesta_launch( trim(sys_label),  ) !launch parallel SIESTA process  
-else
-  call init_pot
-endif 
 
-end subroutine initialize_all_node_variables
+ else
+	call init_pot
+ endif 
 
+ end subroutine init_potential_all_nodes
 
 !----------------------------------------------------------------------------------
 !---------- Error handling  / master node allocations ---------------------------- 
@@ -181,6 +205,7 @@ end subroutine initialize_all_node_variables
 subroutine master_node_init
 	use Langevin 
 	use NormalModes
+    Implicit None 
 
 if (Nbeads .lt. 1) then 
 	write(*,*) "ERROR : invalid number of beads!! " 
@@ -314,6 +339,10 @@ endif
 	if (bead_thermostat_type .eq. 'Langevin') call Init_Langevin_NM(delt2, CENTROIDTHERMOSTAT, tau_centroid, Nbeads, Nbeads*temp)
 
 	!write Temp/Press file header
+     call date_and_time(DATE=date,TIME=time)
+     write(lunTP_out,'(a)'), " started on  "//date(1:4)//"-"//date(5:6)//"-"//date(7:8)//&
+		" at "//time(1:2)//":"//time(3:4)//":"//time(5:10) 
+
 	call print_basic_run_info
 
 	write(lunTP_out,'(a)') "all energies are in kcal/(mole H2O)"
@@ -329,6 +358,9 @@ endif
 	call flush(lunTP_out) !flush I/O buffer	
 #endif
 end subroutine master_node_init
+
+
+
 
 !----------------------------------------------------------------------------------!
 !---------------- Read in coordinate data to RRc ----------------------------------
@@ -726,6 +758,10 @@ subroutine print_run
 use dans_timer
 Implicit none
 
+ !write Temp/Press file header
+ call date_and_time(DATE=date,TIME=time)
+ write(lunTP_out,'(a)'), " stopped on  "//date(1:4)//"-"//date(5:6)//"-"//date(7:8)//&
+           " at "//time(1:2)//":"//time(3:4)//":"//time(5:10) 
  call print_basic_run_info
  call print_timing_report(lunTP_out)
 
@@ -987,7 +1023,6 @@ end subroutine load_configuration
 subroutine shutdown 
 use system_mod
 use fsiesta
-
 
 if (pid .eq. 0)  then
 	call print_run
