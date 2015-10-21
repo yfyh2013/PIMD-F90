@@ -3,20 +3,17 @@ use consts
 use system_mod 
 use mpi
 Implicit none
-!----------------------------------------------------------------------------------!
-!-------------- "global" variables used by main.f90 and the subroutines below ---
-!----------------------------------------------------------------------------------!
-!-old variables:---------------------------------------
+!----------------------------------------------------------------------------------
+!-------------- "global" variables used by PIMD.f90 and others -------------------
+!----------------------------------------------------------------------------------
+!-old variables from TTMF code -----------------------------
 real(8), dimension(:,:), allocatable :: RR, dRR
 real(8), dimension(:), allocatable :: chg
 real(8), dimension(3,3) :: virt
 real(8), dimension(3) :: dip_mom
 real(8), dimension(:,:), allocatable :: dip_momI, dip_momE
-real(8) ::  sys_press
-real(8) :: tolg, tolx, stpmx
 integer :: i, iw, iat,  iO, ih1, ih2, narg, ia, read_method
 integer :: ix, iy, iz 
-integer, external :: iargc
  character(len=2) :: ch2
  character(len=125) :: finp, fconfig, fsave 
 !-new variables:--------------------------------------------
@@ -26,7 +23,7 @@ real(8) :: delt, delt2,  uk,  imassO, imassH
 real(8) :: temp, sum_temp, sum_press, sys_temp, avg_vel, init_energy, sum_RMSenergy
 real(8) :: tot_energy, sum_tot_energy, sum_energy2, sum_simple_energy, simple_energy
 real(8) :: specific_heat, avg_temp, init_temp, sum_dip2, sum_simple_press, simple_sys_press
-real(8) :: dielectric_constant, diel_prefac, dielectric_error
+real(8) :: dielectric_constant, diel_prefac, dielectric_error, sys_press
 real(8), dimension(1000)  :: dielectric_running
 integer  :: dielectric_index = 1
 real(8) ::  isotherm_compress
@@ -44,10 +41,9 @@ integer :: lun, lunXYZ, lunBOXSIZEOUT, lunIMAGES, lunDIELECTRIC, lunCHARGES
 integer :: lundip_out, luncoord_out, lunCHARGESOUT, lunvel_out,  lunTP_out
 integer :: lunEdip_out, lunIMAGEDIPOLESOUT, lunTD_out, lunOUTPUTIMAGES
 
-
 !N-H variables
 real(8), save :: tau, tau_centroid, s, sbead
-integer, save           :: global_chain_length, bead_chain_length 
+integer, save :: global_chain_length, bead_chain_length 
 
 !Nose-Hoover chain velocities for all beads are stored here
 real(8), dimension(:,:,:,:), allocatable :: vxi_beads
@@ -67,8 +63,8 @@ real(8) :: radiusH, radiusO
 integer :: Nnodes, Nbeads, pid, j, k, ierr, Nbatches, counti, bat
 integer :: status2(MPI_STATUS_SIZE)
 
-! timing variables
-real(8) :: seconds, secondsNM, secondsIO
+! timing variable
+real(8) :: seconds 
 
 !variables for multiple timestep / contraction
 integer :: intra_timesteps 

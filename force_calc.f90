@@ -89,6 +89,7 @@ end subroutine full_bead_forces
 subroutine contracted_forces
  use main_stuff
  use NormalModes
+ use dans_timer
  Implicit None 
  double precision :: e1, virialmon, virialcmon, Umonomers, chgH1, chgH2, tmp, gammaM
  double precision, dimension(3,Natoms,Nbeads)  ::  dRRfast
@@ -97,6 +98,8 @@ subroutine contracted_forces
  double precision, dimension(3,3,3)    :: dq3
  double precision, dimension(3)        :: roh1, roh2, rh1m, rh2m, rM, q3
  integer :: tintra, iM
+
+ if (pid .eq. 0) then
 
  !TTM charge mixing parameter
  if (pot_model==2) then  
@@ -109,7 +112,7 @@ subroutine contracted_forces
      tmp = 0 
  endif
  
- if (pid .eq. 0) then
+   call start_timer("Monomer MD")
 
    Umonomers = 0 
    virialmon = 0 
@@ -117,16 +120,15 @@ subroutine contracted_forces
 	   
    !---  intramolecular (fast) forces -------------------------------------------------
    do tintra = 1, intra_timesteps
-
-   	call MPItimer(2,'start',secondsNM)
+   
 	!update momenta with fast forces
-        PPt = PPt - MASSCON*dRRfast*delt2fast
+    PPt = PPt - MASSCON*dRRfast*delt2fast
 
 	!update positions with fast forces
 	do i = 1, Nwaters
-        	Call EvolveRing(RRt(:,3*i-2,:), PPt(:,3*i-2,:), Nbeads, massO)
-        	Call EvolveRing(RRt(:,3*i-1,:), PPt(:,3*i-1,:), Nbeads, massH)
-        	Call EvolveRing(RRt(:,3*i-0,:), PPt(:,3*i-0,:), Nbeads, massH)
+       	Call EvolveRing(RRt(:,3*i-2,:), PPt(:,3*i-2,:), Nbeads, massO)
+       	Call EvolveRing(RRt(:,3*i-1,:), PPt(:,3*i-1,:), Nbeads, massH)
+       	Call EvolveRing(RRt(:,3*i-0,:), PPt(:,3*i-0,:), Nbeads, massH)
 	enddo
 
 	!update fast forces (intramolecular forces)
@@ -188,6 +190,8 @@ subroutine contracted_forces
  !check PBCs
  call PBCs(RRt, RRc)
 
+ call stop_timer("Monomer MD")
+
  !intermolecular force calculation
  call potential(RRc, RRc, Upot, dRRc, virt, virialc, dip_momI, dip_momE, chg, t, BAROSTAT)
 
@@ -234,14 +238,15 @@ subroutine contracted_forces
 
 end subroutine contracted_forces
 
-!---------------------------------------------------------------------!
+!---------------------------------------------------------------------
 !-----------------Call correct potential ----------------------------
-!---------------------------------------------------------------------!
+!---------------------------------------------------------------------
 subroutine potential(RR, RRc, Upot, dRR, virt, virialc, dip_momI, Edip_mom, chg, t, BAROSTAT)
 use consts
 use system_mod
 use pot_mod
 use fsiesta
+use dans_timer
 implicit none
 double precision, dimension(3, Natoms), intent(in) :: RR, RRc
 double precision, intent(out) :: Upot, virialc
@@ -274,7 +279,9 @@ if (pot_model==2 .or. pot_model==3) then
 else if (pot_model==4 .or. pot_model==5) then
     call pot_spc(RR, Upot, dRR, virt, dip_momI, chg)
 else if (pot_model==6) then 
+    call start_timer("SIESTA")
     call siesta_forces( trim(sys_label), Natoms, RR, cell=siesta_box, energy=Upot, fa=dRR)
+    call stop_timer("SIESTA")
     Upot = Upot*EVTOKCALPERMOLE
     dRR = -1*dRR*EVTOKCALPERMOLE    
 endif

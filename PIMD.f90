@@ -19,6 +19,7 @@ use InputOutput
 use NormalModes
 use mpi
 use force_calc
+use dans_timer
 
 implicit none
 !main variables can be found in main_stuff.f90
@@ -42,8 +43,8 @@ if (pid .eq. 0) then
 	call read_coords           ! Read in coord data to RRc 
 	call initialize_beads      ! Initialize RRt
 	call initialize_velocities ! Initialize PPt
-	call calc_uk 		   ! Initalize kinetic energy
-	call MPItimer(1,'start',seconds)
+	call calc_uk 		       ! Initalize kinetic energy
+	call start_timer("Total time") 
 endif!(pid .eq. 0)
 
 
@@ -69,8 +70,6 @@ do t = 1, num_timesteps + eq_timesteps
 		!Normal modes stuff
 	    if (.not. (CONTRACTION)) then
 	
-			call MPItimer(2,'start',secondsNM)
-		
 			if (Nbeads .gt. 1) then
 				do i = 1, Nwaters
 					!Evolve ring a full step 
@@ -87,8 +86,6 @@ do t = 1, num_timesteps + eq_timesteps
 					enddo
 				enddo			
 			endif
-
-			call MPItimer(2, 'stop ', secondsNM)
 
 			!calculate centroid positions
 			RRc = sum(RRt,3)/Nbeads
@@ -116,10 +113,10 @@ do t = 1, num_timesteps + eq_timesteps
 		call calc_uk 
 
 		!write stuff out if necessary 
-		call MPItimer(3, 'start', secondsIO)
+		call start_timer("Writing out")
 		call write_out
-		call MPItimer(3,'stop ',secondsIO)
-
+		call stop_timer("Writing out")
+		
 		!update momenta a half step w/ new forces
 		PPt = PPt - MASSCON*dRRt*delt2
 

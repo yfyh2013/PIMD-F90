@@ -723,25 +723,18 @@ end subroutine simple_quantum_estimators
 !----------Print information about the run ----------------------------------------
 !----------------------------------------------------------------------------------!
 subroutine print_run
+use dans_timer
 Implicit none
 
-call print_basic_run_info
+ call print_basic_run_info
+ call print_timing_report(lunTP_out)
 
-write(lunTP_out,*) "#-----------  timing report ----------------------------"
-write(lunTP_out,'(a50, i5, a7, i3, a9, i3, a8)') "Total elapsed time = ", int(real(seconds)/3600), " hours ",  & 
-			int(mod(seconds,3600d0)/60), " minutes ", int(mod(seconds,60d0)), " seconds" 
-write(lunTP_out,'(a50, i5, a7, i3, a9, i3, a9, i3, a3)') "Time spent on normal modes = ", int(real(secondsNM)/3600), " hours ", & 
-			int(mod(secondsNM,3600d0)/60), " minutes ", int(mod(secondsNM,60d0)), " seconds ", &
-			int(10*mod(secondsNM,1d0)), " ms"
-write(lunTP_out,'(a50, i5, a7, i3, a9, i3, a9, i3, a3)') "Time spent writing stuff out = ", int(real(secondsIO)/3600)," hours ",& 
-			int(mod(secondsIO,3600d0)/60), " minutes ", int(mod(secondsIO,60d0)), " seconds ", int(1000d0*mod(secondsNM,1d0)), " ms"
+ call get_time("Total time", seconds) 
+ write(lunTP_out,'(a50, f10.2)') "ps/hour = ", (  (num_timesteps + eq_timesteps)*delt/seconds  )*3600
+ write(lunTP_out,'(a50, f10.2)') "ps/day = ",  (  (num_timesteps + eq_timesteps)*delt/seconds  )*3600*24
 
-write(lunTP_out,'(a50, f10.2)') "ps/hour = ", (  (num_timesteps + eq_timesteps)*delt/seconds  )*3600
-write(lunTP_out,'(a50, f10.2)') "ps/day = ",  (  (num_timesteps + eq_timesteps)*delt/seconds  )*3600*24
-
-
-
- write(lunTP_out,*) "#------------------------------------------------------"
+ 
+ write(lunTP_out,*) "#------- thermodynamics: -------------------------------"
  avg_temp =  sum_temp/tr
 
  write(lunTP_out,'(a50, 3f10.2)') "Average temperature during run (K) = ", avg_temp/Nbeads
@@ -997,9 +990,6 @@ use fsiesta
 
 
 if (pid .eq. 0)  then
-	call MPItimer(1,'write',seconds) 
-	call MPItimer(2,'write',secondsNM) 
-	call MPItimer(3,'write',secondsIO) 
 	call print_run
 endif
 
