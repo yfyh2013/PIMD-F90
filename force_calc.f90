@@ -112,11 +112,13 @@ subroutine contracted_forces
      tmp = 0 
  endif
  
-   call start_timer("Monomer MD")
+   call start_timer("MonomerMD")
 
    Umonomers = 0 
    virialmon = 0 
    virialcmon = 0 
+   
+   if (t .eq. 1) dRRfast = 0 
 	   
    !---  intramolecular (fast) forces -------------------------------------------------
    do tintra = 1, intra_timesteps
@@ -142,7 +144,7 @@ subroutine contracted_forces
 
 	   		r1(1:3, 1:3) = RRt(1:3, (/iO, ih1, ih2/), j)
 
-		  	call pot_nasa(r1, dr1, e1, box, boxi)  
+		  	!call pot_nasa(r1, dr1, e1, box, boxi)  
 
 			dRRfast(1:3, (/iO, iH1, iH2/), j) = dr1
 
@@ -190,7 +192,7 @@ subroutine contracted_forces
  !check PBCs
  call PBCs(RRt, RRc)
 
- call stop_timer("Monomer MD")
+ call stop_timer("MonomerMD")
 
  !intermolecular force calculation
  call potential(RRc, RRc, Upot, dRRc, virt, virialc, dip_momI, dip_momE, chg, t, BAROSTAT)

@@ -6,7 +6,7 @@ OBJS=$(addsuffix .o, $(FILES))
 
 FC=mpif90 
 
-##Note : -DFC_HAVE_FLUSH -DFC_HAVE_ABORT  flags needed for communicating with Siesta via pipes
+##Note : -DFC_HAVE_FLUSH -DFC_HAVE_ABORT  flags are for SIESTA pipes support  
 
 #FFLAGS=-fpp  -O3 -C -debug -traceback 
 FFLAGS = -O3  -cpp -Dsiesta -Dparallel -DFC_HAVE_FLUSH -DFC_HAVE_ABORT 
@@ -22,13 +22,9 @@ profile: FFLAGS += -p
 profile: PIMD.x 
 
 #serial compilation commands
-serial: FC=ifort
-serial: FFLAGS = -O3  -cpp -Dsiesta -DFC_HAVE_FLUSH -DFC_HAVE_ABORT 
+serial: FC=gfortran #ifort not working!
+serial: FFLAGS = -O3  -cpp -Dsiesta -DFC_HAVE_FLUSH -DFC_HAVE_ABORT --debug --backtrace -fbounds-check 
 serial: PIMD_serial.x 
-
-
-#Siesta with pipes compilation support 
-#FSIESTA= 
 
 
 PIMD_serial.x: MPI.o $(OBJS)

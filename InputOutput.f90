@@ -52,7 +52,7 @@ read(lun,*)t_freq
 read(lun,*) 
 read(lun,*)
 read(lun,*)pot_model 
-read(lun,*)sys_label
+read(lun,*)sys_label, num_SIESTA_nodes
 read(lun,*)Rc, rc1, eps_ewald
 read(lun,*)polar_maxiter, polar_sor, polar_eps, guess_initdip, print_dipiters
 read(lun,*)GENVEL
@@ -175,24 +175,26 @@ subroutine init_potential_all_nodes
  character(len=300) :: pipe_name
  
  if (pot_model .eq. 6) then
-
-  pipe_name = trim(sys_label)//".forces"
-  inquire(file=trim(pipe_name), exist=EXISTS) 
- if (EXISTS .eqv. .true.) then 
-	sys_command = "rm "//pipe_name  
-	call system(trim(sys_command))
- endif
-  pipe_name = trim(sys_label)//".coords"
-  inquire(file=trim(pipe_name), exist=EXISTS) 
- if (EXISTS .eqv. .true.) then 
-	sys_command = "rm "//trim(pipe_name) 
-	call system(trim(sys_command))
- endif
-
+	pipe_name = trim(sys_label)//".forces"
+	inquire(file=trim(pipe_name), exist=EXISTS) 
+	if (EXISTS .eqv. .true.) then 
+		sys_command = "rm "//pipe_name  
+		call system(trim(sys_command))
+	endif
+	pipe_name = trim(sys_label)//".coords"
+	inquire(file=trim(pipe_name), exist=EXISTS) 
+	if (EXISTS .eqv. .true.) then 
+		sys_command = "rm "//trim(pipe_name) 
+		call system(trim(sys_command))
+	endif
   !! call siesta_units( "ang", 'kcal/mol' ) ! The combination of ang and kcal/mol doesn't work with Siesta for some reason
-  call siesta_launch( trim(sys_label)) !launch serial SIESTA process
-  !call siesta_launch( trim(sys_label),  ) !launch parallel SIESTA process  
-
+	if (num_SIESTA_nodes .eq. 1) then  
+		call siesta_launch( trim(sys_label)) !launch serial SIESTA process
+    elseif (num_SIESTA_nodes .gt. 1) then  
+		call siesta_launch( trim(sys_label), nnodes=num_SIESTA_nodes ) !launch parallel SIESTA process  
+	else
+		write(*,*) "InputOuput: ERROR: invalid number of SIESTA nodes!!"
+	endif
  else
 	call init_pot
  endif 
@@ -704,9 +706,9 @@ subroutine quantum_virial_estimators(RRt, virial, virialc, qEnergy, qPress, sys_
 end subroutine quantum_virial_estimators
 
 	
-!----------------------------------------------------------------------------------!
-!- Simple quantum estimators for energy & pressure --------------------------------
-!----------------------------------------------------------------------------------!
+!----------------------------------------------------------------------------------
+!- Simple quantum estimators for energy & pressure -------------------------------
+!----------------------------------------------------------------------------------
 subroutine simple_quantum_estimators(RRt, virial, qEnergy, qPress, sys_temp, Upot) 
  use consts 
  use NormalModes !need MassScaleFactor

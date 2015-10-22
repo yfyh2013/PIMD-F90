@@ -90,7 +90,7 @@ Subroutine print_timing_report(iun)
 		endif
 	
 	seconds = timers(i)%seconds
-	write(iun,'(a29, a1, i5, a7, i3, a9, g8.4, a8)') trim(timers(i)%name),":", & 
+	write(iun,'(a29, a1, i5, a7, i3, a9, f16.4, a8)') trim(timers(i)%name),":", & 
 			int(real(seconds)/3600), " hours ",  & 
 			int(mod(seconds,3600d0)/60), " minutes ", &
 			real(mod(seconds,60d0)), " seconds"

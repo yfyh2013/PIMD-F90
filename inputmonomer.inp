@@ -3,9 +3,9 @@
 BASIC INFO
 'input_files/monomer.xyz'          ! input filename - either a centroid .xyz or a full bead configuration
 'Siesta_monomer_1bead_NVT'           ! run name - this will be appended to all the output files
-4	 					! Number of beads 
+32	 					! Number of beads 
 1	       		! number of steps to equilibrate		 
-100	            	! number of steps to run
+9	            	! number of steps to run
 .5                  	! timestep (delt) (fs)
 
 OUTPUT OPTIONS 
@@ -18,7 +18,7 @@ OUTPUT OPTIONS
 .t.                     ! dipoles for all images
 .f.                     ! box size running average
 .f.                     ! Temp/Press (.t. = to file, .f. = to terminal)
-.f.                     ! avg. radius of gyration (in Temp/Press file)
+.t.                     ! avg. radius of gyration (in Temp/Press file)
 .f.                     ! output dielectric constant (running average in Temp/Press file)
 .f.                     ! write out charges in seperate file?
 .f.                     ! write final configuration of all beads to seperate file?
@@ -29,14 +29,14 @@ OUTPUT OPTIONS
 
 MD OPTIONS 
 6                      ! Model: 2=ttm21f 3=ttm3f 4= qspcfw 5=spcf 6=SIESTA
-'dimer', 1 			    ! sys_label for SIESTA runs, # SIESTA processors 
-7d0 5d0 1.d-6           ! realspace cutoff (Ang), start of VdW force switch (Ang) (TTM3F only), eps for aewald
+'monomer', 1 			    ! sys_label for SIESTA runs, # SIESTA processors 
+4d0 4d0 1.d-6           ! realspace cutoff (Ang), start of VdW force switch (Ang) (TTM3F only), eps for aewald
 15  0.7  1.d-2 .f.  .f. ! params for dipole iterative procedure: Max iterations, pol factor, accuracy, guess initial?, debug output
 .t.					 	! generate initial velocities? 
 .f.   			     	! input initial configuration? 
 .t.    			 		! Global thermostat? t/f
-.f.      				! Thermostat non-centroid modes ? 
-.f.			 			! Thermostat centroid mode ?
+.t.      				! Thermostat non-centroid modes ? 
+.t.			 			! Thermostat centroid mode ?
 'Nose-Hoover'     			! type of bead thermostat - 'Nose-Hoover', 'Langevin' or 'none'
 .01			 			! tau for global thermostat (ps)
 .1			 			! tau for centroid thermostat (ps)

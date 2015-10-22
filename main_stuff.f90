@@ -69,7 +69,7 @@ character(10) :: time
 real(8) :: seconds 
 
 !variables for multiple timestep / contraction
-integer :: intra_timesteps 
+integer :: intra_timesteps, num_SIESTA_nodes
 real(8)   :: deltfast, delt2fast  
 
  contains
@@ -316,6 +316,8 @@ else if ( (.not. GENVEL) .and. (.not. INPCONFIGURATION)) then
 endif 
 
 end subroutine initialize_velocities
+
+
 !---------------------------------------------------------------------------------
 !------------------------------ calc total kinetic energy -----------------------
 !---------------------------------------------------------------------------------
