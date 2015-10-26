@@ -100,19 +100,18 @@ subroutine contracted_forces
  integer :: tintra, iM
 
  if (pid .eq. 0) then
+    call start_timer("MonomerMD")
 
  !TTM charge mixing parameter
- if (pot_model==2) then  
-     gammaM = 0.426706882d0
-     tmp = 0.5d0*gammaM/(1.d0-gammaM)
- elseif (pot_model==3) then 
-     gammaM = 0.46d0
-     tmp = 0.5d0*gammaM/(1.d0-gammaM)
- else 
-     tmp = 0 
- endif
- 
-   call start_timer("MonomerMD")
+ !if (pot_model==2) then  
+ !    gammaM = 0.426706882d0
+ !    tmp = 0.5d0*gammaM/(1.d0-gammaM)
+ !elseif (pot_model==3) then 
+ !    gammaM = 0.46d0
+ !    tmp = 0.5d0*gammaM/(1.d0-gammaM)
+ !else 
+ !    tmp = 0 
+ !endif
 
    Umonomers = 0 
    virialmon = 0 
@@ -287,16 +286,6 @@ else if (pot_model==6) then
     Upot = Upot*EVTOKCALPERMOLE
     dRR = -1*dRR*EVTOKCALPERMOLE    
 endif
-
-
-!call siesta_get( trim(sys_label), property, value, units )  (MPI version only)
-!     character(len=*), intent(in) :: label      : Name of siesta process
-!     character(len=*), intent(in) :: property   : Name of required magnitude
-!     real(dp),         intent(out):: value      : Value of the magnitude
-!                                                (various dimensions overloaded)
-!     character(len=*), intent(out):: units      : Name of physical units
-!
-
 
 
 end subroutine potential

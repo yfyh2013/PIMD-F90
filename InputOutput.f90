@@ -79,9 +79,12 @@ read(lun,*)massO
 read(lun,*)massH
 call io_close(lun)  
 
-read_method = 1 !read_method(=0,1) (0 for OOOO....HHHHH and 1 for OHHOHHOHH...)
-SIMPLE_ENERGY_ESTIMATOR = .true. !setting this to true will output the simple energy to temp/press file
-!simple estimators take a long time to converge with 4+ beads 
+!other options: 
+ CALCGEOMETRY = .true. !computes averge geometry of h2o molecules and outputs at end
+ read_method = 1 !read_method(=0,1) (0 for OOOO....HHHHH and 1 for OHHOHHOHH...)
+ SIMPLE_ENERGY_ESTIMATOR = .true. !setting this to true will output the simple energy to temp/press file
+ !simple estimators take a long time to converge with 4+ beads
+
 
 end subroutine read_input_file 
 
@@ -467,6 +470,8 @@ end subroutine open_files
 !-------------- Calculate thermodynamic info and write out to file(s) ------------
 !----------------------------------------------------------------------------------
 subroutine write_out 
+ use geometry_calculator
+ use dans_timer
  Implicit none
 
  !for accuracy, pressure is computed at every timestep, since P fluctuations are large
@@ -598,9 +603,8 @@ subroutine write_out
 #endif
  endif 
 
-
  !write out data during run 
- if  (t .gt. eq_timesteps) then
+ if (t .gt. eq_timesteps) then
 	if (mod(t,t_freq)  == 0 ) then 
 		!coordinate output
 		if (coord_out) then
@@ -666,7 +670,13 @@ subroutine write_out
 	if (mod(t,td_freq)  == 0 .and. TD_out ) then 
 		write(lunTD_out,'(3f12.4)') dip_mom
   	endif
-endif
+  	
+  	call start_timer("calc_geometry")
+  	if (CALCGEOMETRY .eqv. .true.) call calc_geometry(RRc, RRt, Nbeads)
+ 	call stop_timer("calc_geometry")
+
+
+ endif !t .gt. eq_timesteps
 
 !box size output stuff 
 if (BAROSTAT) then 
@@ -675,6 +685,7 @@ if (BAROSTAT) then
         sum_box2 = sum_box2 + box**2
         if (BOXSIZEOUT .and. (mod(t,t_freq) .eq. 0) ) write(lunBOXSIZEOUT,*) sum_box/t
 endif 
+
 
 end subroutine write_out
 
@@ -712,7 +723,8 @@ end subroutine quantum_virial_estimators
 subroutine simple_quantum_estimators(RRt, virial, qEnergy, qPress, sys_temp, Upot) 
  use consts 
  use NormalModes !need MassScaleFactor
- Implicit none
+ use geometry_calculator
+ implicit none
  double precision, dimension(3,Natoms,Nbeads),intent(in)  :: RRt  !coords in Ang
  double precision, intent(in)      :: sys_temp       !temp in Kelvin
  double precision, intent(in)      :: Upot 	!potential energy in kcal/mol
@@ -758,6 +770,7 @@ end subroutine simple_quantum_estimators
 !----------------------------------------------------------------------------------!
 subroutine print_run
 use dans_timer
+use geometry_calculator
 Implicit none
 
  !write Temp/Press file header
@@ -782,24 +795,32 @@ Implicit none
  write(lunTP_out,'(a50, 3f10.2)') "Temp drift (K/ps) = ", (avg_temp - init_temp)/(num_timesteps*delt)
  write(lunTP_out,'(a50, 3f10.2)') "RMS energy fluctuation  (kcal/mol) = ", dsqrt( sum_RMSenergy/tr )
  
- specific_heat = dsqrt(  sum_energy2/tr - (sum_tot_energy/tr)**2  ) /( kb*avg_temp )
-
-!write(lunTP_out,'(a50, f10.2)') "Specific heat C_V (only valid in NVT) (cal/g) = ", specific_heat/(lunXYZ00*(massO+2*massH))
+ !specific_heat = dsqrt(  sum_energy2/tr - (sum_tot_energy/tr)**2  ) /( kb*avg_temp )
+ !write(lunTP_out,'(a50, f10.2)') "Specific heat C_V (only valid in NVT) (cal/g) = ", specific_heat/(1000*(massO+2*massH))
 
  if (BAROSTAT) then
-        avg_box2 = sum_box2/t
-        avg_box  = sum_box/t 
+    avg_box2 = sum_box2/t
+    avg_box  = sum_box/t 
 
-       !isotherm_compress = (avg_box2 - (avg_box**3)**2 )*(lunXYZd-7)/(1.38d0*avg_temp*avg_box)
 	write(lunTP_out,'(a50, 3f10.6)') "average box size (over entire run) (Ang) = ", avg_box
- !      write(lunTP_out,'(a50, f10.2)') "Isothermal compressibility (only valid in NPT)=", isotherm_compress
+	write(lunTP_out,'(a50, f10.2)') "average density (g/cm^3) = ", &
+		Nwaters*(massO+2*massH)*amu2grams/(avg_box(1)*avg_box(2)*avg_box(3)*(a2m*100)**3)
+
+	isotherm_compress = &
+		(avg_box2(1)**3 - (avg_box(1)*avg_box(2)*avg_box(3))**2 )*(10d-7)/(1.38d0*avg_temp*avg_box(1)*avg_box(2)*avg_box(3))
+    
+    write(lunTP_out,'(a50, f10.2)') "Isothermal compressibility =", isotherm_compress
+    write(lunTP_out,'(a)') "Note : isothermal compressibility only valid in NPT, assumes cubic box, not validated" 
  else 
-!       write(lunTP_out,'(a50, a4)') "Isothermal compressibility (only valid in NPT)=", " n/a"
+	write(lunTP_out,'(a50, f10.2)') "density (fixed) (g/cm^3) = ", Nwaters*(massO+2*massH)*amu2grams/(volume*(a2m*100)**3)
  endif
-	
- write(lunTP_out,'(a50, f10.2)') "average density (g/cm^3) = ", Nwaters*(massO+2*massH)*amu2grams/(volume*(a2m*100)**3)
+ 
+ 
+ if (CALCGEOMETRY) call write_out_geometry(lunTP_out,Nbeads)
+ 
  
  if (DIELECTRICOUT) then 
+    write(lunTP_out,'(a50 )')         "#---------- dielectric constant data  ---------------"
 	write(lunTP_out,'(a50, f10.2)') " dielectric constant ", dielectric_constant
 	if (num_timesteps .gt. 1000) then 
 		dielectric_error = sum( (dielectric_running(500:1000) - dielectric_constant)**2 ) /500
@@ -857,7 +878,8 @@ subroutine print_basic_run_info
  if (pot_model .eq. 3) write(lunTP_out,'(a50,a)') "Model = ", "TTM3F"
  if (pot_model .eq. 4) write(lunTP_out,'(a50,a)') "Model = ", "qSPCfw"
  if (pot_model .eq. 5) write(lunTP_out,'(a50,a)') "Model = ", "SPCf"
- if (pot_model .eq. 6) write(lunTP_out,'(a50,a,a)') "Model = ", "SIESTA  sys_label = ", trim(sys_label)
+ if (pot_model .eq. 6) write(lunTP_out,'(a50,a,a,a,i5)') "Model = ", "SIESTA  sys_label = ", &
+									trim(sys_label), "  num_SIESTA_nodes = ", num_SIESTA_nodes
  write(lunTP_out,'(a50,i4,a,i4,a)') "Running with ", Nbeads, " beads on ", Nnodes, " nodes"
  write(lunTP_out,'(a50, i6)') "Num Molecules = ", Nwaters
  write(lunTP_out,'(a50, f10.3,a3)') "timestep = ", delt*1000, " fs"
@@ -918,7 +940,7 @@ end subroutine print_pot
 
 
 !-----------------------------------------------------------------------------------------
-!--------------Write out coords-----------------------------------------------------------
+!--------------Write out coords----------------------------------------------------------
 !-----------------------------------------------------------------------------------------
 subroutine save_XYZ(iun, RR, Upot, read_method, t, delt) 
 use system_mod

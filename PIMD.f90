@@ -108,16 +108,15 @@ do t = 1, num_timesteps + eq_timesteps
 		call contracted_forces
 	endif 
 	!------ end call force routine ------------------------------------ 
-
 	if (pid .eq. 0) then
 
 		!update kinetic energy 
 		call calc_uk 
 
 		!write stuff out if necessary 
-		call start_timer("Writing out")
+		call start_timer("Writing_out")
 		call write_out
-		call stop_timer("Writing out")
+		call stop_timer("Writing_out")
 		
 		!update momenta a half step w/ new forces
 		PPt = PPt - MASSCON*dRRt*delt2
