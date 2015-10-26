@@ -1,5 +1,5 @@
 module force_calc
-contains
+ contains
 
 !--------------------------------------------------------------------------------------------
 !---------------------------------- Default MPI force calculation --------------------------
@@ -13,35 +13,37 @@ subroutine full_bead_forces
     !we want to send a (3 x Natoms) array to each processor 
     if (pid .eq. 0) then
 
- 	do i = 1, Nnodes - 1 !node index
-		k = bat*Nnodes + i  !bead index
-		!masternode send image coordinates
-		Call MPI_Send(RRt(:,:,k), counti, MPI_DOUBLE_PRECISION, i, 0, MPI_COMM_WORLD, ierr)   
-		!masternode send centroid coordinates to calculate centroid virial
-		Call MPI_Send(RRc, 3*Natoms, MPI_DOUBLE_PRECISION, i, 0, MPI_COMM_WORLD, ierr)   
-	enddo
-	!masternode force & virial calculation
-	k = bat*Nnodes + Nnodes  
+		do i = 1, Nnodes - 1 !node index
+			k = bat*Nnodes + i  !bead index
+			!masternode send image coordinates
+			Call MPI_Send(RRt(:,:,k), counti, MPI_DOUBLE_PRECISION, i, 0, MPI_COMM_WORLD, ierr)   
+			!masternode send centroid coordinates to calculate centroid virial
+			Call MPI_Send(RRc, 3*Natoms, MPI_DOUBLE_PRECISION, i, 0, MPI_COMM_WORLD, ierr)   
+		enddo
+		!masternode force & virial calculation
+		k = bat*Nnodes + Nnodes  
 
-	call potential(RRt(:,:,k), RRc, Upott(k), dRRt(:,:,k), virt, virialct(k), dip_momIt(:,:,k), dip_momEt(:,:,k), chg, t, BAROSTAT)
+		call potential(RRt(:,:,k), RRc, Upott(k), dRRt(:,:,k), virt, virialct(k), dip_momIt(:,:,k), dip_momEt(:,:,k), chg, t, BAROSTAT)
 
-	virialt(k) = virt(1,1) + virt(2,2) + virt(3,3)	
+		virialt(k) = virt(1,1) + virt(2,2) + virt(3,3)	
 
-	!recieve stuff from nodes
-	do i = 1, Nnodes - 1
-		k = bat*Nnodes + i  
-		!masternode receive derivatives
-		call MPI_Recv(dRRt(:,:,k), counti, MPI_DOUBLE_PRECISION, i, 0, MPI_COMM_WORLD, status2, ierr)
-		!masternode recieve energies
-		call MPI_Recv(Upott(k), 1, MPI_DOUBLE_PRECISION, i, 0, MPI_COMM_WORLD, status2, ierr)	
-		!masternode receive virials
-		call MPI_Recv(virialt(k), 1, MPI_DOUBLE_PRECISION, i, 0, MPI_COMM_WORLD, status2, ierr)	
-		!masternode receive centroid virials
-		call MPI_Recv(virialct(k), 1, MPI_DOUBLE_PRECISION, i, 0, MPI_COMM_WORLD, status2, ierr)	
-		!masternode recieve dipole moments		
-		if (dip_out .or. TD_out) call MPI_Recv(dip_momIt(:,:,k), 3*Nwaters, MPI_DOUBLE_PRECISION, i, 0, MPI_COMM_WORLD, status2, ierr)
-		if (Edip_out) call MPI_Recv(dip_momEt(:,:,k), 3*Nwaters, MPI_DOUBLE_PRECISION, i, 0, MPI_COMM_WORLD, status2, ierr)
-	enddo
+		!recieve stuff from nodes
+#ifdef parallel
+		do i = 1, Nnodes - 1
+			k = bat*Nnodes + i  
+			!masternode receive derivatives
+			call MPI_Recv(dRRt(:,:,k), counti, MPI_DOUBLE_PRECISION, i, 0, MPI_COMM_WORLD, status2, ierr)
+			!masternode recieve energies
+			call MPI_Recv(Upott(k), 1, MPI_DOUBLE_PRECISION, i, 0, MPI_COMM_WORLD, status2, ierr)	
+			!masternode receive virials
+			call MPI_Recv(virialt(k), 1, MPI_DOUBLE_PRECISION, i, 0, MPI_COMM_WORLD, status2, ierr)	
+			!masternode receive centroid virials
+			call MPI_Recv(virialct(k), 1, MPI_DOUBLE_PRECISION, i, 0, MPI_COMM_WORLD, status2, ierr)	
+			!masternode recieve dipole moments		
+			if (dip_out .or. TD_out) call MPI_Recv(dip_momIt(:,:,k), 3*Nwaters, MPI_DOUBLE_PRECISION, i, 0, MPI_COMM_WORLD, status2, ierr)
+			if (Edip_out) call MPI_Recv(dip_momEt(:,:,k), 3*Nwaters, MPI_DOUBLE_PRECISION, i, 0, MPI_COMM_WORLD, status2, ierr)
+		enddo
+#endif
     else
 #ifdef parallel
 		!slavenode recieve coords from master node
@@ -63,9 +65,9 @@ subroutine full_bead_forces
 		if (dip_out .or. TD_out) call MPI_Send(dip_momI, 3*Nwaters, MPI_DOUBLE_PRECISION, 0, 0, MPI_COMM_WORLD, ierr)
 		if (Edip_out) call MPI_Send(dip_momE, 3*Nwaters, MPI_DOUBLE_PRECISION, 0, 0, MPI_COMM_WORLD, ierr)
 #endif
-    endif
-    Call MPI_Barrier(MPI_COMM_WORLD, ierr)
-  
+	endif
+	Call MPI_Barrier(MPI_COMM_WORLD, ierr)
+ 
  enddo! j = 0, Nbatches - 1 !batch index
 
 if (pid .eq. 0) then
@@ -89,47 +91,37 @@ end subroutine full_bead_forces
 subroutine contracted_forces
  use main_stuff
  use NormalModes
+ use pot_mod 
  use dans_timer
  Implicit None 
- double precision :: e1, virialmon, virialcmon, Umonomers, chgH1, chgH2, tmp, gammaM
+ double precision :: e1, virialmon, virialcmon, Umonomers, chgH1, chgH2, tmp
  double precision, dimension(3,Natoms,Nbeads)  ::  dRRfast
  double precision, dimension(3,Natoms) :: dRRc
  double precision, dimension(3,3)      :: dr1, r1
- double precision, dimension(3,3,3)    :: dq3
+ double precision, dimension(3,3,3) :: dq3
  double precision, dimension(3)        :: roh1, roh2, rh1m, rh2m, rM, q3
  integer :: tintra, iM
 
- if (pid .eq. 0) then
-    call start_timer("MonomerMD")
+ tmp = 0.5d0*gammaM/(1.d0-gammaM)
 
- !TTM charge mixing parameter
- !if (pot_model==2) then  
- !    gammaM = 0.426706882d0
- !    tmp = 0.5d0*gammaM/(1.d0-gammaM)
- !elseif (pot_model==3) then 
- !    gammaM = 0.46d0
- !    tmp = 0.5d0*gammaM/(1.d0-gammaM)
- !else 
- !    tmp = 0 
- !endif
+ if (pid .eq. 0) then
+ call start_timer("MonomerPIMD")
 
    Umonomers = 0 
    virialmon = 0 
    virialcmon = 0 
-   
-   if (t .eq. 1) dRRfast = 0 
 	   
    !---  intramolecular (fast) forces -------------------------------------------------
    do tintra = 1, intra_timesteps
-   
+
 	!update momenta with fast forces
-    PPt = PPt - MASSCON*dRRfast*delt2fast
+        PPt = PPt - MASSCON*dRRfast*delt2fast
 
 	!update positions with fast forces
 	do i = 1, Nwaters
-       	Call EvolveRing(RRt(:,3*i-2,:), PPt(:,3*i-2,:), Nbeads, massO)
-       	Call EvolveRing(RRt(:,3*i-1,:), PPt(:,3*i-1,:), Nbeads, massH)
-       	Call EvolveRing(RRt(:,3*i-0,:), PPt(:,3*i-0,:), Nbeads, massH)
+        	Call EvolveRing(RRt(:,3*i-2,:), PPt(:,3*i-2,:), Nbeads, massO)
+        	Call EvolveRing(RRt(:,3*i-1,:), PPt(:,3*i-1,:), Nbeads, massH)
+        	Call EvolveRing(RRt(:,3*i-0,:), PPt(:,3*i-0,:), Nbeads, massH)
 	enddo
 
 	!update fast forces (intramolecular forces)
@@ -143,7 +135,7 @@ subroutine contracted_forces
 
 	   		r1(1:3, 1:3) = RRt(1:3, (/iO, ih1, ih2/), j)
 
-		  	!call pot_nasa(r1, dr1, e1, box, boxi)  
+		  	call pot_nasa(r1, dr1, e1, box, boxi)  
 
 			dRRfast(1:3, (/iO, iH1, iH2/), j) = dr1
 
@@ -191,8 +183,7 @@ subroutine contracted_forces
  !check PBCs
  call PBCs(RRt, RRc)
 
- call stop_timer("MonomerMD")
-
+ call stop_timer("MonomerPIMD")
  !intermolecular force calculation
  call potential(RRc, RRc, Upot, dRRc, virt, virialc, dip_momI, dip_momE, chg, t, BAROSTAT)
 
@@ -217,9 +208,9 @@ subroutine contracted_forces
 
 		!do virial
 		roh1 = RRt(1:3, ih1, j) - RRt(1:3, iO, j)
-       		roh1 = roh1 - box*anint(roh1*boxi) !PBC
+       	roh1 = roh1 - box*anint(roh1*boxi) !PBC
 		roh2 = RRt(1:3, ih2, j) - RRt(1:3, iO, j)
-       		roh2 = roh2 - box*anint(roh2*boxi) !PBC
+       	roh2 = roh2 - box*anint(roh2*boxi) !PBC
 
 		virialmon = virialmon + dot_product(roh1, dr1(:,2))
 		virialmon = virialmon + dot_product(roh2, dr1(:,3)) 
@@ -238,6 +229,7 @@ subroutine contracted_forces
  
 
 end subroutine contracted_forces
+
 
 !---------------------------------------------------------------------
 !-----------------Call correct potential ----------------------------

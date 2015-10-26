@@ -1,11 +1,12 @@
 module math 
 !converted into a module by D. Elton
 
-contains 
+ contains 
 !---------------------------------------------------------------------
 !------------ Generate random number from Gaussian distribution -----
 !------------ using Box_Muller sampling -----------------------------
 !----- http://en.literateprograms.org/Box-Muller_transform_%28C%29 --
+!----- Translated into Fortran by D.C. Elton
 !---------------------------------------------------------------------
 function rand_norm(std_dev) 
  Implicit None 

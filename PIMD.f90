@@ -114,9 +114,9 @@ do t = 1, num_timesteps + eq_timesteps
 		call calc_uk 
 
 		!write stuff out if necessary 
-		call start_timer("Writing_out")
+		call start_timer("WritingOut")
 		call write_out
-		call stop_timer("Writing_out")
+		call stop_timer("WritingOut")
 		
 		!update momenta a half step w/ new forces
 		PPt = PPt - MASSCON*dRRt*delt2

@@ -144,7 +144,7 @@ subroutine write_out_geometry(iun, Nbeads)
  write(iun,'(a40,f12.3,a4,2f12.3,a4,f12.3)') "average OH distance : ", avg_OH, " +/-", RMS_OH, bavg_OH, " +/-", bRMS_OH  
  write(iun,'(a40,f12.3,a4,2f12.3,a4,f12.3)') "  average HOH angle : ", avg_HOH, " +/-", RMS_HOH, bavg_HOH, " +/-", bRMS_HOH  
 #ifdef FC_HAVE_FLUSH
-     call flush(iun) 
+ call flush(iun) 
 #endif
 
 endsubroutine write_out_geometry

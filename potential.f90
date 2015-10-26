@@ -65,6 +65,7 @@ else if (pot_model==3) then
    fdI = 4; ldI=4
         
    !GROMACS VdW shift parameters. see GROMACS manual Ch. 4
+   !D.C. Elton
    if (Rc .eq. rc1) then
 	shiftA = 0
 	shiftB = 0 

@@ -10,8 +10,8 @@ type timer
 	logical :: STATE=.false.
 	logical :: USED=.false.
 	integer :: nCalls=0
-	real(8) :: seconds=0 
-	real(8) :: turnontime=0
+	double precision :: seconds=0d0 
+	double precision :: turnontime=0d0
 end type timer
 
 integer,parameter :: MAX_NUM_TIMERS=50
@@ -28,7 +28,7 @@ Implicit None
  integer :: i
 
   i = find_timer(name) 
-  
+ 
   !if timer is not found, create it
   if (i .eq. -1) then 
 	do i = 1, MAX_NUM_TIMERS
@@ -58,15 +58,18 @@ Implicit None
  integer :: i
   
   i = find_timer(name) 
- 
-  if (timers(i)%STATE .eqv. .false.) then
-		write(*,*) "timer_mod: WARNING There is a mistake in the timing scheme. ", name, " timer is alread off!"
-  else
   
+ if (i .eq. -1) then
+	write(*,*) "timer_mod: ERROR: cannot find timer:  ", name 
+ endif
+
+ if (timers(i)%STATE .eqv. .false.) then
+	write(*,*) "timer_mod: WARNING There is a mistake in the timing scheme. ", name, " timer is alread off!"
+ else
+
 	timers(i)%STATE = .false.
 	timers(i)%seconds = timers(i)%seconds + get_CPU_time() - timers(i)%turnontime
-
-	endif
+ endif
 
 EndSubroutine stop_timer 
 
@@ -149,11 +152,10 @@ Double precision function get_CPU_time()
 #else   
 	!call CPU_time(seconds)       !very compiler/system dependent
     call date_and_time(values=values)  !more portable intrinsic
- 	get_CPU_time = values(3)*24*3600.d0 + values(5)*3600.d0 + values(6)*60.d0 + values(7)* values(8)*0.001d0 
-
+ 	get_CPU_time = values(3)*24*3600.d0 + values(5)*3600.d0 + values(6)*60.d0 + values(7) + values(8)*0.001d0 
 #endif
 
-EndFunction get_CPU_time
+endfunction get_CPU_time
 
 EndModule dans_timer
 
