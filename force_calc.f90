@@ -80,14 +80,13 @@ end subroutine full_bead_forces
 
 
 !--------------------------------------------------------------------------------------------
-!----------------- Contracted force calculation with intermolecular forces on monomer-------
-!--------------------------------------------------------------------------------------------
+!------------- Contracted force calculation with intermolecular forces on monomer ----------
 !-- This subroutine performs evaluates only the intramolecular (fast) forces on the beads and 
 !-- evaluates the intermolecular (slow) forces on the centroid. It also uses a multiple timestep method
 !-- (see Tuckerman, pg 118). The momentum and positions will be updated with the intramolecular forces
 !-- every intra_timesteps times. For instance if the 'outer timestep' (normal timestep) is .5 ps and intra_timesteps = 5
 !-- then the inner timestep is .1 ps
-
+!--------------------------------------------------------------------------------------------
 subroutine contracted_forces
  use main_stuff
  use NormalModes
@@ -104,24 +103,24 @@ subroutine contracted_forces
 
  tmp = 0.5d0*gammaM/(1.d0-gammaM)
 
- if (pid .eq. 0) then
- call start_timer("MonomerPIMD")
+if (pid .eq. 0) then
+  call start_timer("MonomerPIMD")
 
-   Umonomers = 0 
-   virialmon = 0 
-   virialcmon = 0 
+  Umonomers = 0 
+  virialmon = 0 
+  virialcmon = 0 
 	   
    !---  intramolecular (fast) forces -------------------------------------------------
-   do tintra = 1, intra_timesteps
+  do tintra = 1, intra_timesteps
 
 	!update momenta with fast forces
-        PPt = PPt - MASSCON*dRRfast*delt2fast
+	PPt = PPt - MASSCON*dRRfast*delt2fast
 
 	!update positions with fast forces
 	do i = 1, Nwaters
-        	Call EvolveRing(RRt(:,3*i-2,:), PPt(:,3*i-2,:), Nbeads, massO)
-        	Call EvolveRing(RRt(:,3*i-1,:), PPt(:,3*i-1,:), Nbeads, massH)
-        	Call EvolveRing(RRt(:,3*i-0,:), PPt(:,3*i-0,:), Nbeads, massH)
+		Call EvolveRing(RRt(:,3*i-2,:), PPt(:,3*i-2,:), Nbeads, massO)
+		Call EvolveRing(RRt(:,3*i-1,:), PPt(:,3*i-1,:), Nbeads, massH)
+		Call EvolveRing(RRt(:,3*i-0,:), PPt(:,3*i-0,:), Nbeads, massH)
 	enddo
 
 	!update fast forces (intramolecular forces)
@@ -129,6 +128,7 @@ subroutine contracted_forces
 	Umonomers = 0 
 	virialmon = 0 
 	virialcmon = 0 
+	
 	do j = 1, Nbeads
 		do iw = 1, Nwaters
 			iO=3*iw-2; iH1 = 3*iw-1; iH2=3*iw-0
@@ -169,10 +169,10 @@ subroutine contracted_forces
 		enddo
 	enddo
 	
-        !update momenta with fast forces
-        PPt = PPt - MASSCON*dRRfast*delt2fast
+    !update momenta with fast forces
+    PPt = PPt - MASSCON*dRRfast*delt2fast
 
-   enddo !tintra  = 1.. 
+ enddo !tintra  = 1.. 
 
  !calculate centroid positions
  RRc = sum(RRt,3)/Nbeads
@@ -184,6 +184,7 @@ subroutine contracted_forces
  call PBCs(RRt, RRc)
 
  call stop_timer("MonomerPIMD")
+ 
  !intermolecular force calculation
  call potential(RRc, RRc, Upot, dRRc, virt, virialc, dip_momI, dip_momE, chg, t, BAROSTAT)
 
@@ -221,11 +222,11 @@ subroutine contracted_forces
    enddo
  
    !update Upot, virial and virialc
-   Upot = Upot*Nbeads + Umonomers !potential energy for the ENTIRE system (all images)
-   virial = virialmon + virt(1,1) + virt(2,2) + virt(3,3) !virial for the ENTIRE system (all images)
+   Upot    = Upot*Nbeads + Umonomers !potential energy for the ENTIRE system (all images)
+   virial  = virialmon + virt(1,1) + virt(2,2) + virt(3,3) !virial for the ENTIRE system (all images)
    virialc = virialcmon/Nbeads + virialc
 
- endif
+endif !(pid .eq. 0) then
  
 
 end subroutine contracted_forces
@@ -276,7 +277,7 @@ else if (pot_model==6) then
     call siesta_forces( trim(sys_label), Natoms, RR, cell=siesta_box, energy=Upot, fa=dRR)
     call stop_timer("SIESTA")
     Upot = Upot*EVTOKCALPERMOLE
-    dRR = -1*dRR*EVTOKCALPERMOLE    
+    dRR = -1d0*dRR*EVTOKCALPERMOLE    
 endif
 
 

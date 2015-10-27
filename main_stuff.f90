@@ -21,7 +21,7 @@ real(8), dimension(:,:), allocatable :: VV, dRRold, dRRnew
 real(8), dimension(3) :: summom, sumvel, sum_dip, avg_box, avg_box2, sum_box, sum_box2
 real(8) :: delt, delt2,  uk,  imassO, imassH
 real(8) :: temp, sum_temp, sum_press, sys_temp, avg_vel, init_energy, sum_RMSenergy
-real(8) :: tot_energy, sum_tot_energy, sum_energy2, sum_simple_energy, simple_energy
+real(8) :: tot_energy, sum_tot_energy,  sum_tot_energy2, sum_energy2, sum_simple_energy, sum_simple_energy2, simple_energy
 real(8) :: specific_heat, avg_temp, init_temp, sum_dip2, sum_simple_press, simple_sys_press
 real(8) :: dielectric_constant, diel_prefac, dielectric_error, sys_press
 real(8), dimension(1000)  :: dielectric_running

@@ -224,8 +224,11 @@ if ( .not.( (bead_thermostat_type .eq. 'Langevin') .or. (bead_thermostat_type .e
 endif
 
 if ((CENTROIDTHERMOSTAT .or. BEADTHERMOSTAT) .and. (Nbeads .eq. 1)) then
-	write(lunTP_out,*) "WARNING: Bead/centroid thermostating does not make much sense with 1 bead."
-	write(*,*) "The dynamics will be unphysical since every atomic DOF will be thermostated. "
+	write(lunTP_out,*) "InputOutput: WARNING: Bead/centroid thermostating does not make much sense with 1 bead."
+	write(lunTP_out,*) "InputOutput: WARNING: The dynamics will be unphysical since every atomic DOF will be thermostated. "
+	write(lunTP_out,*) "InputOutput: WARNING: --- The bead thermostat is being turned off ----"
+	if (CENTROIDTHERMOSTAT) CENTROIDTHERMOSTAT = .false.
+	if (BEADTHERMOSTAT) BEADTHERMOSTAT = .false.
 endif
 
 if (BEADTHERMOSTAT .and. .not. (THERMOSTAT)) then
@@ -291,8 +294,9 @@ endif
 	sum_press = 0 
 	sum_tot_energy = 0 
 	sum_simple_energy = 0 
+	sum_simple_energy2 = 0 
 	sum_simple_press = 0 
-	sum_energy2 = 0
+	sum_tot_energy2 = 0
 	sum_RMSenergy = 0
 	sum_box = 0 
 	sum_box2 = 0 
@@ -416,6 +420,15 @@ subroutine open_files
 
  if (coord_out) then
 	call io_assign(luncoord_out)
+	inquire(file='out_'//TRIM(fsave)//'_coord.xyz', exist=EXISTS)
+  	if (EXISTS) then
+		write(lunTP_out,*) "NOTE: coordinate file already exists, backing up previous file."
+		call system('mv '//'out_'//TRIM(fsave)//'_coord.xyz'//' '//'out_'//TRIM(fsave)//'_coord_backup.xyz')
+   		open(lundip_out, file='out_'//TRIM(fsave)//'_dip.dat', status="old", action="write")
+  	else
+		open(lundip_out, file='out_'//TRIM(fsave)//'_dip.dat', status="unknown")
+	endif
+	
 	open(luncoord_out, file='out_'//TRIM(fsave)//'_coord.xyz', status='unknown')
  endif
  if (vel_out) then 	
@@ -494,8 +507,9 @@ subroutine write_out
 	sum_dip2 = 0 
 	sum_tot_energy = 0 
 	sum_simple_energy = 0 
+	sum_simple_energy2 = 0 
 	sum_simple_press = 0 
-	sum_energy2 = 0
+	sum_tot_energy2 = 0
 	sum_RMSenergy = 0
  endif 
 
@@ -525,11 +539,12 @@ subroutine write_out
  call simple_quantum_estimators(RRt, virial, simple_energy, simple_sys_press, sys_temp, Upot) 
 
  sum_simple_energy = sum_simple_energy + simple_energy
+ sum_simple_energy2 = sum_simple_energy2 + simple_energy**2
  sum_simple_press  = sum_simple_press + simple_sys_press
  sum_press         = sum_press + sys_press
  sum_tot_energy    = sum_tot_energy + tot_energy
  sum_temp          = sum_temp + sys_temp
- sum_energy2       = sum_energy2 + tot_energy**2
+ sum_tot_energy2       = sum_tot_energy2 + tot_energy**2
  sum_RMSenergy     = sum_RMSenergy + (tot_energy - sum_tot_energy/tr)**2
 
  !!debug options
@@ -686,6 +701,9 @@ if (BAROSTAT) then
         if (BOXSIZEOUT .and. (mod(t,t_freq) .eq. 0) ) write(lunBOXSIZEOUT,*) sum_box/t
 endif 
 
+	if (mod(t,1000) .eq. 0) then 
+		if (CALCGEOMETRY) call write_out_geometry(lunTP_out,Nbeads)
+	endif
 
 end subroutine write_out
 
@@ -793,10 +811,15 @@ Implicit none
  write(lunTP_out,'(a50, 3f10.2)') "Average total energy during run (kcal/mole) = ", sum_tot_energy/tr
  write(lunTP_out,'(a50, 3f10.2)') "Estimated energy drift (kcal/mole/ps) = ",(tot_energy - init_energy)/(num_timesteps*delt)
  write(lunTP_out,'(a50, 3f10.2)') "Temp drift (K/ps) = ", (avg_temp - init_temp)/(num_timesteps*delt)
- write(lunTP_out,'(a50, 3f10.2)') "RMS energy fluctuation  (kcal/mol) = ", dsqrt( sum_RMSenergy/tr )
+ write(lunTP_out,'(a50, 3f10.2)') "RMS energy fluctuation  (kcal/mol) = ", dsqrt( sum_tot_energy2/tr - (sum_tot_energy/tr)**2 )
  
- !specific_heat = dsqrt(  sum_energy2/tr - (sum_tot_energy/tr)**2  ) /( kb*avg_temp )
- !write(lunTP_out,'(a50, f10.2)') "Specific heat C_V (only valid in NVT) (cal/g) = ", specific_heat/(1000*(massO+2*massH))
+ specific_heat = dsqrt(  sum_tot_energy2/tr - (sum_tot_energy/tr)**2  ) /( kb*avg_temp )
+ write(lunTP_out,'(a50, f10.2)') "Specific heat C_V (only valid in NVT) (cal/g) = ", specific_heat/(1000*(massO+2*massH))
+ 
+ if (Nbeads .gt. 1) then 
+	specific_heat = dsqrt(  sum_simple_energy2/tr - (sum_simple_energy/tr)**2  ) /( kb*avg_temp )
+	write(lunTP_out,'(a50, f10.2)') "Quantum specific heat C_V (only valid in NVT) (cal/g) = ", specific_heat/(1000*(massO+2*massH))
+ endif
 
  if (BAROSTAT) then
     avg_box2 = sum_box2/t
