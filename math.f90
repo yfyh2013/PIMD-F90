@@ -40,16 +40,13 @@ function rand_norm(std_dev)
 end function rand_norm
 
 
-
 !*****************************************************************************
 !*** The following subroutines used for the calculation of the Gamma function
 !*** have been taken from the "Numerical Recipes"   
 !*****************************************************************************
 !--------------------------------------------------
 function gammln(XX)
-
 !***   taken from the "Numerical Recipes"
-
 !--------------------------------------------------
 implicit none
 double precision :: XX

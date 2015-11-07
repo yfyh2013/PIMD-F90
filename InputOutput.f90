@@ -1,8 +1,8 @@
 module InputOutput
-use consts
-use main_stuff
-use lun_management
-
+ use consts
+ use main_stuff
+ use lun_management
+ use infrared
 Implicit none 
 
  contains
@@ -10,88 +10,88 @@ Implicit none
 !---------------- Read input file ------------------------------------------------
 !----------------------------------------------------------------------------------
 subroutine read_input_file 
-
-call getarg(1, finp)
-narg = command_argument_count()
-if (narg .eq. 0) then
+ implicit none
+ 
+ call getarg(1, finp)
+ narg = command_argument_count()
+ if (narg .eq. 0) then
 	write(*,*) "ERROR: no input file argument."
 	stop
-endif 
+ endif 
 
-call io_assign(lun) 
-open(lun, file=finp, status='old')
+ call io_assign(lun) 
+ open(lun, file=finp, status='old')
 
-read(lun,*) 
-read(lun,*)
-read(lun,*)
-read(lun,*)fconfig
-read(lun,*)fsave
-read(lun,*)Nbeads
-read(lun,*)eq_timesteps
-read(lun,*)num_timesteps
-read(lun,*)delt
-read(lun,*) 
-read(lun,*)
-read(lun,*)coord_out
-read(lun,*)vel_out
-read(lun,*)dip_out
-read(lun,*)Edip_out
-read(lun,*)TD_out
-read(lun,*)OUTPUTIMAGES
-read(lun,*)IMAGEDIPOLESOUT
-read(lun,*)BOXSIZEOUT
-read(lun,*)TP_out
-read(lun,*)CALC_RADIUS_GYRATION
-read(lun,*)DIELECTRICOUT
-read(lun,*)CHARGESOUT
-read(lun,*)PRINTFINALCONFIGURATION
-read(lun,*)td_freq
-read(lun,*)tp_freq
-read(lun,*)ti_freq
-read(lun,*)t_freq
-read(lun,*) 
-read(lun,*)
-read(lun,*)pot_model 
-read(lun,*)sys_label, num_SIESTA_nodes
-read(lun,*)Rc, rc1, eps_ewald
-read(lun,*)polar_maxiter, polar_sor, polar_eps, guess_initdip, print_dipiters
-read(lun,*)GENVEL
-read(lun,*)INPCONFIGURATION
-read(lun,*)THERMOSTAT
-read(lun,*)BEADTHERMOSTAT
-read(lun,*)CENTROIDTHERMOSTAT
-read(lun,*)bead_thermostat_type
-read(lun,*)tau
-read(lun,*)tau_centroid
-read(lun,*)global_chain_length
-read(lun,*)bead_chain_length
-read(lun,*)temp
-read(lun,*)BAROSTAT
-read(lun,*)tau_P
-read(lun,*)press 
-read(lun,*)PEQUIL
-read(lun,*) 
-read(lun,*)
-read(lun,*)setNMfreq
-read(lun,*)CONTRACTION
-read(lun,*)intra_timesteps
-read(lun,*)massO
-read(lun,*)massH
-call io_close(lun)  
+ read(lun,*) 
+ read(lun,*)
+ read(lun,*)
+ read(lun,*)fconfig
+ read(lun,*)fsave
+ read(lun,*)Nbeads
+ read(lun,*)eq_timesteps
+ read(lun,*)num_timesteps
+ read(lun,*)delt
+ read(lun,*) 
+ read(lun,*)
+ read(lun,*)coord_out
+ read(lun,*)vel_out
+ read(lun,*)dip_out
+ read(lun,*)Edip_out
+ read(lun,*)TD_out
+ read(lun,*)OUTPUTIMAGES
+ read(lun,*)IMAGEDIPOLESOUT
+ read(lun,*)BOXSIZEOUT
+ read(lun,*)TP_out
+ read(lun,*)CALC_RADIUS_GYRATION
+ read(lun,*)DIELECTRICOUT
+ read(lun,*)CHARGESOUT
+ read(lun,*)PRINTFINALCONFIGURATION
+ read(lun,*)td_freq
+ read(lun,*)tp_freq
+ read(lun,*)ti_freq
+ read(lun,*)t_freq
+ read(lun,*) 
+ read(lun,*)
+ read(lun,*)pot_model 
+ read(lun,*)sys_label, num_SIESTA_nodes
+ read(lun,*)Rc, rc1, eps_ewald
+ read(lun,*)polar_maxiter, polar_sor, polar_eps, guess_initdip, print_dipiters
+ read(lun,*)GENVEL
+ read(lun,*)INPCONFIGURATION
+ read(lun,*)THERMOSTAT
+ read(lun,*)BEADTHERMOSTAT
+ read(lun,*)CENTROIDTHERMOSTAT
+ read(lun,*)bead_thermostat_type
+ read(lun,*)tau
+ read(lun,*)tau_centroid
+ read(lun,*)global_chain_length
+ read(lun,*)bead_chain_length
+ read(lun,*)temp
+ read(lun,*)BAROSTAT
+ read(lun,*)tau_P
+ read(lun,*)press 
+ read(lun,*)PEQUIL
+ read(lun,*) 
+ read(lun,*)
+ read(lun,*)setNMfreq
+ read(lun,*)CONTRACTION
+ read(lun,*)intra_timesteps
+ read(lun,*)massO
+ read(lun,*)massH
+ call io_close(lun)  
 
-!other options: 
+ !other options: 
  CALCGEOMETRY = .true. !computes averge geometry of h2o molecules and outputs at end
  read_method = 1 !read_method(=0,1) (0 for OOOO....HHHHH and 1 for OHHOHHOHH...)
  SIMPLE_ENERGY_ESTIMATOR = .true. !setting this to true will output the simple energy to temp/press file
- !simple estimators take a long time to converge with 4+ beads
-
-
+ CALCIRSPECTRA = .true. !store dipole moments and calculate IR spectra at end of run
+ 
 end subroutine read_input_file 
 
 
-!----------------------------------------------------------------------------------!
+!----------------------------------------------------------------------------------
 !---------------- Initialize some variables for all nodes ------------------------
-!----------------------------------------------------------------------------------!
+!----------------------------------------------------------------------------------
 subroutine read_and_initialize_all_nodes
  
 !---  read the number of atoms, dimension of box and atomic coordinates 
@@ -325,6 +325,8 @@ endif
 	allocate(Virialt(Nbeads))
 	allocate(virialct(Nbeads))
 	allocate(PPc(3, Natoms))
+    if (CALCIRSPECTRA) allocate(dip_mom_all_times(3, num_timesteps))
+
 	dRRt = 0 
 
 
@@ -485,14 +487,15 @@ end subroutine open_files
 subroutine write_out 
  use geometry_calculator
  use dans_timer
- Implicit none
+ use estimators
+ implicit none
 
  !for accuracy, pressure is computed at every timestep, since P fluctuations are large
  !total energy and temperature is also calculated every timestep
  !in some instances, slight speedups were sacrificed for code readability 
 
  !reset averaging after equilbration ends
- if  (t .eq. eq_timesteps) then
+ if (t .eq. eq_timesteps + 1) then
  	write(lunTP_out,*) "#----end of equilibration---restarting averages----------------------------------"
 	!store average temp during equil and final energy after equil
 	init_energy = tot_energy 
@@ -511,6 +514,8 @@ subroutine write_out
 	sum_simple_press = 0 
 	sum_tot_energy2 = 0
 	sum_RMSenergy = 0
+	if (CALCGEOMETRY) call write_out_geometry(lunTP_out,Nbeads)
+	if (CALCGEOMETRY) call reset_geometry
  endif 
 
  tr = tr + 1
@@ -519,8 +524,6 @@ subroutine write_out
 
 ! call calc_uk_centroid
 ! write(lunTP_out,*) "centroid temp =", TEMPFACTOR*uk/(Natoms)
-
-
  !uk = 0 
  !do j = 1, Nbeads
 !	do i = 1,Nwaters
@@ -544,18 +547,17 @@ subroutine write_out
  sum_press         = sum_press + sys_press
  sum_tot_energy    = sum_tot_energy + tot_energy
  sum_temp          = sum_temp + sys_temp
- sum_tot_energy2       = sum_tot_energy2 + tot_energy**2
+ sum_tot_energy2   = sum_tot_energy2 + tot_energy**2
  sum_RMSenergy     = sum_RMSenergy + (tot_energy - sum_tot_energy/tr)**2
 
  !!debug options
-  !write(*,*) "Upot   " , Upot
-  !write(*,*) "virial " , virial
-  !write(*,*) "virialc" , virialc
+ !write(*,*) "Upot   " , Upot
+ !write(*,*) "virial " , virial
+ !write(*,*) "virialc" , virialc
  !write(*,*) "simple P" , simple_sys_press
  !write(*,*) "virial P" , sys_press
  !write(*,*) "simple E" , simple_energy
  !write(*,*) "virial E" , tot_energy
-
 
  !caculate dipole moments only if necessary 
  !if ( (DIELECTRICOUT .and. (mod(t,10).eq.0) )  .or. ( (t .gt. eq_timesteps) .and. ( (TD_out) .or. ( dip_out.and.(mod(t,t_freq).eq.0) ) ) )  then 
@@ -570,10 +572,10 @@ subroutine write_out
 		dip_momI(j,iw) = sum(dip_momIt(j,iw,:))/Nbeads
 	enddo
  enddo
-
+ 
  !caculate total dipole moment (in Debye)
  dip_mom(:) = sum(dip_momI(:,:), dim=2)
-
+ 
  !update quantities for dielectric constant 
  !it really isn't necessary to do this every timestep, so we do it every 10 steps
  if (DIELECTRICOUT .and. ( mod(t,10) .eq. 0 )  ) then 
@@ -581,9 +583,16 @@ subroutine write_out
 	sum_dip2 = sum_dip2 + sum(dip_mom**2)
 	ttt = ttt + 1
  endif
-
-
+ 
+ if (CALCGEOMETRY) then 
+	call start_timer("calc_geometry")
+	call calc_geometry(RRc, RRt, Nbeads)
+	call stop_timer("calc_geometry")
+ endif 
+ 
+ !-------------------------------------------------------------
  !print out temperature, pressure, average press, energies & dielectric constant
+ !-------------------------------------------------------------
  if (mod(t,tp_freq) == 0) then
 
 	write(lunTP_out,'(1f10.4,f10.2,f11.2,5f10.2)',advance='no') tr*delt, sys_temp, sys_press, & 
@@ -618,8 +627,13 @@ subroutine write_out
 #endif
  endif 
 
- !write out data during run 
+ !-------------------------------------------------------------
+ !write out / store data during run phase 
+ !-------------------------------------------------------------
  if (t .gt. eq_timesteps) then
+ 
+    if(CALCIRSPECTRA) dip_mom_all_times(1:3, tr) = dip_mom(:)
+ 
 	if (mod(t,t_freq)  == 0 ) then 
 		!coordinate output
 		if (coord_out) then
@@ -684,13 +698,10 @@ subroutine write_out
 	!total dipole moment output 
 	if (mod(t,td_freq)  == 0 .and. TD_out ) then 
 		write(lunTD_out,'(3f12.4)') dip_mom
+#ifdef FC_HAVE_FLUSH
+		flush(lunTD_out)
+#endif
   	endif
-  	
-  	call start_timer("calc_geometry")
-  	if (CALCGEOMETRY .eqv. .true.) call calc_geometry(RRc, RRt, Nbeads)
- 	call stop_timer("calc_geometry")
-
-
  endif !t .gt. eq_timesteps
 
 !box size output stuff 
@@ -701,95 +712,15 @@ if (BAROSTAT) then
         if (BOXSIZEOUT .and. (mod(t,t_freq) .eq. 0) ) write(lunBOXSIZEOUT,*) sum_box/t
 endif 
 
-	if (mod(t,1000) .eq. 0) then 
-		if (CALCGEOMETRY) call write_out_geometry(lunTP_out,Nbeads)
-	endif
-
 end subroutine write_out
 
-
-!----------------------------------------------------------------------------------!
-!- Quantum virial estimator for the energy and pressure (ref: Tuckerman, "Statistical Mechanics.." 2008 pg 485)
-!- Inputs (virial, virialc, sys_temp, Upot are for the ENTIRE system) 
-!----------------------------------------------------------------------------------!
-subroutine quantum_virial_estimators(RRt, virial, virialc, qEnergy, qPress, sys_temp, Upot) 
- use consts 
- Implicit none
- double precision, dimension(3,Natoms,Nbeads),intent(in)  :: RRt 
- double precision, intent(in)      ::  sys_temp, Upot, virial, virialc
- double precision, intent(out)     :: qPress, qEnergy 
- double precision 		   :: qVirial, qVirial2, KE
- integer :: i, j, k 
-
- !Note on units : it is assumed that dRRt is in (in kcal/(mol*Ang))
- !and that Upot is in kcal/mol and that sys_temp is in Kelvin 
- !This pressure estimator assumes that the potential energy does not have volume dependence
- 
- KE = 1.5*Natoms*kb*sys_temp*Nbeads!kinetic energy in kcal/mol
-
- !convert to kcal/(mole of mol H2O) by dividing by Nwaters
- qEnergy = ( KE  +  .5*(virial -  virialc ) +  Upot )/(Nwaters*Nbeads) 
-
- qPress  =  PRESSCON2*(1/(3*volume))*( 2*KE - virialc )/(Nwaters*Nbeads) !factor of 1/3 not in Tuckerman's book. (book is wrong!!)
-
-end subroutine quantum_virial_estimators
-
-	
 !----------------------------------------------------------------------------------
-!- Simple quantum estimators for energy & pressure -------------------------------
+!----------Print information about the run ---------------------------------------
 !----------------------------------------------------------------------------------
-subroutine simple_quantum_estimators(RRt, virial, qEnergy, qPress, sys_temp, Upot) 
- use consts 
- use NormalModes !need MassScaleFactor
- use geometry_calculator
- implicit none
- double precision, dimension(3,Natoms,Nbeads),intent(in)  :: RRt  !coords in Ang
- double precision, intent(in)      :: sys_temp       !temp in Kelvin
- double precision, intent(in)      :: Upot 	!potential energy in kcal/mol
- double precision, intent(in)      :: virial 	!virial
- double precision, intent(out)     :: qEnergy  	!energy out in kcal/mol
- double precision, intent(out)     :: qPress  	!pressure out in bar
- double precision 		   :: KE, K0, mass
- integer :: i, j, k 
-
- !Note on units : it is assumed that dRRt is in
- !and that Upot is in kcal/mol and that sys_temp is in Kelvin 
- !The pressure estimator assumes that the potential energy does not have volume dependence
-
- K0 = 0
- do k = 1, Nbeads
-	do j = 1, Natoms
-		if (mod(j+2,3) .eq. 0) then
-			mass = massO
-		else 
-			mass = massH
-		endif
-		do i = 1, 3
-			if (k .eq. 1) then
-				K0 = K0 + mass*( RRt(i,j,k) - RRt(i,j,Nbeads) )**2
-			else
-				K0 = K0 + mass*( RRt(i,j,k) - RRt(i,j,k-1) )**2
-			endif
-		enddo
-	enddo
- enddo
-
- KE = 1.5*Natoms*Nbeads*kb*sys_temp*Nbeads !kinetic energy of the beads in kcal/mol
- K0 = .5*K0*(omegan**2)*MASSCONi   !quantum correction to kinetic energy - convert from Ang,amu,ps to kcal/mol
-
- qEnergy = (KE - K0 + Upot )/(Nwaters*Nbeads)   		    !kcal/(mole of mol)
- qPress  = PRESSCON2*(1/(3*volume))*(  2*(KE - K0) - virial )/Nwaters  !subtract virial to convert derivative to force
-
-end subroutine simple_quantum_estimators
-
-
-!----------------------------------------------------------------------------------!
-!----------Print information about the run ----------------------------------------
-!----------------------------------------------------------------------------------!
 subroutine print_run
-use dans_timer
-use geometry_calculator
-Implicit none
+  use dans_timer
+  use geometry_calculator
+ implicit none
 
  !write Temp/Press file header
  call date_and_time(DATE=date,TIME=time)
@@ -801,7 +732,6 @@ Implicit none
  call get_time("Total time", seconds) 
  write(lunTP_out,'(a50, f10.2)') "ps/hour = ", (  (num_timesteps + eq_timesteps)*delt/seconds  )*3600
  write(lunTP_out,'(a50, f10.2)') "ps/day = ",  (  (num_timesteps + eq_timesteps)*delt/seconds  )*3600*24
-
  
  write(lunTP_out,*) "#------- thermodynamics: -------------------------------"
  avg_temp =  sum_temp/tr
@@ -838,9 +768,7 @@ Implicit none
 	write(lunTP_out,'(a50, f10.2)') "density (fixed) (g/cm^3) = ", Nwaters*(massO+2*massH)*amu2grams/(volume*(a2m*100)**3)
  endif
  
- 
  if (CALCGEOMETRY) call write_out_geometry(lunTP_out,Nbeads)
- 
  
  if (DIELECTRICOUT) then 
     write(lunTP_out,'(a50 )')         "#---------- dielectric constant data  ---------------"
@@ -856,6 +784,7 @@ Implicit none
 	write(lunTP_out,'(a50, i5)') " points used to compute dielectric constant: ", ttt
  endif
 
+ if (CALCIRSPECTRA) call calc_infrared_spectrum(dip_mom_all_times,box,delt,fsave)
 
  if (PRINTFINALCONFIGURATION) then 
 	call io_assign(lun)
@@ -1063,22 +992,21 @@ integer, intent(in) :: iun
 end subroutine load_configuration
 
 
-
 !-----------------------------------------------------------------------------------------
 !--------------Shutdown program ---------------------------------------------------------
 !-----------------------------------------------------------------------------------------
 subroutine shutdown 
-use system_mod
-use fsiesta
+ use system_mod
+ use fsiesta
 
-if (pid .eq. 0)  then
+ if (pid .eq. 0)  then
 	call print_run
-endif
+ endif
 
-if (pot_model == 6) call siesta_quit( trim(sys_label) )
+ if (pot_model == 6) call siesta_quit( trim(sys_label) )
  
-Call MPI_Barrier(MPI_COMM_WORLD, ierr)
-Call MPI_Finalize(ierr)
+ call MPI_Barrier(MPI_COMM_WORLD, ierr)
+ call MPI_Finalize(ierr)
 
 end subroutine shutdown
 

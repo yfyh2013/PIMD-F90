@@ -8,9 +8,8 @@
 module geometry_calculator
 implicit none
 real, save :: sum_HH=0,   sum_OH=0,  sum_HOH=0 !distances
-real, save :: sum_HH2=0, sum_OH2=0, sum_HOH2=0 !distances squared
-
-real, save :: bsum_HH=0,   bsum_OH=0,  bsum_HOH=0 !bead-bead distances
+real, save :: sum_HH2=0,  sum_OH2=0, sum_HOH2=0 !distances squared
+real, save :: bsum_HH=0,  bsum_OH=0,  bsum_HOH=0 !bead-bead distances
 real, save :: bsum_HH2=0, bsum_OH2=0, bsum_HOH2=0 !bead-bead distances2
 
 integer, save :: num_total=0
@@ -109,7 +108,6 @@ subroutine write_out_geometry(iun, Nbeads)
  double precision :: avg_OH2, avg_HH2, avg_HOH2, RMS_OH, RMS_HH, RMS_HOH
  double precision :: bavg_OH, bavg_HH, bavg_HOH
  double precision :: bavg_OH2,bavg_HH2,bavg_HOH2, bRMS_OH, bRMS_HH, bRMS_HOH
-
  
  bnum_total = num_total*Nbeads
  
@@ -149,5 +147,16 @@ subroutine write_out_geometry(iun, Nbeads)
 
 endsubroutine write_out_geometry
 
+
+!-------------------------------------------------------------
+!-- reset geometry calculation ------------------------------
+!-------------------------------------------------------------
+subroutine reset_geometry
+ implicit none 
+ sum_HH=0; sum_OH=0;  sum_HOH=0  
+ sum_HH2=0; sum_OH2=0; sum_HOH2=0 
+ bsum_HH=0;   bsum_OH=0;  bsum_HOH=0  
+ bsum_HH2=0; bsum_OH2=0; bsum_HOH2=0; num_total=0
+endsubroutine
  
 endmodule geometry_calculator
