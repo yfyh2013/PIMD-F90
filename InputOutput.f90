@@ -82,6 +82,7 @@ subroutine read_input_file
 
  !other options: 
  CALCGEOMETRY = .true. !computes averge geometry of h2o molecules and outputs at end
+ CALCDIFFUSION = .true. !computes diffusion constant of oxygen atoms
  read_method = 1 !read_method(=0,1) (0 for OOOO....HHHHH and 1 for OHHOHHOHH...)
  SIMPLE_ENERGY_ESTIMATOR = .true. !setting this to true will output the simple energy to temp/press file
  CALCIRSPECTRA = .true. !store dipole moments and calculate IR spectra at end of run
@@ -486,6 +487,7 @@ end subroutine open_files
 !----------------------------------------------------------------------------------
 subroutine write_out 
  use geometry_calculator
+ use diffusion_calculator
  use dans_timer
  use estimators
  implicit none
@@ -632,8 +634,14 @@ subroutine write_out
  !-------------------------------------------------------------
  if (t .gt. eq_timesteps) then
  
-    if(CALCIRSPECTRA) dip_mom_all_times(1:3, tr) = dip_mom(:)
- 
+    if (CALCIRSPECTRA) dip_mom_all_times(1:3, tr) = dip_mom(:)
+
+    if (CALCDIFFUSION) then
+		call start_timer("calc_diffusion")
+		call calc_diff_RMSD(RRc, num_timesteps) 
+		call stop_timer("calc_diffusion")
+	endif
+    
 	if (mod(t,t_freq)  == 0 ) then 
 		!coordinate output
 		if (coord_out) then
@@ -706,10 +714,10 @@ subroutine write_out
 
 !box size output stuff 
 if (BAROSTAT) then 
-        !for accuracy, box size computed at every timestep
-        sum_box  = sum_box + box
-        sum_box2 = sum_box2 + box**2
-        if (BOXSIZEOUT .and. (mod(t,t_freq) .eq. 0) ) write(lunBOXSIZEOUT,*) sum_box/t
+	!for accuracy, box size computed at every timestep
+    sum_box  = sum_box + box
+    sum_box2 = sum_box2 + box**2
+    if (BOXSIZEOUT .and. (mod(t,t_freq) .eq. 0) ) write(lunBOXSIZEOUT,*) sum_box/t
 endif 
 
 end subroutine write_out
@@ -720,6 +728,7 @@ end subroutine write_out
 subroutine print_run
   use dans_timer
   use geometry_calculator
+  use diffusion_calculator
  implicit none
 
  !write Temp/Press file header
@@ -768,7 +777,8 @@ subroutine print_run
 	write(lunTP_out,'(a50, f10.2)') "density (fixed) (g/cm^3) = ", Nwaters*(massO+2*massH)*amu2grams/(volume*(a2m*100)**3)
  endif
  
- if (CALCGEOMETRY) call write_out_geometry(lunTP_out,Nbeads)
+ if (CALCGEOMETRY)  call write_out_geometry(lunTP_out,Nbeads)
+ if (CALCDIFFUSION) call write_out_diffusion(lunTP_out, delt, fsave)
  
  if (DIELECTRICOUT) then 
     write(lunTP_out,'(a50 )')         "#---------- dielectric constant data  ---------------"
@@ -785,7 +795,7 @@ subroutine print_run
  endif
 
  if (CALCIRSPECTRA) call calc_infrared_spectrum(dip_mom_all_times,box,delt,fsave)
-
+ 
  if (PRINTFINALCONFIGURATION) then 
 	call io_assign(lun)
 	open(lun, file='out_'//TRIM(fsave)//'_fin_image.xyz', status='unknown')

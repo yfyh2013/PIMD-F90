@@ -74,6 +74,14 @@ if (pid .eq. 0) then
  Upot    = sum(Upott)    	!potential energy for the ENTIRE system
  virial  = sum(virialt)  	!virial for the ENTIRE system (kcal/mol)
  virialc = sum(virialct)/Nbeads !centroid virial for the ENTIRE system (kcal/mol)
+ 
+ !computation of dipole moments for the SIESTA case 
+ if (pot_model .eq. 6) then 
+	call calc_dip_moments(dip_momIt, RRt, Nbeads, Nwaters,box)
+ endif
+ 
+ 
+ 
 endif 
 
 end subroutine full_bead_forces
@@ -280,8 +288,43 @@ else if (pot_model==6) then
     dRR = -1d0*dRR*EVTOKCALPERMOLE    
 endif
 
-
 end subroutine potential
+
+
+!---------------------------------------------------------------------
+!- Calculate dipole moments using the TIP4P/2005 charges and m-site 
+!- for the coordinates obtained from a SIESTA calculation 
+!---------------------------------------------------------------------
+subroutine calc_dip_moments(dip_momIt, RRt, Nbeads, Nwaters, box)
+ use consts
+ implicit none
+ integer, intent(in) :: Nbeads, Nwaters
+ double precision, dimension(3), intent(in) :: box
+ double precision, dimension(3, Nwaters, Nbeads), intent(out) :: dip_momIt
+ double precision, dimension(3, 3*Nwaters, Nbeads), intent(in) :: RRt
+ real, dimension(3) :: r1, r2, r3, summ
+ integer :: i, j, io, ih1, ih2
+ double precision, parameter :: rOM = .1546
+ double precision, parameter :: qH = .5564
+ double precision, parameter :: qO = -1.1128
+
+ do i = 1, Nbeads
+	do j = 1, Nwaters
+		io  = 3*j 
+		ih1 = 3*j - 1 
+		ih2 = 3*j - 2
+		r1 = RRt(:,ih1,i) - RRt(:,io,i)
+		r1 = r1 - box*anint(r1/box)!PBC
+		r2 = RRt(:,ih2,i) - RRt(:,io,i)
+		r2 = r2 - box*anint(r2/box)!PBC
+		summ = r1 + r2!find vector to M-site
+		r3=(summ/sqrt(dot_product(summ,summ)))*rOM
+		dip_momIt(:,j,i) = (qH*r1 + qH*r2 + qO*r3)*a2m*e2coul/3.33564e-30!conv. to Debye
+	enddo
+ enddo
+  
+end subroutine calc_dip_moments
+
 
 
 end module force_calc
