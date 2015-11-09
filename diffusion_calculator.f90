@@ -54,7 +54,7 @@ subroutine calc_diff_RMSD(RRc, num_timesteps)
  !calclate average RMS displacement
   if (mod(t,t_out) == 0) then
 	ti  = int( t/t_out )
-	Do i = 1,Nwaters
+	Do i = 1, Nwaters
 		aMS(ti) = aMS(ti) + sum( netdisp(:,i)**2 )
 	enddo
 	aMS(ti) = aMS(ti)/Nwaters
