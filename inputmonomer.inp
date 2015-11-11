@@ -2,20 +2,20 @@
 
 BASIC INFO
 'input_files/monomer.xyz'          ! input filename - either a centroid .xyz or a full bead configuration
-'Siesta_monomer_1bead_NVT'           ! run name - this will be appended to all the output files
-32	 					! Number of beads 
+'test_monomer'           ! run name - this will be appended to all the output files
+1	 					! Number of beads 
 1	       		! number of steps to equilibrate		 
-9	            	! number of steps to run
+40000	            	! number of steps to run
 .5                  	! timestep (delt) (fs)
 
 OUTPUT OPTIONS 
-.t.                     ! centroid coordinates
+.f.                     ! centroid coordinates
 .f.                     ! centroid momenta
-.t.                     ! dipoles
+.f.                     ! dipoles
 .f.                     ! polarization dipoles
-.t.                     ! total dipole
-.t.                     ! coordinates for all images
-.t.                     ! dipoles for all images
+.f.                     ! total dipole
+.f.                     ! coordinates for all images
+.f.                     ! dipoles for all images
 .f.                     ! box size running average
 .f.                     ! Temp/Press (.t. = to file, .f. = to terminal)
 .t.                     ! avg. radius of gyration (in Temp/Press file)
@@ -23,20 +23,20 @@ OUTPUT OPTIONS
 .f.                     ! write out charges in seperate file?
 .f.                     ! write final configuration of all beads to seperate file?
 1					    ! Total dipole output frequency 
-1 			 	    ! Temp/Press output frequency
+20			 	    ! Temp/Press output frequency
 1     				    ! all images output frequency 
 1       				! Output frequency for everything else
 
 MD OPTIONS 
-6                      ! Model: 2=ttm21f 3=ttm3f 4= qspcfw 5=spcf 6=SIESTA
+3                      ! Model: 2=ttm21f 3=ttm3f 4= qspcfw 5=spcf 6=SIESTA
 'monomer', 1 			    ! sys_label for SIESTA runs, # SIESTA processors 
 4d0 4d0 1.d-6           ! realspace cutoff (Ang), start of VdW force switch (Ang) (TTM3F only), eps for aewald
 15  0.7  1.d-2 .f.  .f. ! params for dipole iterative procedure: Max iterations, pol factor, accuracy, guess initial?, debug output
 .t.					 	! generate initial velocities? 
 .f.   			     	! input initial configuration? 
 .t.    			 		! Global thermostat? t/f
-.t.      				! Thermostat non-centroid modes ? 
-.t.			 			! Thermostat centroid mode ?
+.f.      				! Thermostat non-centroid modes ? 
+.f.			 			! Thermostat centroid mode ?
 'Nose-Hoover'     			! type of bead thermostat - 'Nose-Hoover', 'Langevin' or 'none'
 .01			 			! tau for global thermostat (ps)
 .1			 			! tau for centroid thermostat (ps)
@@ -50,7 +50,7 @@ MD OPTIONS
 
 MORE RUN OPTIONS
 0			 ! frequency (inverse cm) to set NMs to ( or enter 0 for none/RPMD)
-.t.			 ! Ring polymer contraction (evalulate intermolecular forces on cetroid, intramolecular on beads)
+.f.			 ! Ring polymer contraction (evalulate intermolecular forces on cetroid, intramolecular on beads)
 5			 ! ratio of slow timestep / fast timestep for contraction scheme
 15.994		 ! mass of Oxygen (au)
 1.008		 ! mass of Hyrdrogen

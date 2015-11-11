@@ -357,18 +357,6 @@ endif
 
 	call print_basic_run_info
 
-	write(lunTP_out,'(a)') "all energies are in kcal/(mole H2O)"
-
-	write(lunTP_out,'(a,a,a,a,a,a,a,a)',advance='no') " time (ps) ","  temp (K) ", "  press.(bar)  ", & 
-		 " avg temp "," avg press ", " Pot E  "," Tot E "," avg Tot E  " 
-
-	if (SIMPLE_ENERGY_ESTIMATOR) write(lunTP_out,'(a,a)',advance='no')  " Tot E (simple) ", " Avg tot E (simple) "
-	if (CALC_RADIUS_GYRATION)    write(lunTP_out,'(a,a)',advance='no')  " r_O ", " r_H "
-	if (DIELECTRICOUT)           write(lunTP_out,'(a)',advance='no') " eps(0) "
-	write(lunTP_out,'(a)')  "" 
-#ifdef FC_HAVE_FLUSH
-	call flush(lunTP_out) !flush I/O buffer	
-#endif
 end subroutine master_node_init
 
 
@@ -520,6 +508,29 @@ subroutine write_out
 	if (CALCGEOMETRY) call reset_geometry
  endif 
 
+  !write columns header
+ if ((t .eq. 1) .or. (t .eq. eq_timesteps + 1)) then 
+	write(lunTP_out,'(a)',advance='no') "  time (ps)  "
+	!write(lunTP_out,'(a)',advance='no') "  temp (K) "
+	!write(lunTP_out,'(a)',advance='no') "  press.(bar)  "
+	write(lunTP_out,'(a)',advance='no') " avg temp " 
+	write(lunTP_out,'(a)',advance='no') "avgP(vir) "
+	if (SIMPLE_ENERGY_ESTIMATOR) write(lunTP_out,'(a)',advance='no') "avgP(simp)"
+
+	!write(lunTP_out,'(a)',advance='no') "  Pot E  "
+	!write(lunTP_out,'(a)',advance='no') "  Tot E  "
+	write(lunTP_out,'(a)',advance='no') " avgTotE(vir) " 
+										
+	!if (SIMPLE_ENERGY_ESTIMATOR) write(lunTP_out,'(a)',advance='no')  " Tot E (simple) " 
+	if (SIMPLE_ENERGY_ESTIMATOR) write(lunTP_out,'(a)',advance='no')   " avgTotE(simp)"
+	if (CALC_RADIUS_GYRATION)    write(lunTP_out,'(a,a)',advance='no') " r_O  ", "r_H "
+	if (DIELECTRICOUT)           write(lunTP_out,'(a)',advance='no') "  eps(0)  "
+	!write(lunTP_out,'(a)',advance=no") " density kg/m^3 "
+	write(lunTP_out,'(a)',advance='no') "[ energies in kcal/mol ]"
+	write(lunTP_out,'(a)',advance='yes') "" 
+ endif
+ 
+ 
  tr = tr + 1
 
  sys_temp = TEMPFACTOR*uk/(Natoms*Nbeads*Nbeads)
@@ -595,18 +606,28 @@ subroutine write_out
  !-------------------------------------------------------------
  !print out temperature, pressure, average press, energies & dielectric constant
  !-------------------------------------------------------------
- if (mod(t,tp_freq) == 0) then
-
-	write(lunTP_out,'(1f10.4,f10.2,f11.2,5f10.2)',advance='no') tr*delt, sys_temp, sys_press, & 
-		sum_temp/tr, sum_press/tr, Upot, tot_energy , sum_tot_energy/tr
-
+  if (mod(t,tp_freq) == 0) then
+	write(lunTP_out,'(1f10.4)',advance='no') tr*delt 
+	!write(lunTP_out,'(1f10.2)',advance='no') sys_temp
+	write(lunTP_out,'(1f10.2)',advance='no') sum_temp/tr
+	!write(lunTP_out,'(1f10.2)',advance='no') sys_press
+	write(lunTP_out,'(1f11.2)',advance='no') sum_press/tr
+	if (SIMPLE_ENERGY_ESTIMATOR) then 
+		!write(lunTP_out,'(f10.2)',advance='no') simple_sys_press 
+		write(lunTP_out,'(1f11.2)',advance='no') sum_simple_press/tr
+	endif
+	
+	!write(lunTP_out,'(2f10.2)',advance='no') Upot, tot_energy
+	write(lunTP_out,'(1f10.2)',advance='no') sum_tot_energy/tr
   	if (SIMPLE_ENERGY_ESTIMATOR) then 
-	 write(lunTP_out,'(4f10.2)',advance='no') simple_sys_press, sum_simple_press/tr, simple_energy, sum_simple_energy/tr
+	 !write(lunTP_out,'(f10.2)',advance='no') simple_energy
+	 write(lunTP_out,'(f10.2)',advance='no') sum_simple_energy/tr
 	endif
 
 	if (CALC_RADIUS_GYRATION) then
 		call calc_radius_of_gyration(RRt,RRc) 
-		write(lunTP_out,'(1x,f6.4,1x,f6.4)',advance='no')  radiusO, radiusH
+		!write(lunTP_out,'(1x,f6.4,1x,f6.4)',advance='no')  radiusO, radiusH
+		write(lunTP_out,'(1x,f6.4,1x,f6.4)',advance='no')  sum_radiusO/tr, sum_radiusH/tr
 	endif
 
 	!calculate dielectric constant using current volume and average temperature of the run
@@ -620,7 +641,7 @@ subroutine write_out
 	endif 
 
 	!feature to output the current density (for debugging the barostat) 
-	write(lunTP_out,'(1x,f10.6)',advance='no') Nwaters*(massO+2*massH)*amu2grams/(box(1)*box(2)*box(3)*(a2m*100)**3)
+	!write(lunTP_out,'(1x,f10.6)',advance='no') Nwaters*(massO+2*massH)*amu2grams/(box(1)*box(2)*box(3)*(a2m*100)**3)
 
 	!advance to next line
 	write(lunTP_out,'(a)') ""
@@ -794,7 +815,7 @@ subroutine print_run
 	write(lunTP_out,'(a50, i5)') " points used to compute dielectric constant: ", ttt
  endif
 
- if (CALCIRSPECTRA) call calc_infrared_spectrum(dip_mom_all_times,box,delt,fsave)
+ if (CALCIRSPECTRA) call calc_infrared_spectrum(dip_mom_all_times,box,delt,fsave,temp)
  
  if (PRINTFINALCONFIGURATION) then 
 	call io_assign(lun)

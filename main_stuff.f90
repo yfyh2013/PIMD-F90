@@ -60,7 +60,7 @@ real(8), dimension(:,:,:), allocatable :: RRt, PPt, dip_momIt, dip_momEt, dRRt
 real(8), dimension(:,:), allocatable :: RRc, PPc
 real(8), dimension(:), allocatable :: Upott, Virialt, virialct
 real(8) ::  Upot,  virial, virialc, omegan, kTN, iNbeads, setNMfreq
-real(8) :: radiusH, radiusO
+real(8) :: radiusH, radiusO, sum_radiusO, sum_radiusH
 integer :: Nnodes, Nbeads, pid, j, k, ierr, Nbatches, counti, bat
 integer :: status2(MPI_STATUS_SIZE)
 
@@ -189,10 +189,11 @@ subroutine calc_radius_of_gyration(RRt, RRc)
  
  radiusO = radiusO/dble(Nbeads*Nwaters)
  radiusH = radiusH/dble(2*Nbeads*Nwaters)
-
+ 
+ sum_radiusO = sum_radiusO + radiusO
+ sum_radiusH = sum_radiusH + radiusH
+ 
 end subroutine calc_radius_of_gyration
-
-
 
 
 
