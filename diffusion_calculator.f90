@@ -86,7 +86,7 @@ subroutine write_out_diffusion(lun_out, timestep, fsave)
  enddo
 
  !----------- Peform linear regression to last 50% of aMS(t) data ------------
- ft = floor(frac*ntimes)
+ ft = floor(frac*ntimes)+1
  ntimesfit = ntimes - ft 
 
  xbar = sum(  times(ft:ntimes)/(  ntimesfit - 1) ) 
@@ -105,6 +105,7 @@ subroutine write_out_diffusion(lun_out, timestep, fsave)
  D = 10*b/6 
  errD = errb/6 
  
+ write(lun_out,*) "#---------- diffusion report ----------------------------" 
  write(lun_out,*) "Diffusion constant = ", D ," +/- ", errD, "10^(-5) cm^2/s"
 
  call io_assign(iun_dif)
@@ -122,12 +123,6 @@ subroutine write_out_diffusion(lun_out, timestep, fsave)
  do t  = 1,ntimes 
 	write(iun_dif,'(3f12.6)') times(t), aMS(t), b*times(t) + a
  enddo
- write(iun_dif,*) '@ PRINT TO "', "out"//trim(fsave), '.png"'
- write(iun_dif,*) '@ DEVICE "PNG" DPI 100'
- write(iun_dif,*) '@ DEVICE "PNG" FONT ANTIALIASING on'
- write(iun_dif,*) '@ DEVICE "PNG" PAGE SIZE 1584, 1224'
- write(iun_dif,*) '@ AUTOSCALE '
- write(iun_dif,*) '@ PRINT '
 
 #ifdef FC_HAVE_FLUSH
  call flush(iun_dif) 

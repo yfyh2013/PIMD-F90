@@ -33,7 +33,7 @@ subroutine calc_infrared_spectrum(dip_moms,box,timestep,fsave,temp)
  !double precision :: pi, A0,A1,A2,A3, window
  integer :: NumAvgOver, NumPointsOut
 
- NumPointsOut = 200
+ NumPointsOut = 250
  MaxFreqOut = 4500 !maximum frequency to plot (cm^-1)
 
  tread = size(dip_moms,2)
@@ -86,13 +86,13 @@ subroutine calc_infrared_spectrum(dip_moms,box,timestep,fsave,temp)
 	NumAvgOver = floor(PointsAvailable/NumPointsOut)
  endif 
 	
- write(*,*) "-----------infrared spectrum ------------------------"
- write(*,*) "trun = ", trun
- write(*,*) "n, tread = ",  n, tread
- write(*,*) "MinFreqOut = ",  MinFreqOut
- write(*,*) "MaxFreqOut = ",  MaxFreqOut
- write(*,*) "points available = ", PointsAvailable
- write(*,*) "Averaging over", NumAvgOver
+ !write(*,*) "#-------------infrared spectrum ------------------------"
+ !write(*,*) "trun = ", trun
+ !write(*,*) "n, tread = ",  n, tread
+ !write(*,*) "MinFreqOut = ",  MinFreqOut
+ !write(*,*) "MaxFreqOut = ",  MaxFreqOut
+ !write(*,*) "points available = ", PointsAvailable
+ !write(*,*) "Averaging over", NumAvgOver
 
  vol = (box(1)*box(2)*box(3))*1d-30
 
@@ -101,12 +101,14 @@ subroutine calc_infrared_spectrum(dip_moms,box,timestep,fsave,temp)
   avgMag = 0 
   
   !block averaging
+  avgMag = 0 
   do i = 1, NumAvgOver
-	omega=( t*NumAvgOver+i )/(timestep*n*ps2s) !get freq in 1/s (Hz
-	avgMag = avgMag + omega*tanh(hbar*omega*Cspeed/(Kb*2.0d0*Temp))*sqrt(real(aux1(mod(t*NumAvgOver+i,n)) )**2 &
-						+ aimag( aux1(mod(t*NumAvgOver+i,n)) )**2)
+	omega=( t*NumAvgOver+i )/(timestep*ps2s*n) !get freq in 1/s (Hz
+	avgMag = avgMag + omega*tanh(hbar*omega*Cspeed/(Kb*2.0d0*Temp))*sqrt(real(aux1(mod(t*NumAvgOver+i,n)) )**2 + aimag( aux1(mod(t*NumAvgOver+i,n)) )**2)
   enddo
   avgMag = avgMag/real(NumAvgOver)
+
+  !IR=magn*
 
   ! Use the prefactor with harmonic quantum correction (See Ramirez paper)
   IR = (2d0*3.14159d0*(Debye2SI**2)*avgMag)/(3d0*vol*2.99d8) 
@@ -115,9 +117,11 @@ subroutine calc_infrared_spectrum(dip_moms,box,timestep,fsave,temp)
 
   IR = IR/2   !fudge factor (this is probably due to the fact that we have real data in, therefore a 2x redundancy when taking the FT. The FT part was not written by me and whoever wrote it clearly wasn't very careful about normalization. -D. Elton ) 
 
-  omega=( floor((t+.5)*numAvgOver) )/(timestep*n*ps2s) !get central freq of block in 1/s (Hz)
-  omega = omega/Cspeed  ! convert Hz to cm-1
-
+  omega = floor((t+.5)*numAvgOver) / (timestep*ps2s*n) !get central freq in 1/s (Hz
+  omega = omega/Cspeed  	! convert frequency to cm-1
+  
+  if (.not. (IR .eq. IR)) IR = 0 !check for NaNs
+  
   write(lun_IR,*)  omega, IR
  EndDo
 

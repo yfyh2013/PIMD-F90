@@ -504,13 +504,15 @@ subroutine write_out
 	sum_simple_press = 0 
 	sum_tot_energy2 = 0
 	sum_RMSenergy = 0
+	sum_radiusH = 0
+	sum_radiusO = 0 
 	if (CALCGEOMETRY) call write_out_geometry(lunTP_out,Nbeads)
 	if (CALCGEOMETRY) call reset_geometry
  endif 
 
   !write columns header
  if ((t .eq. 1) .or. (t .eq. eq_timesteps + 1)) then 
-	write(lunTP_out,'(a)',advance='no') "  time (ps)  "
+	write(lunTP_out,'(a)',advance='no') " time (ps) "
 	!write(lunTP_out,'(a)',advance='no') "  temp (K) "
 	!write(lunTP_out,'(a)',advance='no') "  press.(bar)  "
 	write(lunTP_out,'(a)',advance='no') " avg temp " 

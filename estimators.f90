@@ -14,7 +14,7 @@ module estimators
 subroutine quantum_virial_estimators(RRt, virial, virialc, qEnergy, qPress, sys_temp, Upot) 
  Implicit none
  double precision, dimension(3,Natoms,Nbeads),intent(in) :: RRt 
- double precision, intent(in)      ::  sys_temp, Upot, virial, virialc
+ double precision, intent(in)      ::  sys_temp, Upot, virial, virialc !Upot is total potential energy for the ENTIRE system (all beads)
  double precision, intent(out)     :: qPress, qEnergy 
  double precision 		   :: qVirial, qVirial2, KE
  integer :: i, j, k 
@@ -23,12 +23,12 @@ subroutine quantum_virial_estimators(RRt, virial, virialc, qEnergy, qPress, sys_
  !and that Upot is in kcal/mol and that sys_temp is in Kelvin 
  !This pressure estimator assumes that the potential energy does not have volume dependence
  
- KE = 1.5*Natoms*kb*sys_temp*Nbeads!kinetic energy in kcal/mol
+ KE = 1.5*Natoms*kb*sys_temp!kinetic energy in kcal/mol
 
  !convert to kcal/(mole of mol H2O) by dividing by Nwaters
- qEnergy = ( KE  +  .5*(virial -  virialc ) +  Upot )/(Nwaters*Nbeads) 
+ qEnergy = ( KE  +  .5*(virial -  virialc )/Nbeads +  Upot/Nbeads )/Nwaters 
 
- qPress  =  PRESSCON2*(1/(3*volume))*( 2*KE - virialc )/(Nwaters*Nbeads) !factor of 1/3 not in Tuckerman's book. (book is wrong!!)
+ qPress  =  PRESSCON2*(1/(3*volume))*( 2*KE - virialc/Nbeads )/Nwaters !factor of 1/3 not in Tuckerman's book. (book is wrong!!)
 
 end subroutine quantum_virial_estimators
 
