@@ -603,6 +603,8 @@ subroutine write_out
 	call stop_timer("calc_geometry")
  endif 
  
+ if (CALC_RADIUS_GYRATION) call calc_radius_of_gyration(RRt,RRc) 
+
  !-------------------------------------------------------------
  !print out temperature, pressure, average press, energies & dielectric constant
  !-------------------------------------------------------------
@@ -625,7 +627,6 @@ subroutine write_out
 	endif
 
 	if (CALC_RADIUS_GYRATION) then
-		call calc_radius_of_gyration(RRt,RRc) 
 		!write(lunTP_out,'(1x,f6.4,1x,f6.4)',advance='no')  radiusO, radiusH
 		write(lunTP_out,'(1x,f6.4,1x,f6.4)',advance='no')  sum_radiusO/tr, sum_radiusH/tr
 	endif
@@ -866,8 +867,7 @@ subroutine print_basic_run_info
  write(lunTP_out,'(a50,i4,a,i4,a)') "Running with ", Nbeads, " beads on ", Nnodes, " nodes"
  write(lunTP_out,'(a50, i6)') "Num Molecules = ", Nwaters
  write(lunTP_out,'(a50, f10.3,a3)') "timestep = ", delt*1000, " fs"
- write(lunTP_out,'(a50, f8.4,a25,f8.4)') "mass of hydrogen = ", massH
- write(lunTP_out,'(a50, f8.4,a25,f8.4)') "  mass of oxygen = ", massO
+ write(lunTP_out,'(a50, f8.4,a21,f8.4)') "mass of hydrogen = ", massH, "  mass of oxygen = ", massO
  if (CONTRACTION) write(lunTP_out,'(a50,a)') "ring polymer contraction to centroid = ", "yes"
  if (.not. CONTRACTION) write(lunTP_out,'(a50,a)') "ring polymer contraction to centroid = ", "no"
  if (THERMOSTAT) write(lunTP_out,'(a50, a )')  " type of global thermostat = ", "Nose-Hoover"
