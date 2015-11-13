@@ -16,7 +16,7 @@ implicit none
 subroutine calc_infrared_spectrum(dip_moms,box,timestep,fsave,temp)
  use lun_management 
  implicit none
- double precision, dimension(:,:), intent(in) :: dip_moms 
+ real, dimension(:,:), intent(in) :: dip_moms 
  double precision, dimension(3), intent(in) :: box ! box size in Ang
  double precision, intent(in) :: timestep          ! times step in PS
  double precision, intent(in) :: temp	           ! temp in Kelvin
@@ -61,8 +61,7 @@ subroutine calc_infrared_spectrum(dip_moms,box,timestep,fsave,temp)
  !ACF=ACF/real(ACF(1))
 
  ! Save the correlation function to file
- call io_assign(lun_IR)
- open(unit=lun_IR, file="out_"//trim(fsave)//"_dip_corr_function.dat", form="formatted", status="unknown")
+ call io_open(lun_IR, "out_"//trim(fsave)//"_dip_corr_function.dat")
  do i = 1, tread
  	write(lun_IR,*) i*timestep, real(ACF(i))/real(ACF(1))
  enddo	
@@ -73,10 +72,9 @@ subroutine calc_infrared_spectrum(dip_moms,box,timestep,fsave,temp)
  call four1(aux1,n,-1)
 
  !Save the IR spectrum in the file
- call io_assign(lun_IR)
- open(unit=lun_IR, file="out_"//trim(fsave)//"_IR_spectra.dat", form="formatted", status="unknown")
+ call io_open(lun_IR, "out_"//trim(fsave)//"_IR_spectra.dat")
 
- MinFreqOut =  1d0/(timestep*ps2s*Cspeed*n)
+ MinFreqOut =  1d0/(2*timestep*ps2s*Cspeed*n)
  PointsAvailable = floor(MaxFreqOut/MinFreqOut)
  
  if (PointsAvailable .lt. NumPointsOut) then 
@@ -95,6 +93,11 @@ subroutine calc_infrared_spectrum(dip_moms,box,timestep,fsave,temp)
  !write(*,*) "Averaging over", NumAvgOver
 
  vol = (box(1)*box(2)*box(3))*1d-30
+ 
+ !write(51,'(a)') '# This .xvg is formated for xmgrace "'
+ !write(51,'(a)') '@ xaxis label "z(\cE\C)" '
+ !write(51,'(a)') '@ yaxis label "\f{Symbol}c\f{Times-Roman}(0,0,z)" '
+ !write(51,'(a)') '@ TYPE nxy '
 
  Do t = 0, NumPointsOut-1
 
@@ -103,12 +106,11 @@ subroutine calc_infrared_spectrum(dip_moms,box,timestep,fsave,temp)
   !block averaging
   avgMag = 0 
   do i = 1, NumAvgOver
-	omega=( t*NumAvgOver+i )/(timestep*ps2s*n) !get freq in 1/s (Hz
-	avgMag = avgMag + omega*tanh(hbar*omega*Cspeed/(Kb*2.0d0*Temp))*sqrt(real(aux1(mod(t*NumAvgOver+i,n)) )**2 + aimag( aux1(mod(t*NumAvgOver+i,n)) )**2)
+	omega=( t*NumAvgOver+i )/(2*timestep*ps2s*n) !get freq in 1/s (Hz
+	avgMag = avgMag + omega*tanh(hbar*omega*Cspeed/(Kb*2.0d0*Temp))*sqrt(real(aux1(mod(t*NumAvgOver+i,n)) )**2 &
+					+ aimag( aux1(mod(t*NumAvgOver+i,n)) )**2)
   enddo
   avgMag = avgMag/real(NumAvgOver)
-
-  !IR=magn*
 
   ! Use the prefactor with harmonic quantum correction (See Ramirez paper)
   IR = (2d0*3.14159d0*(Debye2SI**2)*avgMag)/(3d0*vol*2.99d8) 
@@ -117,7 +119,7 @@ subroutine calc_infrared_spectrum(dip_moms,box,timestep,fsave,temp)
 
   IR = IR/2   !fudge factor (this is probably due to the fact that we have real data in, therefore a 2x redundancy when taking the FT. The FT part was not written by me and whoever wrote it clearly wasn't very careful about normalization. -D. Elton ) 
 
-  omega = floor((t+.5)*numAvgOver) / (timestep*ps2s*n) !get central freq in 1/s (Hz
+  omega = floor((t+.5)*numAvgOver) / (2*timestep*ps2s*n) !get central freq in 1/s (Hz
   omega = omega/Cspeed  	! convert frequency to cm-1
   
   if (.not. (IR .eq. IR)) IR = 0 !check for NaNs

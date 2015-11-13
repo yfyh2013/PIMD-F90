@@ -39,7 +39,34 @@ subroutine io_assign(lun)
       endif
     enddo
 end subroutine io_assign    
+
+!---------------------------------------------------
+!Assign & open a unit, and backup old files 
+!---------------------------------------------------
+subroutine io_open(lun,filename,APPEND)
+ integer, intent(inout) :: lun
+ character(len=*), intent(in) :: filename
+ logical, optional :: APPEND 
+ logical :: EXISTS
  
+ call io_assign(lun)
+ 
+ inquire(file=filename, exist=EXISTS)
+ 
+ if (EXISTS) then
+	if (present(APPEND) .and. APPEND .eqv. .true.) then 
+		open(lun, file=filename, status="old", position="append", action="write")
+	else 
+		call system('mv '//filename//' '//filename//'backup.dat')
+		open(lun, file=filename, action="write")
+	endif
+ else
+	open(lun, file=filename, action="write", status="unknown")
+ endif
+ 
+EndSubroutine io_open
+
+
 !---------------------------------------------------
 !Close a unit 
 !---------------------------------------------------
@@ -48,6 +75,7 @@ subroutine io_close(lun)
       close(lun)
       if ((lun .ge. min_lun) .and. (lun .le. max_lun)) lun_is_free(lun) = .true.
 end subroutine io_close
+
 
 !---------------------------------------------------
 !Returns the stdout unit (default = 6)

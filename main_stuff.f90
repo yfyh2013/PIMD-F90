@@ -11,7 +11,8 @@ real(8), dimension(:,:), allocatable :: RR, dRR
 real(8), dimension(:), allocatable :: chg
 real(8), dimension(3,3) :: virt
 real(8), dimension(3) :: dip_mom
-real(8), dimension(:,:), allocatable :: dip_momI, dip_momE, dip_mom_all_times
+real(8), dimension(:,:), allocatable :: dip_momI, dip_momE
+real, dimension(:,:), allocatable ::  dip_mom_all_times
 integer :: i, iw, iat,  iO, ih1, ih2, narg, ia, read_method
 integer :: ix, iy, iz 
  character(len=2) :: ch2

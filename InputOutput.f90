@@ -402,70 +402,20 @@ subroutine open_files
  logical :: EXISTS
  
  if (TP_out) then 
-	call io_assign(lunTP_out)
-	open(lunTP_out, file='out_'//TRIM(fsave)//'_TempPress.dat', status='unknown')
-	!write(*,*) "Terminal output suppressed to file: ", 'out_'//TRIM(fsave)//'_TempPress.dat'
+	call io_open(lunTP_out,'out_'//TRIM(fsave)//'_TempPress.dat')
  else 
 	lunTP_out = io_get_stdout()
  endif 
 
- if (coord_out) then
-	call io_assign(luncoord_out)
-	inquire(file='out_'//TRIM(fsave)//'_coord.xyz', exist=EXISTS)
-  	if (EXISTS) then
-		write(lunTP_out,*) "NOTE: coordinate file already exists, backing up previous file."
-		call system('mv '//'out_'//TRIM(fsave)//'_coord.xyz'//' '//'out_'//TRIM(fsave)//'_coord_backup.xyz')
-   		open(lundip_out, file='out_'//TRIM(fsave)//'_dip.dat', status="old", action="write")
-  	else
-		open(lundip_out, file='out_'//TRIM(fsave)//'_dip.dat', status="unknown")
-	endif
-	
-	open(luncoord_out, file='out_'//TRIM(fsave)//'_coord.xyz', status='unknown')
- endif
- if (vel_out) then 	
- 	call io_assign(lunVEL_OUT)
-	open(lunVEL_OUT, file='out_'//TRIM(fsave)//'_mom.dat', status='unknown')
- endif
- if (OUTPUTIMAGES) then
-  	call io_assign(lunOUTPUTIMAGES)
-	open(lunOUTPUTIMAGES, file='out_'//TRIM(fsave)//'_images_coord.xyz', status='unknown')
- endif
- if  (dip_out) then
-   	call io_assign(lundip_out)
-	inquire(file='out_'//TRIM(fsave)//'_dip.dat', exist=EXISTS)
-  	if (EXISTS) then
-		write(lunTP_out,*) "NOTE: Dipoles file already exists, appending to end of file"
-   		open(lundip_out, file='out_'//TRIM(fsave)//'_dip.dat', status="old", position="append", action="write")
-  	else
-    		open(lundip_out, file='out_'//TRIM(fsave)//'_dip.dat', status="unknown")
-	endif
- endif
- if (TD_out) then 
-	call io_assign(lunTD_out)
-	inquire(file='out_'//TRIM(fsave)//'_tot_dip.dat', exist=EXISTS)
-  	if (EXISTS) then
-		write(lunTP_out,*) "NOTE: Total dipole file already exists, appending to end of file"
-   		open(lunTD_out, file='out_'//TRIM(fsave)//'_tot_dip.dat', status="old", position="append", action="write")
-  	else
-    		open(lunTD_out, file='out_'//TRIM(fsave)//'_tot_dip.dat', status="unknown")
-	endif
- endif
- if  (Edip_out) then
-    	call io_assign(lunEdip_out)
-	open(lunEdip_out, file='out_'//TRIM(fsave)//'_Edip.dat', status='unknown')
- endif
- if (BOXSIZEOUT) then 
-	call io_assign(lunBOXSIZEOUT)
-	open(lunBOXSIZEOUT, file='out_'//TRIM(fsave)//'_box.dat', status='unknown')
- endif
- if (CHARGESOUT) then
-	call io_assign(lunCHARGESOUT)
-	open(lunCHARGESOUT, file='out_'//TRIM(fsave)//'_chgs.dat', status='unknown')
- endif
- if (IMAGEDIPOLESOUT) then
-	call io_assign(lunIMAGEDIPOLESOUT)
-	open(lunIMAGEDIPOLESOUT, file='out_'//TRIM(fsave)//'_images_dip.dat', status='unknown')
- endif
+ if (coord_out)      call io_open(luncoord_out,'out_'//TRIM(fsave)//'_coord.xyz')
+ if (vel_out)        call io_open(lunVEL_OUT,'out_'//TRIM(fsave)//'_momenta.dat')
+ if (OUTPUTIMAGES)   call io_open(lunOUTPUTIMAGES,'out_'//TRIM(fsave)//'_images_coord.xyz',APPEND=.true.)
+ if (dip_out)        call io_open(lundip_out,'out_'//TRIM(fsave)//'_dip.dat')
+ if (TD_out)         call io_open(lunTD_out,'out_'//TRIM(fsave)//'_tot_dip.dat',APPEND=.true.)
+ if  (Edip_out)      call io_open(lunEdip_out,'out_'//TRIM(fsave)//'_Edip.dat')
+ if (BOXSIZEOUT)     call io_open(lunBOXSIZEOUT,'out_'//TRIM(fsave)//'_box.dat')
+ if (CHARGESOUT)     call io_open(lunCHARGESOUT,'out_'//TRIM(fsave)//'_chgs.dat')
+ if(IMAGEDIPOLESOUT) call io_open(lunIMAGEDIPOLESOUT,'out_'//TRIM(fsave)//'_images_dip.dat')
 
 end subroutine open_files
 
@@ -658,7 +608,7 @@ subroutine write_out
  !-------------------------------------------------------------
  if (t .gt. eq_timesteps) then
  
-    if (CALCIRSPECTRA) dip_mom_all_times(1:3, tr) = dip_mom(:)
+    if (CALCIRSPECTRA) dip_mom_all_times(1:3, tr) = real(dip_mom(:))
 
     if (CALCDIFFUSION) then
 		call start_timer("calc_diffusion")
@@ -827,33 +777,16 @@ subroutine print_run
 	close(lun)
  endif
 
- if (coord_out) then
-	call io_close(luncoord_out)
- endif
- if (vel_out) then 	
-	call io_close(lunVEL_OUT)
- endif
- if (OUTPUTIMAGES) then
-	call io_close(lunOUTPUTIMAGES)
- endif
- if  (dip_out) then
-	call io_close(lundip_out)
- endif
- if  (Edip_out) then
-	call io_close(lunEdip_out)
- endif
- if (TD_out) then 
-	call io_close(lunTD_out)
- endif
- if (BOXSIZEOUT) then 
-	call io_close(lunBOXSIZEOUT)
- endif
- if (TP_out) then 
-	call io_close(lunTP_out)
- endif
- if (CHARGESOUT) then 
-	call io_close(lunCHARGESOUT)
- endif
+ if (coord_out)	   call io_close(luncoord_out)
+ if (vel_out)      call io_close(lunVEL_OUT)
+ if (OUTPUTIMAGES) call io_close(lunOUTPUTIMAGES)
+ if  (dip_out)     call io_close(lundip_out)
+ if  (Edip_out)    call io_close(lunEdip_out)
+ if (TD_out)       call io_close(lunTD_out)
+ if (BOXSIZEOUT)   call io_close(lunBOXSIZEOUT)
+ if (TP_out)       call io_close(lunTP_out)
+ if (CHARGESOUT)   call io_close(lunCHARGESOUT)
+
 end subroutine print_run
 
 !----------------------------------------------------------------------------------
