@@ -2,7 +2,7 @@ module InputOutput
  use consts
  use main_stuff
  use lun_management
- use infrared
+ use spectral_properties
 Implicit none 
 
  contains
@@ -86,6 +86,7 @@ subroutine read_input_file
  read_method = 1 !read_method(=0,1) (0 for OOOO....HHHHH and 1 for OHHOHHOHH...)
  SIMPLE_ENERGY_ESTIMATOR = .true. !setting this to true will output the simple energy to temp/press file
  CALCIRSPECTRA = .true. !store dipole moments and calculate IR spectra at end of run
+ CALCDOS = .true. 
  
 end subroutine read_input_file 
 
@@ -327,9 +328,9 @@ endif
 	allocate(virialct(Nbeads))
 	allocate(PPc(3, Natoms))
     if (CALCIRSPECTRA) allocate(dip_mom_all_times(3, num_timesteps))
+    if (CALCDOS)  	   allocate(Hvelocities(3, num_timesteps, 2*Nwaters))
 
 	dRRt = 0 
-
 
  	if (CONTRACTION) deltfast = delt/intra_timesteps
  	if (CONTRACTION) delt2fast = deltfast/2d0
@@ -609,6 +610,14 @@ subroutine write_out
  if (t .gt. eq_timesteps) then
  
     if (CALCIRSPECTRA) dip_mom_all_times(1:3, tr) = real(dip_mom(:))
+    if (CALCDOS) then
+    	!calculate centroid momenta
+		PPc = sum(PPt,3)/Nbeads 
+		do i = 1, Nwaters
+			Hvelocities(:, tr, 2*i-0) = real(PPc(:, 3*i-1)*imassH)
+			Hvelocities(:, tr, 2*i-1) = real(PPc(:, 3*i-2)*imassH)
+		enddo
+	endif
 
     if (CALCDIFFUSION) then
 		call start_timer("calc_diffusion")
@@ -768,7 +777,9 @@ subroutine print_run
 	write(lunTP_out,'(a50, i5)') " points used to compute dielectric constant: ", ttt
  endif
 
- if (CALCIRSPECTRA) call calc_infrared_spectrum(dip_mom_all_times,box,delt,fsave,temp)
+ if (CALCIRSPECTRA) call calc_infrared_spectrum(dip_mom_all_times,box,delt,fsave,avg_temp/Nbeads)
+ if (CALCDOS)       call calc_DOS(Hvelocities,box,delt,fsave,avg_temp/Nbeads)
+
  
  if (PRINTFINALCONFIGURATION) then 
 	call io_assign(lun)

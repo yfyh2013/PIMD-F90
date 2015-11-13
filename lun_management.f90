@@ -57,7 +57,7 @@ subroutine io_open(lun,filename,APPEND)
 	if (present(APPEND) .and. APPEND .eqv. .true.) then 
 		open(lun, file=filename, status="old", position="append", action="write")
 	else 
-		call system('mv '//filename//' '//filename//'backup.dat')
+		call system('mv '//filename//' '//filename//'_backup.dat')
 		open(lun, file=filename, action="write")
 	endif
  else

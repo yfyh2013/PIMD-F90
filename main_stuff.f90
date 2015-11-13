@@ -13,6 +13,7 @@ real(8), dimension(3,3) :: virt
 real(8), dimension(3) :: dip_mom
 real(8), dimension(:,:), allocatable :: dip_momI, dip_momE
 real, dimension(:,:), allocatable ::  dip_mom_all_times
+real, dimension(:,:,:), allocatable :: Hvelocities	
 integer :: i, iw, iat,  iO, ih1, ih2, narg, ia, read_method
 integer :: ix, iy, iz 
  character(len=2) :: ch2
@@ -35,7 +36,7 @@ integer :: num_timesteps, t, t_freq, tp_freq, td_freq, ti_freq, m, clock, eq_tim
 logical :: dip_out, coord_out, TD_out, vel_out, TP_out, Edip_out 
 logical :: BAROSTAT, PEQUIL, BOXSIZEOUT, THERMOSTAT, GENVEL, INPCONFIGURATION, IMAGEDIPOLESOUT
 logical :: DIELECTRICOUT, PRINTFINALCONFIGURATION, OUTPUTIMAGES, SIMPLE_ENERGY_ESTIMATOR
-logical :: CALCIRSPECTRA, CALCDIFFUSION
+logical :: CALCIRSPECTRA, CALCDIFFUSION, CALCDOS
 logical ::  BEADTHERMOSTAT, CENTROIDTHERMOSTAT, CALC_RADIUS_GYRATION, CHARGESOUT, EXISTS, CALCGEOMETRY
 
 !logical i/o units

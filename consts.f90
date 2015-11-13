@@ -28,7 +28,10 @@ module consts
  double precision, parameter :: amu2grams = 1.66053892d-24 ! amu -> grams
  double precision, parameter :: debyeSI=3.33564d-30  ! Debye -> SI
  double precision, parameter :: e2coul=1.60217646d-19 ! electron charge -> C
-
+ double precision, parameter :: Cspeed=3.00d10 ! cm/s
+ double precision, parameter :: hbarSI=6.626d-34 ! J*s
+ double precision, parameter :: ps2s=1d-12 ! 1fs in s
+ double precision, parameter :: Debye2SI = 3.33564d-30
 
  
  double precision :: massO = 15.994d0

@@ -123,7 +123,7 @@ do t = 1, num_timesteps + eq_timesteps
 
 		!Propagate NH chains 
 		if (BEADTHERMOSTAT) call bead_thermostat
-
+		
 		call calc_uk 
 
 		if (THERMOSTAT)     then 
