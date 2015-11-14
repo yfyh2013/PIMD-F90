@@ -99,7 +99,7 @@ subroutine read_and_initialize_all_nodes
 !---  read the number of atoms, dimension of box and atomic coordinates 
 call io_assign(lunXYZ)
 
-open(lunXYZ,file=fconfig,status='old')
+open(lunXYZ,file=fconfig,status='old', action="read")
 
  if (INPCONFIGURATION) then
 	read(lunXYZ,*) Natoms 
@@ -369,7 +369,7 @@ end subroutine master_node_init
 subroutine read_coords_and_init
 
  if (INPCONFIGURATION) then 
-	call load_configuration(lunXYZ, RRt, PPt) 
+	call load_configuration(lunXYZ) 
  else 
  	if (read_method .eq. 0) then
         	do i=1, Nwaters
@@ -943,13 +943,12 @@ end subroutine save_configuration
 !-----------------------------------------------------------------------------------------
 !--------------load configuration -------------------------------------------------------
 !-----------------------------------------------------------------------------------------
-subroutine load_configuration(iun, RRt, PPt) 
-use system_mod
-use consts
-implicit none
-double precision, dimension(3, Natoms,Nbeads), intent(out) :: RRt, PPt
-integer ::  i, j, iO, ih1, ih2, t
-integer, intent(in) :: iun 
+subroutine load_configuration(iun) 
+ use system_mod
+ use consts
+ implicit none
+ integer ::  i, j, iO, ih1, ih2
+ integer, intent(in) :: iun 
 
  do i=1, Nwaters
       iO = 3*i-2
@@ -968,6 +967,13 @@ integer, intent(in) :: iun
 		PPt(1:3, ih2, j) =  PPt(1:3, ih2, j)*massH 
 	enddo
  enddo
+ !calculate centroid positions
+ RRc = sum(RRt,3)/Nbeads
+ !calculate centroid momenta
+ PPc = sum(PPt,3)/Nbeads 
+ !check PBCs
+ call PBCs(RRt, RRc) 
+ 
 end subroutine load_configuration
 
 
