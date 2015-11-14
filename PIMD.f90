@@ -42,9 +42,7 @@ if (pid .eq. 0) then
 	call start_timer("Total time") 
 	call open_files
 	call master_node_init
-	call read_coords           ! Read in coord data to RRc 
-	call initialize_beads      ! Initialize RRt
-	call initialize_velocities ! Initialize PPt
+	call read_coords_and_init  ! Read in coord data to RRc 
 	call calc_uk 		       ! Initalize kinetic energy
 endif!(pid .eq. 0)
 

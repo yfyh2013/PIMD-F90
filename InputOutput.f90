@@ -366,7 +366,7 @@ end subroutine master_node_init
 !----------------------------------------------------------------------------------!
 !---------------- Read in coordinate data to RRc ----------------------------------
 !----------------------------------------------------------------------------------!
-subroutine read_coords
+subroutine read_coords_and_init
 
  if (INPCONFIGURATION) then 
 	call load_configuration(lunXYZ, RRt, PPt) 
@@ -386,13 +386,15 @@ subroutine read_coords
      			 read(lunXYZ,*)ch2, RRc(1:3, i)
   		enddo
 	else 
-		write(*,*) "Invalid read method!!"
+		write(*,*) "ERROR: Invalid read method!!"
 		stop
 	endif 
+	call initialize_beads      ! Initialize RRt
+	call initialize_velocities ! Initialize PPt
  endif
 
  call io_close(lunXYZ)
-end subroutine read_coords
+end subroutine read_coords_and_init
 
 
 !-----------------------------------------------------------------------------------------
