@@ -121,7 +121,7 @@ subroutine write_out_diffusion(lun_out, timestep, fsave)
  write(iun_dif,*) '@ yaxis  label "<d^2>(t)"  '
  write(iun_dif,'(A16,f10.5,A5,f10.5,A17)') '@ subtitle "D = ', D ,' +/- ', errD, ' 10^(-5) cm^2/s "'
  do t  = 1,ntimes 
-	write(iun_dif,'(3f12.6)') times(t), aMS(t), b*times(t) + a
+	write(iun_dif,'(3f16.4)') times(t), aMS(t), b*times(t) + a
  enddo
 
 #ifdef FC_HAVE_FLUSH
