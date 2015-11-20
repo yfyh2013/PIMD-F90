@@ -18,6 +18,8 @@ LatticeConstant     9.85467 Ang
 %endblock LatticeParameters   
 
 AtomicCoordinatesFormat   Ang
+MM.Water.Potential     PBE_DZP
+
 
 MeshCutoff             100 Ry
 

@@ -28,15 +28,15 @@ OUTPUT OPTIONS
 10       				 ! Output frequency for everything else
 
 MD OPTIONS 
-6                       ! Model: 2=ttm21f 3=ttm3f 4= qspcfw 5=spcf 6=SIESTA
-'32h20', 1
+6                    ! Model: 2=ttm21f 3=ttm3f 4= qspcfw 5=spcf 6=SIESTA
+'32h2o', 1
 4.9d0 4.5d0 1.d-6           ! realspace cutoff (Ang), start of VdW force switch (Ang) (TTM3F only), eps for aewald
 15  0.7  1.d-2 .f.  .f. ! params for dipole iterative procedure: Max iterations, pol factor, accuracy, guess initial?, debug output
 .t.					 	! generate initial velocities? 
 .f.   			     	! input initial configuration? 
 .t.    			 		! Global thermostat? t/f
-.f.      				! Thermostat non-centroid modes ? 
-.f.			 			! Thermostat centroid mode ?
+.t.      				! Thermostat non-centroid modes ? 
+.t.			 			! Thermostat centroid mode ?
 'Nose-Hoover'     			! type of bead thermostat - 'Nose-Hoover', 'Langevin' or 'none'
 .01			 			! tau for global thermostat (ps)
 .1			 			! tau for centroid thermostat (ps)
@@ -49,7 +49,7 @@ MD OPTIONS
 .f.			 ! pressure coupling during equilibration only?
 
 MORE RUN OPTIONS
-0			 ! frequency (inverse cm) to set NMs to ( or enter 0 for none/RPMD)
+5000			 ! frequency (inverse cm) to set NMs to ( or enter 0 for none/RPMD)
 .t.			 ! Ring polymer contraction (evalulate intermolecular forces on cetroid, intramolecular on beads)
 5			 ! ratio of slow timestep / fast timestep for contraction scheme
 15.994		 ! mass of Oxygen (au)
