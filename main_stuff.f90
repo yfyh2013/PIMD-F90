@@ -25,7 +25,7 @@ real(8) :: delt, delt2,  uk,  imassO, imassH
 real(8) :: temp, sum_temp, sum_press, sys_temp, avg_vel, init_energy, sum_RMSenergy
 real(8) :: tot_energy, sum_tot_energy,  sum_tot_energy2, sum_energy2, sum_simple_energy, sum_simple_energy2, simple_energy
 real(8) :: specific_heat, avg_temp, init_temp, sum_dip2, sum_simple_press, simple_sys_press
-real(8) :: dielectric_constant, diel_prefac, dielectric_error, sys_press
+real(8) :: dielectric_constant, diel_prefac, dielectric_error, sys_press, init_time=0d0
 real(8), dimension(1000)  :: dielectric_running
 integer  :: dielectric_index = 1
 real(8) ::  isotherm_compress
@@ -66,14 +66,14 @@ real(8) :: radiusH, radiusO, sum_radiusO, sum_radiusH
 integer :: Nnodes, Nbeads, pid, j, k, ierr, Nbatches, counti, bat
 integer :: status2(MPI_STATUS_SIZE)
 
-! timing variable
+! time variable
 character(8)  :: date
 character(10) :: time
 real(8) :: seconds 
 
 !variables for multiple timestep / contraction
 integer :: intra_timesteps, num_SIESTA_nodes
-real(8)   :: deltfast, delt2fast  
+real(8) :: deltfast, delt2fast  
 
  contains
 

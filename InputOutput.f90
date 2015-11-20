@@ -95,25 +95,24 @@ end subroutine read_input_file
 !---------------- Initialize some variables for all nodes ------------------------
 !----------------------------------------------------------------------------------
 subroutine read_and_initialize_all_nodes
- 
-!---  read the number of atoms, dimension of box and atomic coordinates 
-call io_assign(lunXYZ)
+ integer :: NbeadsIn
 
-open(lunXYZ,file=fconfig,status='old', action="read")
+ !read the number of atoms, dimension of box and atomic coordinates 
+ call io_assign(lunXYZ)
+ open(lunXYZ,file=fconfig,status='old', action="read")
 
  if (INPCONFIGURATION) then
-	read(lunXYZ,*) Natoms 
-	read(lunXYZ,*,IOSTAT=ierr) Upot, box(1:3)
-	if (ierr .ne. 0) then 
-		rewind(lunXYZ)
-		read(lunXYZ,*) Natoms 
-		read(lunXYZ,*,IOSTAT=ierr) box(1:3)
-		if (ierr .ne. 0) then 
-			write(*,*) "ERROR: could not read box size from input file. Trying to continue anyway"
-		endif 
+	
+	read(lunXYZ,'(2i10)') Natoms, NbeadsIn
+ 
+	if (.not.(NbeadsIn .eq. Nbeads)) then 
+		write(*,*) "ERROR: the number of beads in configuration image not equal to that specifed in input file" 
+		write(*,*) " are you sure you have the right file?"
+		stop
 	endif 
 
-	Natoms = Natoms/Nbeads
+	read(lunXYZ,'(f12.6,2x,f12.6,3(1x,f12.6))') init_time, box  
+
  else 
 	!usually the box size is in the first line of a raw .xyz
 	!but it might be in the second line. Try a few different combos here. 
@@ -127,7 +126,8 @@ open(lunXYZ,file=fconfig,status='old', action="read")
 			rewind(lunXYZ)
 			read(lunXYZ,*,IOSTAT=ierr) Natoms, box(1:3)
 			if (ierr .ne. 0) then 		
-				write(*,*) "ERROR: could not read box size from input file. Trying to continue anyway with box = ", box
+				write(*,*) "ERROR: could not read box size from input file. The best I could come up with is box = ", box
+				stop
 			endif 
 		endif
 	endif 
@@ -192,6 +192,7 @@ subroutine init_potential_all_nodes
 		sys_command = "rm "//trim(pipe_name) 
 		call system(trim(sys_command))
 	endif
+	
   !! call siesta_units( "ang", 'kcal/mol' ) ! The combination of ang and kcal/mol doesn't work with Siesta for some reason
 	if (num_SIESTA_nodes .eq. 1) then  
 		call siesta_launch( trim(sys_label)) !launch serial SIESTA process
@@ -284,10 +285,25 @@ if (.not. (CONTRACTION) ) then
 	stop
 	endif
 else
-	if (Nnodes .gt. 2) then 
-		write(*,*) "ERROR: When running with ring polymer contraction, a maximum of 2 nodes can be used."
+	if (Nnodes .gt. 1) then 
+		write(*,*) "ERROR: When running with ring polymer contraction, a maximum of 1 nodes can be used."
 		stop
 	endif
+endif
+
+if ((CONTRACTION) .and. (Nbeads .eq. 1)) then 
+	write(*,*) "ERROR: You have specified contraction with one bead. Please turn off contraction or increase number of beads"
+	stop
+endif 
+
+if (INPCONFIGURATION .and. GENVEL) then 
+	write(*,*) "NOTE: Generating velocities not necessary when using inputted configuration image" 
+	write(*,*) " using velocities in image file"
+	GENVEL = .false.
+endif 
+if (INPCONFIGURATION .and. (.not.(eq_timesteps .eq. 0))) then 
+	write(*,*) "NOTE: when inputing image, equilibration not necessary. Setting equilibration timesteps to 0" 
+	eq_timesteps = 0 
 endif
 
 
@@ -363,38 +379,40 @@ end subroutine master_node_init
 
 
 
-!----------------------------------------------------------------------------------!
-!---------------- Read in coordinate data to RRc ----------------------------------
-!----------------------------------------------------------------------------------!
-subroutine read_coords_and_init
+!----------------------------------------------------------------------------------
+!---------------- read in and intialize RRc from ------------------------
+!----------------------------------------------------------------------------------
+Subroutine read_coords_and_init
 
- if (INPCONFIGURATION) then 
-	call load_configuration(lunXYZ) 
- else 
- 	if (read_method .eq. 0) then
-        	do i=1, Nwaters
-   		 	iO = 3*i-2 
- 		 	read(lunXYZ,*)ch2, RRc(1:3, iO)
-  		enddo
-   	 	do i=1, Nwaters
-      			 ih1 = 3*i-1; ih2=3*i
-     			 read(lunXYZ,*)ch2, RRc(1:3, ih1)
-      			 read(lunXYZ,*)ch2, RRc(1:3, ih2)
-  		 enddo
-  	else if (read_method==1) then
-   		do i=1, Natoms
-     			 read(lunXYZ,*)ch2, RRc(1:3, i)
-  		enddo
+if (INPCONFIGURATION) then 
+	call load_configuration(lunXYZ)
+else
+	if (read_method .eq. 0) then
+		do i=1, Nwaters
+			iO = 3*i-2 
+			read(lunXYZ,*)ch2, RRc(1:3, iO)
+		enddo
+		do i=1, Nwaters
+			ih1 = 3*i-1; ih2=3*i
+			read(lunXYZ,*)ch2, RRc(1:3, ih1)
+			read(lunXYZ,*)ch2, RRc(1:3, ih2)
+		enddo
+	else if (read_method==1) then
+		do i=1, Natoms
+			read(lunXYZ,*)ch2, RRc(1:3, i)
+		enddo
 	else 
 		write(*,*) "ERROR: Invalid read method!!"
 		stop
 	endif 
+
 	call initialize_beads      ! Initialize RRt
 	call initialize_velocities ! Initialize PPt
- endif
-
+endif
  call io_close(lunXYZ)
-end subroutine read_coords_and_init
+ 
+
+EndSubroutine read_coords_and_init
 
 
 !-----------------------------------------------------------------------------------------
@@ -564,7 +582,7 @@ subroutine write_out
  !print out temperature, pressure, average press, energies & dielectric constant
  !-------------------------------------------------------------
   if (mod(t,tp_freq) == 0) then
-	write(lunTP_out,'(1f10.4)',advance='no') tr*delt 
+	write(lunTP_out,'(1f10.4)',advance='no') tr*delt + init_time
 	!write(lunTP_out,'(1f10.2)',advance='no') sys_temp
 	write(lunTP_out,'(1f10.2)',advance='no') sum_temp/tr
 	!write(lunTP_out,'(1f10.2)',advance='no') sys_press
@@ -784,10 +802,9 @@ subroutine print_run
 
  
  if (PRINTFINALCONFIGURATION) then 
-	call io_assign(lun)
-	open(lun, file='out_'//TRIM(fsave)//'_fin_image.xyz', status='unknown')
+	call io_open(lun,'out_'//TRIM(fsave)//'_fin_image.img')
 	call save_configuration(lun, RRt, PPt, Upot, t,delt) 
-	close(lun)
+	call io_close(lun)
  endif
 
  if (coord_out)	   call io_close(luncoord_out)
@@ -910,7 +927,7 @@ end subroutine save_XYZ
 
 
 !-----------------------------------------------------------------------------------------
-!--------------Write out configuration --------------------------------------------------
+!--------------Write out configuration "image" ------------------------------------------
 !-----------------------------------------------------------------------------------------
 subroutine save_configuration(iun, RRt, PPt, Upot, t, delt) 
 use system_mod
@@ -918,11 +935,11 @@ use consts
 implicit none
 double precision, dimension(3, Natoms,Nbeads), intent(in) :: RRt, PPt
 double precision :: delt, Upot
-integer ::  i, j, iO, ih1, ih2, t
+integer ::  i, j, k, iO, ih1, ih2, t
 integer, intent(in) :: iun 
 
-write(iun,'(i10)') Natoms*Nbeads !, angle
-write(iun,'(f12.6,2x,f12.6,3(1x,f12.6))') t*delt,  box  
+write(iun,'(2i10)') Natoms, Nbeads
+write(iun,'(f12.6,2x,f12.6,3(1x,f12.6))') t*delt + init_time,  box  
    do i=1, Nwaters
       iO = 3*i-2
       ih1 = 3*i-1
@@ -937,19 +954,31 @@ write(iun,'(f12.6,2x,f12.6,3(1x,f12.6))') t*delt,  box
 	      write(iun,'(a2,6(1x,f12.6))')'H ',RRt(1:3, ih2, j), PPt(1:3, ih2, j)*imassH
 	enddo
    enddo
+ if (allocated(vxi_beads)) then  
+   do i = 1,size(vxi_beads,2) 
+		do j = 1, size(vxi_beads,3)
+			do k = 1, size(vxi_beads,4)
+				write(iun,*) vxi_beads(:,i,j,k)
+			enddo
+		enddo
+	enddo
+ endif
+ if(allocated(vxi_global)) then 
+	write(iun,*) vxi_global
+ endif 
 end subroutine save_configuration
 
 
 !-----------------------------------------------------------------------------------------
-!--------------load configuration -------------------------------------------------------
+!--------------load configuration "image" (header is loaded earlier) --------------------
 !-----------------------------------------------------------------------------------------
 subroutine load_configuration(iun) 
  use system_mod
  use consts
  implicit none
- integer ::  i, j, iO, ih1, ih2
- integer, intent(in) :: iun 
-
+ integer ::  i, j, k, iO, ih1, ih2
+ integer, intent(in) :: iun
+ 
  do i=1, Nwaters
       iO = 3*i-2
       ih1 = 3*i-1
@@ -967,6 +996,19 @@ subroutine load_configuration(iun)
 		PPt(1:3, ih2, j) =  PPt(1:3, ih2, j)*massH 
 	enddo
  enddo
+ if ((BEADTHERMOSTAT) .and. (bead_thermostat_type .eq. "Nose-Hoover")) then  
+	do i = 1,size(vxi_beads,2) 
+		do j = 1, size(vxi_beads,3)
+			do k = 1, size(vxi_beads,4)
+				read(iun,*) vxi_beads(:,i,j,k)
+			enddo
+		enddo
+	enddo
+ endif
+ if (THERMOSTAT) then 
+	read(iun,*) vxi_global
+ endif 
+  
  !calculate centroid positions
  RRc = sum(RRt,3)/Nbeads
  !calculate centroid momenta

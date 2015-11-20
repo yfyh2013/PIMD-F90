@@ -86,11 +86,11 @@ end subroutine calc_corr_function
 !------------------------------------------------------------------------ 
 subroutine calc_DFT(input, output, freqs, timestep, tread)
  Implicit none
+ integer, intent(in) :: tread
  double precision, dimension(tread), intent(in) :: input
  double precision, intent(in) :: timestep
  double precision, dimension(tread), intent(out) :: freqs, output
  complex, dimension(:), allocatable :: transformed
- integer, intent(in) :: tread
  integer :: trun, i
  
  trun = 2**(    floor( dlog(  dble(tread)  )/dlog(2d0)  )  + 1 )
@@ -120,12 +120,17 @@ end subroutine calc_DFT
 !----- block averaging ------------------------
 !------------------------------------------------
 function block_average(input, N) 
- integer, intent(in) :: N 
+ integer :: N 
  double precision, dimension(:), intent(in) :: input
  double precision, dimension(N)  :: block_average
  integer :: i, BlockSize
  
  BlockSize = floor(real(size(input))/N)
+ 
+ if (BlockSize .eq. 0) then
+	block_average = input
+	return
+ endif
 
  do i = 1, N
    block_average(i) = sum( input((i-1)*BlockSize+1:i*BlockSize) ) /BlockSize

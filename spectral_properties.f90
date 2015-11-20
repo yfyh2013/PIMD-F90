@@ -16,7 +16,7 @@ module spectral_properties
 !-------------------------------------------------------------
 !-- compute infrared spectrum and write out -----------------
 !-------------------------------------------------------------
-subroutine calc_infrared_spectrum(dip_moms,box,timestep,fsave,temp)
+subroutine calc_infrared_spectrum1(dip_moms,box,timestep,fsave,temp)
  use lun_management 
  implicit none
  real, dimension(:,:), intent(in) :: dip_moms 
@@ -120,12 +120,7 @@ subroutine calc_infrared_spectrum(dip_moms,box,timestep,fsave,temp)
 
  call io_close(lun)
 
-EndSubroutine calc_infrared_spectrum
-
-
-
-
-
+EndSubroutine calc_infrared_spectrum1
 
 
 !-------------------------------------------------------------------------
@@ -200,5 +195,86 @@ subroutine calc_DOS(Hvelocities, box, timestep, fsave, temp)
  !!----------------------------------------
 
 EndSubroutine calc_DOS
+
+
+!-------------------------------------------------------------------------
+!- vel-vel ACF spectrum (aka "density of states") and write out 
+!-------------------------------------------------------------------------
+subroutine calc_infrared_spectrum(dip_moms, box, timestep, fsave, temp)
+ use lun_management 
+ use math
+ implicit none
+ real, dimension(:,:), intent(in) :: dip_moms 
+ double precision, dimension(3), intent(in) :: box ! box size in Ang
+ double precision, intent(in) :: timestep          ! times step in PS
+ double precision, intent(in) :: temp	           ! temp in Kelvin
+ character(len=*), intent(in) :: fsave             !file label 
+
+ integer :: trun, tcor, ix, i, iH, t, n,  tread, lun, Nhyd, PointsAvailable	
+ double precision :: omega, IR, magn, avgMag, MinFreqOut, vol
+ double precision, dimension(:), allocatable :: ACF, output, DFT, allfreqs
+ double precision, dimension(:), allocatable :: spectra_smoothed, allfreqs_smoothed
+ complex, dimension(:), allocatable :: aux1
+ integer :: NumAvgOver
+
+ vol = (box(1)*box(2)*box(3))*1d-30
+
+ tread = size(dip_moms,2)
+
+ allocate(output(tread))! Stores the cross correlation in reciprocal space
+ allocate(ACF(tread))   ! stores the autocorrelation Function (real space)
+ allocate(allfreqs(tread))   
+ allocate(DFT(tread))   ! stores the autocorrelation Function (real space)
+
+ ACF=0  
+ !find correlation function 
+ do ix = 1, 3
+	call calc_corr_function(dip_moms(ix, 1:tread), output)
+	ACF = ACF + output
+ enddo
+ ACF = ACF/Nhyd/ACF(1)
+ 
+ !! Save the correlation function to file--------------------
+ !call io_open(lun, "out_"//trim(fsave)//"_vel_vel_corr_function.dat")
+ !do i = 1, tread
+ ! 	write(lun,*) i*timestep, real(ACF(i))
+ !enddo	
+ !call io_close(lun)
+ !-----------------------------------------------------------
+
+ call calc_DFT(ACF, DFT, allfreqs, timestep, size(ACF))   
+
+ allfreqs = allfreqs/ps2s !convert to Hz
+ 
+ !apply quantum harmonic correction 
+ do i = 1, PointsAvailable
+	DFT(i) = allfreqs(i)*tanh(hbarSI*allfreqs(i)/(Kb*2.0d0*Temp))*DFT(i) 
+ enddo
+ !Use the prefactor with harmonic quantum correction (See Ramirez paper)
+ DFT = (2d0*3.14159d0*(Debye2SI**2)*DFT)/(3d0*vol*2.99d8*hbarSI*Cspeed) 
+  
+ allfreqs = allfreqs/Cspeed !convert to cm^-1
+ 
+ if (size(allfreqs) .gt. 1) MinFreqOut =  allfreqs(2)
+ PointsAvailable = floor(MaxFreqOut/MinFreqOut)
+  
+ if (PointsAvailable .lt. NumPointsOut) NumPointsOut = PointsAvailable
+  
+ allocate(allfreqs_smoothed(NumPointsOut))
+ allocate(spectra_smoothed(NumPointsOut)) 
+  
+ allfreqs_smoothed = block_average(allfreqs(1:PointsAvailable),  NumPointsOut)
+ spectra_smoothed  = block_average(DFT(1:PointsAvailable), NumPointsOut)
+ 
+ !! Save the DOS to file--------------------
+ call io_open(lun, "out_"//trim(fsave)//"_IR.dat")
+ do i = 1, NumPointsOut
+	write(lun,'(2g12.4)')  allfreqs_smoothed(i), spectra_smoothed(i)
+ enddo
+ call io_close(lun)
+ !!----------------------------------------
+
+EndSubroutine calc_infrared_spectrum
+
  
 EndModule spectral_properties
