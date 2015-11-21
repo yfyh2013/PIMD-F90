@@ -160,19 +160,24 @@ if (pid .eq. 0) then
 				chgH1 = q3(2) + tmp*(q3(2)+q3(3))
 				chgH2 = q3(3) + tmp*(q3(2)+q3(3))
 
-				!get m site position
 				roh1 = RRt(:, iH1, j) - RRt(:, iO, j)
    				roh1 = roh1 - box*anint(roh1*boxi)!PBC
 				roh2 = RRt(:, iH2, j) - RRt(:, iO, j)
   				roh2 = roh2 - box*anint(roh2*boxi)!PBC
- 				Rm = 0.5d0*gammaM*( roh1(:) + roh2(:) ) + RRt(:, iO, j)
+  				
+				!get m site position
+				if ((pot_model .eq. 3) .or. (pot_model .eq. 4)) then 
+					Rm = 0.5d0*gammaM*( roh1(:) + roh2(:) ) + RRt(:, iO, j)
 	
-				rh1m = RRt(:, iH1, j) - Rm
-   				rh1m = rh1m - box*anint(rh1m*boxi)!PBC
-				rh2m = RRt(:, iH2, j) - Rm
-   				rh2m = rh2m - box*anint(rh2m*boxi)!PBC
+					rh1m = RRt(:, iH1, j) - Rm
+					rh1m = rh1m - box*anint(rh1m*boxi)!PBC
+					rh2m = RRt(:, iH2, j) - Rm
+					rh2m = rh2m - box*anint(rh2m*boxi)!PBC
   	
-				dip_momIt(:,iw,j) = chgH1*rh1m + chgH2*rh2m
+					dip_momIt(:,iw,j) = chgH1*rh1m + chgH2*rh2m
+				else
+					dip_momIt(:,iw,j) = chgH1*roh1 + chgH2*roh2
+				endif
 			endif
 		enddo
 	enddo
