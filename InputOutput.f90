@@ -292,8 +292,7 @@ else
 endif
 
 if ((CONTRACTION) .and. (Nbeads .eq. 1)) then 
-	write(*,*) "ERROR: You have specified contraction with one bead. Please turn off contraction or increase number of beads"
-	stop
+	write(*,*) "NOTE: You have specified contraction with one bead. "
 endif 
 
 if (INPCONFIGURATION .and. GENVEL) then 
