@@ -110,6 +110,8 @@ subroutine contracted_forces
  integer :: tintra, iM
 
  tmp = 0.5d0*gammaM/(1.d0-gammaM)
+ 
+ if (t .eq. 1) dRRfast =0
 
 if (pid .eq. 0) then
   call start_timer("MonomerPIMD")
@@ -140,7 +142,8 @@ if (pid .eq. 0) then
 				RRt(:,3*i-0,k) = RRt(:,3*i-0,k) + imassH*PPt(:,3*i-0,k)*delt2fast
 			enddo
 		enddo			
-	endif
+	endif	  
+	
 
 	!update fast forces (intramolecular forces)
 	!masternode calcuates the intramolecular forces, puts them in dRRfast
@@ -298,6 +301,8 @@ else if (pot_model==4 .or. pot_model==5) then
     call pot_spc(RR, Upot, dRR, virt, dip_momI, chg)
 else if (pot_model==6) then 
     call start_timer("SIESTA")
+  !  write(*,*) "RR=", RR
+  ! write(*,*) "box=", siesta_box
     call siesta_forces( trim(sys_label), Natoms, RR, cell=siesta_box, energy=Upot, fa=dRR)
     call stop_timer("SIESTA")
     Upot = Upot*EVTOKCALPERMOLE
