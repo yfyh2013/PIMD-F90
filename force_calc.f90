@@ -135,9 +135,9 @@ if (pid .eq. 0) then
 	else 
 		do i = 1,Nwaters
 			do k = 1,Nbeads
-				RRt(:,3*i-2,k) = RRt(:,3*i-2,k) + imassO*PPt(:,3*i-2,k)*delt
-				RRt(:,3*i-1,k) = RRt(:,3*i-1,k) + imassH*PPt(:,3*i-1,k)*delt
-				RRt(:,3*i-0,k) = RRt(:,3*i-0,k) + imassH*PPt(:,3*i-0,k)*delt
+				RRt(:,3*i-2,k) = RRt(:,3*i-2,k) + imassO*PPt(:,3*i-2,k)*delt2fast
+				RRt(:,3*i-1,k) = RRt(:,3*i-1,k) + imassH*PPt(:,3*i-1,k)*delt2fast
+				RRt(:,3*i-0,k) = RRt(:,3*i-0,k) + imassH*PPt(:,3*i-0,k)*delt2fast
 			enddo
 		enddo			
 	endif
@@ -204,8 +204,6 @@ if (pid .eq. 0) then
  !calculate centroid momenta
  PPc = sum(PPt,3)/Nbeads
  
- write(*,*) RRc
-
  !check PBCs
  call PBCs(RRt, RRc)
 
