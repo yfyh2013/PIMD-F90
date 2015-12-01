@@ -125,11 +125,22 @@ if (pid .eq. 0) then
 	PPt = PPt - MASSCON*dRRfast*delt2fast
 
 	!update positions with fast forces
-	do i = 1, Nwaters
-		Call EvolveRing(RRt(:,3*i-2,:), PPt(:,3*i-2,:), Nbeads, massO)
-		Call EvolveRing(RRt(:,3*i-1,:), PPt(:,3*i-1,:), Nbeads, massH)
-		Call EvolveRing(RRt(:,3*i-0,:), PPt(:,3*i-0,:), Nbeads, massH)
-	enddo
+	if (Nbeads .gt. 1) then
+		do i = 1, Nwaters
+			!Evolve ring a full step 
+			Call EvolveRing(RRt(:,3*i-2,:), PPt(:,3*i-2,:), Nbeads, massO)
+			Call EvolveRing(RRt(:,3*i-1,:), PPt(:,3*i-1,:), Nbeads, massH)
+			Call EvolveRing(RRt(:,3*i-0,:), PPt(:,3*i-0,:), Nbeads, massH)
+		enddo
+	else 
+		do i = 1,Nwaters
+			do k = 1,Nbeads
+				RRt(:,3*i-2,k) = RRt(:,3*i-2,k) + imassO*PPt(:,3*i-2,k)*delt
+				RRt(:,3*i-1,k) = RRt(:,3*i-1,k) + imassH*PPt(:,3*i-1,k)*delt
+				RRt(:,3*i-0,k) = RRt(:,3*i-0,k) + imassH*PPt(:,3*i-0,k)*delt
+			enddo
+		enddo			
+	endif
 
 	!update fast forces (intramolecular forces)
 	!masternode calcuates the intramolecular forces, puts them in dRRfast
