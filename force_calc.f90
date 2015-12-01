@@ -192,6 +192,8 @@ if (pid .eq. 0) then
 
  !calculate centroid momenta
  PPc = sum(PPt,3)/Nbeads
+ 
+ write(*,*) RRc
 
  !check PBCs
  call PBCs(RRt, RRc)
