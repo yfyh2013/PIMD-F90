@@ -22,7 +22,7 @@ profile: FFLAGS += -p
 profile: PIMD.x 
 
 #serial compilation commands
-serial: FC=ifort #not working!
+serial: FC=gfortran  #ifort not working on Handy!
 serial: FFLAGS = -O3  -cpp -Dsiesta -DFC_HAVE_FLUSH -DFC_HAVE_ABORT # --debug --backtrace -fbounds-check 
 serial: PIMD_serial.x 
 
