@@ -1,4 +1,4 @@
-!Input file - this is a fixed format file, edit with caution!
+cd input!Input file - this is a fixed format file, edit with caution!
 
 BASIC INFO
 'input_files/monomer.xyz'          ! input filename - either a centroid .xyz or a full bead configuration
@@ -23,13 +23,13 @@ OUTPUT OPTIONS
 .f.                     ! write out charges in seperate file?
 .f.                     ! write final configuration of all beads to seperate file?
 1					    ! Total dipole output frequency 
-20			 	    ! Temp/Press output frequency
+1			 	    ! Temp/Press output frequency
 1     				    ! all images output frequency 
 1       				! Output frequency for everything else
 
 MD OPTIONS 
-3                      ! Model: 2=ttm21f 3=ttm3f 4= qspcfw 5=spcf 6=SIESTA
-'monomer', 1 			    ! sys_label for SIESTA runs, # SIESTA processors 
+6                     ! Model: 2=ttm21f 3=ttm3f 4= qspcfw 5=spcf 6=SIESTA
+'siesta','monomer', 1		!name of siesta executable, system label, number of siesta nodes
 4d0 4d0 1.d-6           ! realspace cutoff (Ang), start of VdW force switch (Ang) (TTM3F only), eps for aewald
 15  0.7  1.d-2 .f.  .f. ! params for dipole iterative procedure: Max iterations, pol factor, accuracy, guess initial?, debug output
 .t.					 	! generate initial velocities? 
@@ -50,7 +50,7 @@ MD OPTIONS
 
 MORE RUN OPTIONS
 0			 ! frequency (inverse cm) to set NMs to ( or enter 0 for none/RPMD)
-.f.			 ! Ring polymer contraction (evalulate intermolecular forces on cetroid, intramolecular on beads)
+.t.			 ! Ring polymer contraction (evalulate intermolecular forces on cetroid, intramolecular on beads)
 5			 ! ratio of slow timestep / fast timestep for contraction scheme
 15.994		 ! mass of Oxygen (au)
 1.008		 ! mass of Hyrdrogen
