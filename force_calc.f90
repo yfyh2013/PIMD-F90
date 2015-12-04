@@ -77,7 +77,7 @@ if (pid .eq. 0) then
  
  !computation of dipole moments for the SIESTA case 
  if (pot_model .eq. 6) then 
-	call calc_dip_moments(dip_momIt, RRt, Nbeads, Nwaters,box)
+	call calc_dip_moments(dip_momIt, RRt, Nbeads)
  endif
  
  
@@ -143,14 +143,13 @@ if (pid .eq. 0) then
 			enddo
 		enddo			
 	endif	  
-	
 
 	!update fast forces (intramolecular forces)
 	!masternode calcuates the intramolecular forces, puts them in dRRfast
 	Umonomers = 0 
 	virialmon = 0 
 	virialcmon = 0 
-	
+
 	do j = 1, Nbeads
 		do iw = 1, Nwaters
 			iO=3*iw-2; iH1 = 3*iw-1; iH2=3*iw-0
@@ -316,31 +315,50 @@ end subroutine potential
 !- Calculate dipole moments using the TIP4P/2005 charges and m-site 
 !- for the coordinates obtained from a SIESTA calculation 
 !---------------------------------------------------------------------
-subroutine calc_dip_moments(dip_momIt, RRt, Nbeads, Nwaters, box)
+subroutine calc_dip_moments(dip_momIt, RRt, Nbeads)
  use consts
+ use pot_mod
+ use system_mod
  implicit none
- integer, intent(in) :: Nbeads, Nwaters
- double precision, dimension(3), intent(in) :: box
+ integer, intent(in) :: Nbeads 
  double precision, dimension(3, Nwaters, Nbeads), intent(out) :: dip_momIt
  double precision, dimension(3, 3*Nwaters, Nbeads), intent(in) :: RRt
- real, dimension(3) :: r1, r2, r3, summ
- integer :: i, j, io, ih1, ih2
+ double precision, dimension(3,3) :: r1, dq3
+ double precision, dimension(3) :: roh1, roh2, r3, summ, q3
+ double precision :: e1, chgH1, chgH2, tmp
+ integer :: iw, j, io, ih1, ih2
  double precision, parameter :: rOM = .1546
- double precision, parameter :: qH = .5564
- double precision, parameter :: qO = -1.1128
+ double precision, parameter :: qH_TIP4P = .5564
+ double precision, parameter :: qO_TIP4P = -1.1128
 
- do i = 1, Nbeads
-	do j = 1, Nwaters
-		io  = 3*j 
-		ih1 = 3*j - 1 
-		ih2 = 3*j - 2
-		r1 = RRt(:,ih1,i) - RRt(:,io,i)
-		r1 = r1 - box*anint(r1/box)!PBC
-		r2 = RRt(:,ih2,i) - RRt(:,io,i)
-		r2 = r2 - box*anint(r2/box)!PBC
-		summ = r1 + r2!find vector to M-site
-		r3=(summ/sqrt(dot_product(summ,summ)))*rOM
-		dip_momIt(:,j,i) = (qH*r1 + qH*r2 + qO*r3)*a2m*e2coul/3.33564e-30!conv. to Debye
+ tmp = 0.5d0*gammaM/(1.d0-gammaM)
+ 
+ do j = 1, Nbeads
+	do iw = 1, Nwaters
+		io  = 3*iw 
+		ih1 = 3*iw - 1 
+		ih2 = 3*iw - 2
+	
+  		r1(1:3, 1:3) = RRt(1:3, (/iO, ih1, ih2/), j)
+
+  		!get charges
+		call dms_nasa(r1, q3, dq3,box,boxi)
+
+		q3 = q3*CHARGECON
+		chgH1 = q3(2) + tmp*(q3(2)+q3(3))
+		chgH2 = q3(3) + tmp*(q3(2)+q3(3))
+
+		roh1 = RRt(:, iH1, j) - RRt(:, iO, j)
+		roh1 = roh1 - box*anint(roh1*boxi)!PBC
+		roh2 = RRt(:, iH2, j) - RRt(:, iO, j)
+  		roh2 = roh2 - box*anint(roh2*boxi)!PBC
+ 
+		dip_momIt(:,iw,j) = chgH1*roh1 + chgH2*roh2
+
+		!!! TIP4P/2005f dipole moment calculation
+		!summ = roh1 + roh2!find vector to M-site
+		!r3=(summ/sqrt(dot_product(summ,summ)))*rOM
+		!dip_momIt(:,iw,j) = (qH_TIP4P*roh1 + qH_TIP4P*roh2 + qO_TIP4P*r3)*a2m*e2coul/3.33564e-30!conv. to Debye
 	enddo
  enddo
   

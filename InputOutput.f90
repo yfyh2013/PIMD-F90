@@ -53,7 +53,7 @@ subroutine read_input_file
  read(lun,*) 
  read(lun,*)
  read(lun,*)pot_model 
- read(lun,*)sys_label, num_SIESTA_nodes
+ read(lun,*)siesta_name, sys_label, num_SIESTA_nodes
  read(lun,*)Rc, rc1, eps_ewald
  read(lun,*)polar_maxiter, polar_sor, polar_eps, guess_initdip, print_dipiters
  read(lun,*)GENVEL
@@ -195,9 +195,9 @@ subroutine init_potential_all_nodes
 	
   !! call siesta_units( "ang", 'kcal/mol' ) ! The combination of ang and kcal/mol doesn't work with Siesta for some reason
 	if (num_SIESTA_nodes .eq. 1) then  
-		call siesta_launch( trim(sys_label)) !launch serial SIESTA process
+		call siesta_launch( trim(siesta_name), trim(sys_label)) !launch serial SIESTA process
     elseif (num_SIESTA_nodes .gt. 1) then  
-		call siesta_launch( trim(sys_label), nnodes=num_SIESTA_nodes ) !launch parallel SIESTA process  
+		call siesta_launch(trim(siesta_name), trim(sys_label), nnodes=num_SIESTA_nodes ) !launch parallel SIESTA process  
 	else
 		write(*,*) "InputOuput: ERROR: invalid number of SIESTA nodes!!"
 	endif

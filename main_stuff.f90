@@ -74,6 +74,7 @@ real(8) :: seconds
 !variables for multiple timestep / contraction
 integer :: intra_timesteps, num_SIESTA_nodes
 real(8) :: deltfast, delt2fast  
+character(len=200) :: siesta_name
 
  contains
 
