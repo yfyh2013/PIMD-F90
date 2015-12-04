@@ -110,9 +110,9 @@ CONTAINS
 
 !---------------------------------------------------
 
-subroutine siesta_launch( label, nnodes, mpi_comm, mpi_launcher )
+subroutine siesta_launch(siesta_name, label, nnodes, mpi_comm, mpi_launcher )
   implicit none
-  character(len=*),  intent(in) :: label
+  character(len=*),  intent(in) :: label, siesta_name
   integer, optional, intent(in) :: nnodes
   integer, optional, intent(in) :: mpi_comm
   character(len=*),  intent(in), optional :: mpi_launcher
@@ -150,10 +150,10 @@ subroutine siesta_launch( label, nnodes, mpi_comm, mpi_launcher )
      else
         mpi_command =  'mpirun -np '
      endif
-    write(task,*) trim(mpi_command),  nnodes, ' siesta < ', &
+    write(task,*) trim(mpi_command),  nnodes, trim(siesta_name)//' < ', &
         trim(label)//'.fdf > ', trim(label)//'.out &'
   else
-    write(task,*) 'sleep 2; siesta < ', &
+    write(task,*) 'sleep 2; '//trim(siesta_name)//' < ', &
         trim(label)//'.fdf > ', trim(label)//'.out &'
   end if
   call system(task)
