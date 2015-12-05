@@ -185,6 +185,8 @@ subroutine init_potential_all_nodes
   
  if (pot_model .eq. 6) then
  
+	call system("export GFORTRAN_UNBUFFERED_ALL=y") !make sure environment variable is set
+ 
 	if (CONTRACTION .eqv. .false.) then 
 	
 		!setup Nnodes SIESTA proccesses sharing num_SIESTA_nodes
@@ -846,7 +848,7 @@ subroutine print_basic_run_info
  if (pot_model .eq. 4) write(lunTP_out,'(a50,a)') "Model = ", "qSPCfw"
  if (pot_model .eq. 5) write(lunTP_out,'(a50,a)') "Model = ", "SPCf"
  if (pot_model .eq. 6) write(lunTP_out,'(a50,a,a,a,a,i5)') "Model = ", trim(siesta_name), " sys_label = ", &
-									trim(sys_label), "  num_SIESTA_nodes = ", num_SIESTA_nodes
+									trim(sys_label), "tot num_SIESTA_nodes = ", num_SIESTA_nodes
  write(lunTP_out,'(a50,i4,a,i4,a)') "Running with ", Nbeads, " beads on ", Nnodes, " nodes"
  write(lunTP_out,'(a50, i6)') "Num Molecules = ", Nwaters
  write(lunTP_out,'(a50, f10.3,a3)') "timestep = ", delt*1000, " fs"
