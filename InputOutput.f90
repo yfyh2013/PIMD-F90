@@ -194,14 +194,16 @@ subroutine init_potential_all_nodes
 			
 		!make copies of .fdf
 		sys_command = "cp "//trim(sys_label)//".fdf "//trim(sys_label_i)//".fdf"
+		
 		call system(trim(sys_command))
 		
 		sys_command = "sed -i -- 's/"//trim(sys_label)//"/"//trim(sys_label_i)//"/g' "//trim(sys_label_i)//".fdf"
+		
 		call system(trim(sys_command))
 		
 		call siesta_launch(trim(siesta_name), trim(sys_label_i), nnodes=nodes_per_process ) !launch parallel SIESTA process  	
 
-	else
+	elseif (Nnodes .eq. 1) then 
 	
 		if (num_SIESTA_nodes .eq. 1) then  
 			call siesta_launch( trim(siesta_name), trim(sys_label)) !launch serial SIESTA process
@@ -211,7 +213,11 @@ subroutine init_potential_all_nodes
 			write(*,*) "InputOuput: ERROR: invalid number of SIESTA nodes!!"
 			stop
 		endif
-
+	
+	else
+		write(*,*) "You specified contraction = ", CONTRACTION, " and Nnodes = ", Nnodes
+		write(*,*) "This configuration is not supported. With contractiom PIMD must be on a single node. "
+		stop
 	endif
  
  else

@@ -59,7 +59,7 @@ subroutine full_bead_forces
 		call MPI_Recv(RRc, 3*Natoms, MPI_DOUBLE_PRECISION, 0, 0, MPI_COMM_WORLD, status2, ierr)
 		
 		!slavenode force & virial calculation
-		call potential(RR, RRc, Upot, dRR, virt, virialc, dip_momI, dip_momE, chg, t, BAROSTAT, sys_lab=trim(sys_label)//trim(str(pid+1)))
+		call potential(RR, RRc, Upot, dRR, virt, virialc, dip_momI, dip_momE, chg, t, BAROSTAT, sys_lab=trim(sys_label)//trim(str(pid)))
 		virial = virt(1,1) + virt(2,2) + virt(3,3)	
 		
 		!slavenode send back derivative
