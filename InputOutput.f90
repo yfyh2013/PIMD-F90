@@ -190,21 +190,17 @@ subroutine init_potential_all_nodes
 		!setup Nnodes SIESTA proccesses sharing num_SIESTA_nodes
 		nodes_per_process = floor(real(num_SIESTA_nodes)/real(Nnodes)) 
 	
-		do i = 1, Nbeads 
-
-		sys_label_i = trim(sys_label)//str(i)
+		sys_label_i = trim(sys_label)//trim(str(pid))
 			
-			!make copies of .fdf
-			sys_command = "cp "//trim(sys_label)//".fdf "//trim(sys_label_i)//".fdf"
-			call system(trim(sys_command))
+		!make copies of .fdf
+		sys_command = "cp "//trim(sys_label)//".fdf "//trim(sys_label_i)//".fdf"
+		call system(trim(sys_command))
 		
-			sys_command = "sed -i -- 's/"//trim(sys_label)//"/"//trim(sys_label_i)//"/g' "//trim(sys_label_i)//".fdf"
-			call system(trim(sys_command))
+		sys_command = "sed -i -- 's/"//trim(sys_label)//"/"//trim(sys_label_i)//"/g' "//trim(sys_label_i)//".fdf"
+		call system(trim(sys_command))
 		
-			call siesta_launch(trim(siesta_name), trim(sys_label_i), nnodes=nodes_per_process ) !launch parallel SIESTA process  	
-		
-		enddo
-	
+		call siesta_launch(trim(siesta_name), trim(sys_label_i), nnodes=nodes_per_process ) !launch parallel SIESTA process  	
+
 	else
 	
 		if (num_SIESTA_nodes .eq. 1) then  
