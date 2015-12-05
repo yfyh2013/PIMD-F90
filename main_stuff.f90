@@ -63,7 +63,7 @@ real(8), dimension(:,:), allocatable :: RRc, PPc
 real(8), dimension(:), allocatable :: Upott, Virialt, virialct
 real(8) ::  Upot,  virial, virialc, omegan, kTN, iNbeads, setNMfreq
 real(8) :: radiusH, radiusO, sum_radiusO, sum_radiusH
-integer :: Nnodes, Nbeads, pid, j, k, ierr, Nbatches, counti, bat
+integer :: Nnodes, pid, j, k, ierr, Nbatches, counti, bat
 integer :: status2(MPI_STATUS_SIZE)
 
 ! time variable
@@ -118,7 +118,7 @@ subroutine bead_thermostat
  Integer :: i, j, k 
 !- Calling Langevin thermostat -----------------------------------------------------
  if (bead_thermostat_type .eq. 'Langevin') then
-	call Langevin_NM(PPt, Nbeads)
+	call Langevin_NM(PPt)
  endif
 
 !- Nose-Hoover coupling in normal mode space ---------------------------------------

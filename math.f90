@@ -1,5 +1,6 @@
 module math 
 !converted into a module by D. Elton
+!this is a collection of useful routines 
 
  contains 
 !---------------------------------------------------------------------
@@ -137,6 +138,15 @@ function block_average(input, N)
  enddo
   
 end function block_average 
+
+!-----------------------------------------------------------------------------------------
+!--------------convert integer (<10,000) to string (left justified) ----------------------
+!-----------------------------------------------------------------------------------------
+character(len=4) function str(k)
+    integer, intent(in) :: k
+    write (str, '(i4)') k
+    str = adjustl(str)
+end function str
  
 !*****************************************************************************
 !*** The following subroutines used for the calculation of the Gamma function

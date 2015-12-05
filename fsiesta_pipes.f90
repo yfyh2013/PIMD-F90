@@ -1,8 +1,10 @@
-! 
-! Local version of fsiesta_pipes.F90 for PIMD with some modifications: 
-! -- all debugging output commented out)  
-! -- "siesta" command can be changed as necessary for cluster) 
+!------------------------------------------------------------------------------- 
 !
+! Local version of fsiesta_pipes.F90 for PIMD with some modifications by D.C. Elton
+! -- all debugging output commented out)  
+! -- "siesta" command can be changed through new input variable "siesta_cmd"
+!
+!-------------------------------------------------------------------------------
 !
 ! This file is part of the SIESTA package.
 !
@@ -106,20 +108,23 @@ PRIVATE ! Nothing is declared public beyond this point
   character(len=32), save :: funit = 'eV/Ang'
   character(len=32), save :: sunit = 'eV/Ang**3'
  
-CONTAINS
+ contains
 
-!---------------------------------------------------
 
-subroutine siesta_launch(siesta_name, label, nnodes, mpi_comm, mpi_launcher )
+!---------------------------------------------------------------------------
+!------------------------ Launch ------------------------------------------
+!---------------------------------------------------------------------------
+subroutine siesta_launch(siesta_cmd, label, nnodes, mpi_comm, mpi_launcher )
   implicit none
-  character(len=*),  intent(in) :: label, siesta_name
+  character(len=*),  intent(in) :: label, siesta_cmd
   integer, optional, intent(in) :: nnodes
   integer, optional, intent(in) :: mpi_comm
   character(len=*),  intent(in), optional :: mpi_launcher
 
   character(len=32) :: cpipe, fpipe
-  character(len=80) :: task, mpi_command
+  character(len=80) :: task, mpi_command, pipe_name
   integer           :: ip, iu
+  logical  		 	:: EXISTS
 
 !  print*, 'siesta_launch: launching process ', trim(label)
 
@@ -127,6 +132,18 @@ subroutine siesta_launch(siesta_name, label, nnodes, mpi_comm, mpi_launcher )
   if (idx(label) /= 0) &
     print*, 'siesta_launch: ERROR: process for label ', trim(label), &
             ' already launched'
+  
+  !added by DC Elton- check if files already exist and delete if it does
+  pipe_name = trim(label)//".forces"
+  inquire(file=trim(pipe_name), exist=EXISTS) 
+  if (EXISTS .eqv. .true.) then 
+		call system("rm "//trim(pipe_name) )
+  endif
+  pipe_name = trim(label)//".coords"
+  inquire(file=trim(pipe_name), exist=EXISTS) 
+  if (EXISTS .eqv. .true.) then 
+		call system("rm "//trim(pipe_name))
+  endif
 
 ! Create pipes
   cpipe = trim(label)//'.coords'
@@ -150,29 +167,22 @@ subroutine siesta_launch(siesta_name, label, nnodes, mpi_comm, mpi_launcher )
      else
         mpi_command =  'mpirun -np '
      endif
-    write(task,*) trim(mpi_command),  nnodes, trim(siesta_name)//' < ', &
+     write(*,*)  trim(mpi_command), nnodes, trim(siesta_cmd)//' < ', &
+        trim(label)//'.fdf > ', trim(label)//'.out &'
+     write(task,*) trim(mpi_command), nnodes, trim(siesta_cmd)//' < ', &
         trim(label)//'.fdf > ', trim(label)//'.out &'
   else
-    write(task,*) 'sleep 2; '//trim(siesta_name)//' < ', &
+    write(task,*) 'sleep 2; '//trim(siesta_cmd)//' < ', &
         trim(label)//'.fdf > ', trim(label)//'.out &'
   end if
   call system(task)
 
 end subroutine siesta_launch
 
-!---------------------------------------------------
 
-subroutine siesta_units( length, energy )
-  implicit none
-  character(len=*), intent(in) :: length, energy
-  xunit = length
-  eunit = energy
-  funit = trim(eunit)//'/'//trim(xunit)
-  sunit = trim(eunit)//'/'//trim(xunit)//'**3'
-end subroutine siesta_units
-
-!---------------------------------------------------
-
+!---------------------------------------------------------------------------
+!------------------------ Forces ------------------------------------------
+!---------------------------------------------------------------------------
 subroutine siesta_forces( label, na, xa, cell, energy, fa, stress )
   implicit none
   character(len=*),   intent(in) :: label
@@ -258,7 +268,23 @@ subroutine siesta_forces( label, na, xa, cell, energy, fa, stress )
 
 end subroutine siesta_forces
 
-!---------------------------------------------------
+
+!---------------------------------------------------------------------------
+!------------------------ Units -------------------------------------------
+!---------------------------------------------------------------------------
+subroutine siesta_units( length, energy )
+  implicit none
+  character(len=*), intent(in) :: length, energy
+  xunit = length
+  eunit = energy
+  funit = trim(eunit)//'/'//trim(xunit)
+  sunit = trim(eunit)//'/'//trim(xunit)//'**3'
+end subroutine siesta_units
+
+
+!---------------------------------------------------------------------------
+!------------------------ Quit -------------------------------------------
+!---------------------------------------------------------------------------
 subroutine siesta_quit( label )
   implicit none
   character(len=*), intent(in) :: label
@@ -277,6 +303,10 @@ subroutine siesta_quit( label )
 
 end subroutine siesta_quit
 
+
+!---------------------------------------------------------------------------
+!------------------------ Quit -------------------------------------------
+!---------------------------------------------------------------------------
 subroutine siesta_quit_process(label)
   implicit none
   character(len=*), intent(in) :: label
@@ -296,6 +326,11 @@ subroutine siesta_quit_process(label)
     if (message == 'quitting') then  ! Check answer
       close(iuc,status="delete")     ! Close coordinates pipe
       close(iuf,status="delete")     ! Close forces pipe
+
+      !cleanup by removing pipe files
+      call system('rm '//trim(label)//'.coords')
+      call system('rm '//trim(label)//'.forces')
+      
       if (ip < np) then              ! Move last process to this slot
         p(ip)%label = p(np)%label
         p(ip)%iuc   = p(np)%iuc
@@ -308,8 +343,9 @@ subroutine siesta_quit_process(label)
 
 end subroutine siesta_quit_process
 
-!---------------------------------------------------
-
+!---------------------------------------------------------------------------
+!------------------------ Open pipes --------------------------------------
+!---------------------------------------------------------------------------
 subroutine open_pipes( label )
   implicit none
   character(len=*), intent(in) :: label
@@ -345,8 +381,9 @@ subroutine open_pipes( label )
 
 end subroutine open_pipes
 
-!---------------------------------------------------
-
+!--------------------------------------------------------------------
+!---------------- find free i/o units ------------------------------
+!--------------------------------------------------------------------
 subroutine get_io_units( iuc, iuf)
 ! Finds two available I/O unit numbers
   implicit none
@@ -374,8 +411,9 @@ subroutine get_io_units( iuc, iuf)
   stop 'fsiesta:get_io_units: ERROR: cannot find free I/O unit'
 end subroutine get_io_units
 
-!---------------------------------------------------
-
+!--------------------------------------------------------------------
+!---------------- find index ---------------------------------------
+!--------------------------------------------------------------------
 integer function idx( label )
 ! Finds which of the stored labels is equal to the input label
   implicit none
@@ -390,10 +428,9 @@ integer function idx( label )
   idx = 0
 end function idx
 
-!---------------------------------------------------
-!
-! Private copy of die
-!
+!--------------------------------------------------------------------
+!---------------- Private copy of die ------------------------------
+!--------------------------------------------------------------------
 subroutine die(msg)
 character(len=*), intent(in), optional :: msg
 

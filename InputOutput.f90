@@ -172,35 +172,52 @@ end subroutine read_and_initialize_all_nodes
 
 !----------------------------------------------------------------------------------
 !---------- Initialize potential-related variables ---------------------------- 
+! note: call siesta_units( "ang", 'kcal/mol' ) doesn't work- Siesta cant do kcal/mol
 !----------------------------------------------------------------------------------
 subroutine init_potential_all_nodes
  use fsiesta
+ use math, only: str
  Implicit None
- character(len=300) :: sys_command
+ character(len=400) :: sys_command
+ character(len=100) :: sys_label_i
  character(len=300) :: pipe_name
- 
+ integer :: nodes_per_process
+  
  if (pot_model .eq. 6) then
-	pipe_name = trim(sys_label)//".forces"
-	inquire(file=trim(pipe_name), exist=EXISTS) 
-	if (EXISTS .eqv. .true.) then 
-		sys_command = "rm "//pipe_name  
-		call system(trim(sys_command))
-	endif
-	pipe_name = trim(sys_label)//".coords"
-	inquire(file=trim(pipe_name), exist=EXISTS) 
-	if (EXISTS .eqv. .true.) then 
-		sys_command = "rm "//trim(pipe_name) 
-		call system(trim(sys_command))
-	endif
+ 
+	if (CONTRACTION .eqv. .false.) then 
 	
-  !! call siesta_units( "ang", 'kcal/mol' ) ! The combination of ang and kcal/mol doesn't work with Siesta for some reason
-	if (num_SIESTA_nodes .eq. 1) then  
-		call siesta_launch( trim(siesta_name), trim(sys_label)) !launch serial SIESTA process
-    elseif (num_SIESTA_nodes .gt. 1) then  
-		call siesta_launch(trim(siesta_name), trim(sys_label), nnodes=num_SIESTA_nodes ) !launch parallel SIESTA process  
+		!setup Nnodes SIESTA proccesses sharing num_SIESTA_nodes
+		nodes_per_process = floor(real(num_SIESTA_nodes)/real(Nnodes)) 
+	
+		do i = 1, Nbeads 
+
+		sys_label_i = trim(sys_label)//str(i)
+			
+			!make copies of .fdf
+			sys_command = "cp "//trim(sys_label)//".fdf "//trim(sys_label_i)//".fdf"
+			call system(trim(sys_command))
+		
+			sys_command = "sed -i -- 's/"//trim(sys_label)//"/"//trim(sys_label_i)//"/g' "//trim(sys_label_i)//".fdf"
+			call system(trim(sys_command))
+		
+			call siesta_launch(trim(siesta_name), trim(sys_label_i), nnodes=nodes_per_process ) !launch parallel SIESTA process  	
+		
+		enddo
+	
 	else
-		write(*,*) "InputOuput: ERROR: invalid number of SIESTA nodes!!"
+	
+		if (num_SIESTA_nodes .eq. 1) then  
+			call siesta_launch( trim(siesta_name), trim(sys_label)) !launch serial SIESTA process
+		elseif (num_SIESTA_nodes .gt. 1) then  
+			call siesta_launch(trim(siesta_name), trim(sys_label), nnodes=num_SIESTA_nodes ) !launch parallel SIESTA process  
+		else
+			write(*,*) "InputOuput: ERROR: invalid number of SIESTA nodes!!"
+			stop
+		endif
+
 	endif
+ 
  else
 	call init_pot
  endif 
@@ -571,7 +588,7 @@ subroutine write_out
  
  if (CALCGEOMETRY) then 
 	call start_timer("calc_geometry")
-	call calc_geometry(RRc, RRt, Nbeads)
+	call calc_geometry(RRc, RRt)
 	call stop_timer("calc_geometry")
  endif 
  
@@ -826,7 +843,7 @@ subroutine print_basic_run_info
  if (pot_model .eq. 3) write(lunTP_out,'(a50,a)') "Model = ", "TTM3F"
  if (pot_model .eq. 4) write(lunTP_out,'(a50,a)') "Model = ", "qSPCfw"
  if (pot_model .eq. 5) write(lunTP_out,'(a50,a)') "Model = ", "SPCf"
- if (pot_model .eq. 6) write(lunTP_out,'(a50,a,a,a,i5)') "Model = ", "SIESTA  sys_label = ", &
+ if (pot_model .eq. 6) write(lunTP_out,'(a50,a,a,a,a,i5)') "Model = ", trim(siesta_name), " sys_label = ", &
 									trim(sys_label), "  num_SIESTA_nodes = ", num_SIESTA_nodes
  write(lunTP_out,'(a50,i4,a,i4,a)') "Running with ", Nbeads, " beads on ", Nnodes, " nodes"
  write(lunTP_out,'(a50, i6)') "Num Molecules = ", Nwaters
@@ -1035,6 +1052,8 @@ subroutine shutdown
  call MPI_Finalize(ierr)
 
 end subroutine shutdown
+
+
 
 
 

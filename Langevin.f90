@@ -11,16 +11,15 @@ module Langevin
 contains
 
 !--------------- Langevin subroutine ---------------------------------
-subroutine Langevin_NM(PPt, Nbeads)
+subroutine Langevin_NM(PPt)
  use NormalModes
  use math
  use consts
- use system_mod
+ use system_mod !source of Nbeads
  Implicit none
  double precision, dimension(3,Natoms,Nbeads), intent(inout) :: PPt 
  double precision, dimension(3,Nbeads)  :: PPtr
  double precision :: sqrtmass
- integer, intent(in) :: Nbeads
  integer :: i2, j, k
  
  do i2 = 1, Natoms

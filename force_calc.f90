@@ -6,6 +6,7 @@ module force_calc
 !--------------------------------------------------------------------------------------------
 subroutine full_bead_forces
  use main_stuff 
+ use math, only: str
  Implicit None 
 
  do bat = 0, Nbatches - 1 !batch index
@@ -23,7 +24,8 @@ subroutine full_bead_forces
 		!masternode force & virial calculation
 		k = bat*Nnodes + Nnodes  
 
-		call potential(RRt(:,:,k), RRc, Upott(k), dRRt(:,:,k), virt, virialct(k), dip_momIt(:,:,k), dip_momEt(:,:,k), chg, t, BAROSTAT)
+		call potential(RRt(:,:,k), RRc, Upott(k), dRRt(:,:,k), virt, virialct(k), &
+					dip_momIt(:,:,k), dip_momEt(:,:,k), chg, t, BAROSTAT, sys_lab=trim(sys_label)//trim(str(pid+1)))
 
 		virialt(k) = virt(1,1) + virt(2,2) + virt(3,3)	
 
@@ -33,12 +35,16 @@ subroutine full_bead_forces
 			k = bat*Nnodes + i  
 			!masternode receive derivatives
 			call MPI_Recv(dRRt(:,:,k), counti, MPI_DOUBLE_PRECISION, i, 0, MPI_COMM_WORLD, status2, ierr)
+			
 			!masternode recieve energies
 			call MPI_Recv(Upott(k), 1, MPI_DOUBLE_PRECISION, i, 0, MPI_COMM_WORLD, status2, ierr)	
+			
 			!masternode receive virials
 			call MPI_Recv(virialt(k), 1, MPI_DOUBLE_PRECISION, i, 0, MPI_COMM_WORLD, status2, ierr)	
+			
 			!masternode receive centroid virials
 			call MPI_Recv(virialct(k), 1, MPI_DOUBLE_PRECISION, i, 0, MPI_COMM_WORLD, status2, ierr)	
+			
 			!masternode recieve dipole moments		
 			if (dip_out .or. TD_out) call MPI_Recv(dip_momIt(:,:,k), 3*Nwaters, MPI_DOUBLE_PRECISION, i, 0, MPI_COMM_WORLD, status2, ierr)
 			if (Edip_out) call MPI_Recv(dip_momEt(:,:,k), 3*Nwaters, MPI_DOUBLE_PRECISION, i, 0, MPI_COMM_WORLD, status2, ierr)
@@ -48,19 +54,26 @@ subroutine full_bead_forces
 #ifdef parallel
 		!slavenode recieve coords from master node
 		call MPI_Recv(RR, counti, MPI_DOUBLE_PRECISION, 0, 0, MPI_COMM_WORLD, status2, ierr)
+		
 		!slavenode recieve centroid coords from master node
 		call MPI_Recv(RRc, 3*Natoms, MPI_DOUBLE_PRECISION, 0, 0, MPI_COMM_WORLD, status2, ierr)
+		
 		!slavenode force & virial calculation
-		call potential(RR, RRc, Upot, dRR, virt, virialc, dip_momI, dip_momE, chg, t, BAROSTAT)
+		call potential(RR, RRc, Upot, dRR, virt, virialc, dip_momI, dip_momE, chg, t, BAROSTAT, sys_lab=trim(sys_label)//trim(str(pid+1)))
 		virial = virt(1,1) + virt(2,2) + virt(3,3)	
+		
 		!slavenode send back derivative
 		call MPI_Send(dRR, counti, MPI_DOUBLE_PRECISION, 0, 0, MPI_COMM_WORLD, ierr) 
+		
 		!slavenode send back energy
 		call MPI_Send(Upot, 1, MPI_DOUBLE_PRECISION, 0, 0, MPI_COMM_WORLD, ierr) 
+		
 		!slavenode send back virial
 		call MPI_Send(virial, 1, MPI_DOUBLE_PRECISION, 0, 0, MPI_COMM_WORLD, ierr) 
+		
 		!slavenode send back centroid virial
 		call MPI_Send(virialc, 1, MPI_DOUBLE_PRECISION, 0, 0, MPI_COMM_WORLD, ierr) 
+		
 		!slavenode send back dipole moments 
 		if (dip_out .or. TD_out) call MPI_Send(dip_momI, 3*Nwaters, MPI_DOUBLE_PRECISION, 0, 0, MPI_COMM_WORLD, ierr)
 		if (Edip_out) call MPI_Send(dip_momE, 3*Nwaters, MPI_DOUBLE_PRECISION, 0, 0, MPI_COMM_WORLD, ierr)
@@ -77,14 +90,13 @@ if (pid .eq. 0) then
  
  !computation of dipole moments for the SIESTA case 
  if (pot_model .eq. 6) then 
-	call calc_dip_moments(dip_momIt, RRt, Nbeads)
+	call calc_dip_moments(dip_momIt, RRt)
  endif
- 
- 
  
 endif 
 
 end subroutine full_bead_forces
+
 
 
 !--------------------------------------------------------------------------------------------
@@ -212,7 +224,7 @@ if (pid .eq. 0) then
  call stop_timer("MonomerPIMD")
  
  !intermolecular force calculation
- call potential(RRc, RRc, Upot, dRRc, virt, virialc, dip_momI, dip_momE, chg, t, BAROSTAT)
+ call potential(RRc, RRc, Upot, dRRc, virt, virialc, dip_momI, dip_momE, chg, t, BAROSTAT, sys_lab=sys_label)
 
  !update dRRt
  do j = 1, Nbeads
@@ -258,31 +270,42 @@ endif !(pid .eq. 0) then
 end subroutine contracted_forces
 
 
+
+
+
+
+
+
+
+
+
 !---------------------------------------------------------------------
 !-----------------Call correct potential ----------------------------
 !---------------------------------------------------------------------
-subroutine potential(RR, RRc, Upot, dRR, virt, virialc, dip_momI, Edip_mom, chg, t, BAROSTAT)
-use consts
-use system_mod
-use pot_mod
-use fsiesta
-use dans_timer
-implicit none
-double precision, dimension(3, Natoms), intent(in) :: RR, RRc
-double precision, intent(out) :: Upot, virialc
-double precision, dimension(3, Natoms), intent(out) :: dRR
-double precision, dimension(3, 3), intent(out) :: virt
-double precision, dimension(Natoms), intent(out)  :: chg
-double precision, dimension(3, NWaters), intent(out)  ::  dip_momI, Edip_mom
-double precision, dimension(3) :: dip_mom
-integer, intent(in) :: t
-logical, intent(in) :: BAROSTAT
-double precision, dimension(3,3) :: siesta_box
+subroutine potential(RR, RRc, Upot, dRR, virt, virialc, dip_momI, Edip_mom, chg, t, BAROSTAT, sys_lab)
+ use consts
+ use system_mod
+ use pot_mod
+ use fsiesta
+ use dans_timer
+ implicit none
+ double precision, dimension(3, Natoms), intent(in) :: RR, RRc
+ double precision, intent(out) :: Upot, virialc
+ double precision, dimension(3, Natoms), intent(out) :: dRR
+ double precision, dimension(3, 3), intent(out) :: virt
+ double precision, dimension(Natoms), intent(out)  :: chg
+ double precision, dimension(3, NWaters), intent(out)  ::  dip_momI, Edip_mom
+ character(len=*), optional, intent(in) :: sys_lab
+ double precision, dimension(3) :: dip_mom
+ integer, intent(in) :: t
+ logical, intent(in) :: BAROSTAT
+ double precision, dimension(3,3) :: siesta_box
    
-siesta_box = 0.0
-siesta_box(1,1) = box(1)
-siesta_box(2,2) = box(2)
-siesta_box(3,3) = box(3) 
+ siesta_box = 0.0
+ siesta_box(1,1) = box(1)
+ siesta_box(2,2) = box(2)
+ siesta_box(3,3) = box(3) 
+
 
 !All the stuff that depends on volume needs to be rescaled. 
  p4V = FOURPI/volume
@@ -291,36 +314,37 @@ siesta_box(3,3) = box(3)
 !multiplying by a correction factor is slightly more efficient than recalculating the entire Uvdw_lrc term each timestep
  Uvdw_lrc = Uvdw_lrc0*(volume_init/volume)
 
-!If the volume is changing than the Ewald k-vectors have to be reset every timestep
-!if (BAROSTAT) call ewald_set(.false.)
+ !If the volume is changing than the Ewald k-vectors have to be reset every timestep
+ !if (BAROSTAT) call ewald_set(.false.)
 
-if (pot_model==2 .or. pot_model==3) then
-    call pot_ttm(RR, RRc, Upot, dRR, virt, virialc, dip_momI, Edip_mom, chg,t)
-else if (pot_model==4 .or. pot_model==5) then
-    call pot_spc(RR, Upot, dRR, virt, dip_momI, chg)
-else if (pot_model==6) then 
-    call start_timer("SIESTA")
-  !  write(*,*) "RR=", RR
-  ! write(*,*) "box=", siesta_box
-    call siesta_forces( trim(sys_label), Natoms, RR, cell=siesta_box, energy=Upot, fa=dRR)
+ if (pot_model==2 .or. pot_model==3) then
+     call pot_ttm(RR, RRc, Upot, dRR, virt, virialc, dip_momI, Edip_mom, chg,t)
+ else if (pot_model==4 .or. pot_model==5) then
+     call pot_spc(RR, Upot, dRR, virt, dip_momI, chg)
+ else if (pot_model==6) then 
+
+	call start_timer("SIESTA")
+    call siesta_forces( trim(sys_lab), Natoms, RR, cell=siesta_box, energy=Upot, fa=dRR)
     call stop_timer("SIESTA")
     Upot = Upot*EVTOKCALPERMOLE
     dRR = -1d0*dRR*EVTOKCALPERMOLE    
-endif
+
+ endif
 
 end subroutine potential
+
+
 
 
 !---------------------------------------------------------------------
 !- Calculate dipole moments using the TIP4P/2005 charges and m-site 
 !- for the coordinates obtained from a SIESTA calculation 
 !---------------------------------------------------------------------
-subroutine calc_dip_moments(dip_momIt, RRt, Nbeads)
+subroutine calc_dip_moments(dip_momIt, RRt)
  use consts
  use pot_mod
- use system_mod
+ use system_mod !source of Nbeads, box, boxi
  implicit none
- integer, intent(in) :: Nbeads 
  double precision, dimension(3, Nwaters, Nbeads), intent(out) :: dip_momIt
  double precision, dimension(3, 3*Nwaters, Nbeads), intent(in) :: RRt
  double precision, dimension(3,3) :: r1, dq3

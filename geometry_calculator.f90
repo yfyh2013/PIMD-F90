@@ -19,10 +19,9 @@ integer, save :: num_total=0
 !-------------------------------------------------------------
 !-- compute geometry ----------------------------------------
 !-------------------------------------------------------------
-subroutine calc_geometry(RR, RRt, Nbeads)
+subroutine calc_geometry(RR, RRt)
  use system_mod !source of Natoms, Nbeads, and boxi
  implicit none
- integer, intent(in) :: Nbeads
  double precision, dimension(3,Natoms,Nbeads), intent(in) :: RRt ! 3xNatomsxNbeads
  double precision, dimension(3,Natoms), intent(in) :: RR ! 3xNatoms
  double precision, dimension(3) :: ROH1, ROH2, RHH

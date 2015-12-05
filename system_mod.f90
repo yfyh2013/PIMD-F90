@@ -12,7 +12,7 @@ module system_mod
    double precision :: Rc, rc1, Rc2, volume, volume_init, eps_ewald
    double precision :: polar_sor, polar_eps
    integer :: polar_maxiter !changed to integer by D. Elton
-   integer :: Natoms, Nwaters 
+   integer :: Natoms, Nwaters, Nbeads
    integer, dimension(:,:), allocatable :: neigh_list
    integer :: predict_step
    double precision :: const_ts1, const_ts2, const_ts3
