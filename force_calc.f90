@@ -78,7 +78,7 @@ subroutine full_bead_forces
 		if (dip_out .or. TD_out) call MPI_Send(dip_momI, 3*Nwaters, MPI_DOUBLE_PRECISION, 0, 0, MPI_COMM_WORLD, ierr)
 		if (Edip_out) call MPI_Send(dip_momE, 3*Nwaters, MPI_DOUBLE_PRECISION, 0, 0, MPI_COMM_WORLD, ierr)
 #endif
-	endif
+	endif! (pid .eq. 0)
 	Call MPI_Barrier(MPI_COMM_WORLD, ierr)
  
  enddo! j = 0, Nbatches - 1 !batch index
