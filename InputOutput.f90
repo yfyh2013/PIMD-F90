@@ -85,7 +85,7 @@ subroutine read_input_file
  CALCDIFFUSION = .true. !computes diffusion constant of oxygen atoms
  read_method = 1 !read_method(=0,1) (0 for OOOO....HHHHH and 1 for OHHOHHOHH...)
  SIMPLE_ENERGY_ESTIMATOR = .true. !setting this to true will output the simple energy to temp/press file
- CALCIRSPECTRA = .true. !store dipole moments and calculate IR spectra at end of run
+ CALCIRSPECTRA = .false. !store dipole moments and calculate IR spectra at end of run
  CALCDOS = .true. 
  
 end subroutine read_input_file 
@@ -328,6 +328,7 @@ endif
 	CompFac = ((4.477d-5)*delt)/(3*tau_P) !Barostat var. (contains compressibility of H2O)
 	sum_temp = 0 
 	sum_press = 0 
+	sum_pot_en_per_mol = 0
 	sum_tot_energy = 0 
 	sum_simple_energy = 0 
 	sum_simple_energy2 = 0 
@@ -495,6 +496,7 @@ subroutine write_out
 	sum_RMSenergy = 0
 	sum_radiusH = 0
 	sum_radiusO = 0 
+	sum_pot_en_per_mol = 0 
 	if (CALCGEOMETRY) call write_out_geometry(lunTP_out,Nbeads)
 	if (CALCGEOMETRY) call reset_geometry
  endif 
@@ -508,12 +510,13 @@ subroutine write_out
 	write(lunTP_out,'(a)',advance='no') "avgP(vir) "
 	if (SIMPLE_ENERGY_ESTIMATOR) write(lunTP_out,'(a)',advance='no') "avgP(simp)"
 
-	!write(lunTP_out,'(a)',advance='no') "  Pot E  "
 	!write(lunTP_out,'(a)',advance='no') "  Tot E  "
 	write(lunTP_out,'(a)',advance='no') " avgTotE(vir) " 
-										
 	!if (SIMPLE_ENERGY_ESTIMATOR) write(lunTP_out,'(a)',advance='no')  " Tot E (simple) " 
 	if (SIMPLE_ENERGY_ESTIMATOR) write(lunTP_out,'(a)',advance='no')   " avgTotE(simp)"
+
+	write(lunTP_out,'(a)',advance='no') "avgPotE/mol  "
+	
 	if (CALC_RADIUS_GYRATION)    write(lunTP_out,'(a,a)',advance='no') " r_O  ", "r_H "
 	if (DIELECTRICOUT)           write(lunTP_out,'(a)',advance='no') "  eps(0)  "
 	!write(lunTP_out,'(a)',advance=no") " density kg/m^3 "
@@ -553,6 +556,7 @@ subroutine write_out
  sum_temp          = sum_temp + sys_temp
  sum_tot_energy2   = sum_tot_energy2 + tot_energy**2
  sum_RMSenergy     = sum_RMSenergy + (tot_energy - sum_tot_energy/tr)**2
+ sum_pot_en_per_mol = sum_pot_en_per_mol + sum(Upott)/Nwaters/Nbeads
 
  !!debug options
  !write(*,*) "Upot   " , Upot
@@ -616,6 +620,8 @@ subroutine write_out
 	 !write(lunTP_out,'(f10.2)',advance='no') simple_energy
 	 write(lunTP_out,'(f10.2)',advance='no') sum_simple_energy/tr
 	endif
+	
+	write(lunTP_out,'(f10.2)',advance='no') sum_pot_en_per_mol/tr
 
 	if (CALC_RADIUS_GYRATION) then
 		!write(lunTP_out,'(1x,f6.4,1x,f6.4)',advance='no')  radiusO, radiusH

@@ -98,7 +98,6 @@ endif
 end subroutine full_bead_forces
 
 
-
 !--------------------------------------------------------------------------------------------
 !------------- Contracted force calculation with intermolecular forces on monomer ----------
 !-- This subroutine performs evaluates only the intramolecular (fast) forces on the beads and 
@@ -306,13 +305,12 @@ subroutine potential(RR, RRc, Upot, dRR, virt, virialc, dip_momI, Edip_mom, chg,
  siesta_box(2,2) = box(2)
  siesta_box(3,3) = box(3) 
 
+ !All the stuff that depends on volume needs to be rescaled if using the barostat
+ if (BAROSTAT) p4V = FOURPI/volume
 
-!All the stuff that depends on volume needs to be rescaled. 
- p4V = FOURPI/volume
-
-!scale VdW long range correction due to box size change and add correction
-!multiplying by a correction factor is slightly more efficient than recalculating the entire Uvdw_lrc term each timestep
- Uvdw_lrc = Uvdw_lrc0*(volume_init/volume)
+ !scale VdW long range correction due to box size change and add correction
+ !multiplying by a correction factor is slightly more efficient than recalculating the entire Uvdw_lrc term each timestep
+ if (BAROSTAT) Uvdw_lrc = Uvdw_lrc0*(volume_init/volume)
 
  !If the volume is changing than the Ewald k-vectors have to be reset every timestep
  !if (BAROSTAT) call ewald_set(.false.)
@@ -332,6 +330,8 @@ subroutine potential(RR, RRc, Upot, dRR, virt, virialc, dip_momI, Edip_mom, chg,
  endif
 
 end subroutine potential
+
+
 
 
 

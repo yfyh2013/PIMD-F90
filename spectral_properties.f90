@@ -9,7 +9,7 @@ module spectral_properties
  use consts
  implicit none
  Integer 			 		 :: NumPointsOut = 250 !maximum number of points to use 
- double precision, parameter :: MaxFreqOut = 4500  !maximum frequency to plot (cm^-1)
+ double precision, parameter :: MaxFreqOut = 5000  !maximum frequency to plot (cm^-1)
  
  contains 
  
@@ -98,7 +98,7 @@ subroutine calc_infrared_spectrum1(dip_moms,box,timestep,fsave,temp)
   !block averaging
   avgMag = 0 
   do i = 1, NumAvgOver
-	omega=( t*NumAvgOver+i )/(timestep*ps2s*n) !get freq in 1/s (Hz
+	omega=( t*NumAvgOver+i )/(timestep*ps2s*n) !get freq in 1/s (Hz)
 	avgMag = avgMag + omega*tanh(hbarSI*omega/(Kb*2.0d0*Temp))*real(aux1(t*NumAvgOver+i)) 
   enddo
   avgMag = avgMag/real(NumAvgOver)
