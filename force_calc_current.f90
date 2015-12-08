@@ -134,23 +134,23 @@ if (pid .eq. 0) then
    !---  intramolecular (fast) forces -------------------------------------------------
   do tintra = 1, intra_timesteps
 
-	!update momenta with fast forces
+	!update momenta with fast forces (delt2fast = deltfast/2)
 	PPt = PPt - MASSCON*dRRfast*delt2fast
 
 	!update positions with fast forces
 	if (Nbeads .gt. 1) then
 		do i = 1, Nwaters
-			!Evolve ring a full step 
 			Call EvolveRing(RRt(:,3*i-2,:), PPt(:,3*i-2,:), Nbeads, massO)
 			Call EvolveRing(RRt(:,3*i-1,:), PPt(:,3*i-1,:), Nbeads, massH)
 			Call EvolveRing(RRt(:,3*i-0,:), PPt(:,3*i-0,:), Nbeads, massH)
 		enddo
 	else 
+		!for speed 
 		do i = 1,Nwaters
 			do k = 1,Nbeads
-				RRt(:,3*i-2,k) = RRt(:,3*i-2,k) + imassO*PPt(:,3*i-2,k)*delt2fast
-				RRt(:,3*i-1,k) = RRt(:,3*i-1,k) + imassH*PPt(:,3*i-1,k)*delt2fast
-				RRt(:,3*i-0,k) = RRt(:,3*i-0,k) + imassH*PPt(:,3*i-0,k)*delt2fast
+				RRt(:,3*i-2,k) = RRt(:,3*i-2,k) + imassO*PPt(:,3*i-2,k)*deltfast
+				RRt(:,3*i-1,k) = RRt(:,3*i-1,k) + imassH*PPt(:,3*i-1,k)*deltfast
+				RRt(:,3*i-0,k) = RRt(:,3*i-0,k) + imassH*PPt(:,3*i-0,k)*deltfast
 			enddo
 		enddo			
 	endif	  
@@ -315,8 +315,8 @@ subroutine potential(RR, RRc, Upot, dRR, virt, virialc, dip_momI, Edip_mom, chg,
  !If the volume is changing than the Ewald k-vectors have to be reset every timestep
  !if (BAROSTAT) call ewald_set(.false.)
 
-if (pot_model==2 .or. pot_model==3) then
-    call pot_ttm(RR, RRc, Upot, dRR, virt, virialc, dip_momI, Edip_mom, chg,t)
+ if (pot_model==2 .or. pot_model==3) then
+     call pot_ttm(RR, RRc, Upot, dRR, virt, virialc, dip_momI, Edip_mom, chg,t)
  else if (pot_model==4 .or. pot_model==5) then
      call pot_spc(RR, Upot, dRR, virt, dip_momI, chg)
  else if (pot_model==6) then 
@@ -330,6 +330,12 @@ if (pot_model==2 .or. pot_model==3) then
  endif
 
 end subroutine potential
+
+
+
+
+
+
 
 
 
@@ -384,6 +390,10 @@ subroutine calc_dip_moments(dip_momIt, RRt)
  enddo
   
 end subroutine calc_dip_moments
+
+
+
+
 
 
 

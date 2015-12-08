@@ -486,6 +486,7 @@ subroutine write_out
 	ttt    = 0
 	sum_temp = 0 
 	sum_press = 0 
+	sum_dip_mag = 0 
 	sum_dip = 0 
 	sum_dip2 = 0 
 	sum_tot_energy = 0 
@@ -583,7 +584,11 @@ subroutine write_out
  
  !caculate total dipole moment (in Debye)
  dip_mom(:) = sum(dip_momI(:,:), dim=2)
- sum_dip  = sum_dip  + dip_mom
+ sum_dip  = sum_dip  + dip_mom 
+ 
+ do iw=1,Nwaters
+	sum_dip_mag = sum_dip_mag + dsqrt(dot_product(dip_momI(:,iw), dip_momI(:, iw))) 
+ enddo
 
  
  !update quantities for dielectric constant 
@@ -639,7 +644,7 @@ subroutine write_out
 		!endif 
 	endif 
 	
-	write(lunTP_out,'(1x,f6.2)',advance='no') dsqrt(dot_product(sum_dip,sum_dip))/tr !dipole moment
+	write(lunTP_out,'(1x,f6.2)',advance='no') sum_dip_mag/tr/Nwaters !avg dipole moment
 
 
 	!feature to output the current density (for debugging the barostat) 
