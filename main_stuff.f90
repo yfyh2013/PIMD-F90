@@ -7,11 +7,11 @@ Implicit none
 !-------------- "global" variables used by PIMD.f90 and others -------------------
 !----------------------------------------------------------------------------------
 !-old variables from TTMF code -----------------------------
-real(8), dimension(:,:), allocatable :: RR, dRR
-real(8), dimension(:), allocatable :: chg
-real(8), dimension(3,3) :: virt
-real(8), dimension(3) :: dip_mom
-real(8), dimension(:,:), allocatable :: dip_momI, dip_momE
+double precision, dimension(:,:), allocatable :: RR, dRR
+double precision, dimension(:), allocatable :: chg
+double precision, dimension(3,3) :: virt
+double precision, dimension(3) :: dip_mom
+double precision, dimension(:,:), allocatable :: dip_momI, dip_momE
 real, dimension(:,:), allocatable ::  dip_mom_all_times
 real, dimension(:,:,:), allocatable :: Hvelocities	
 integer :: i, iw, iat,  iO, ih1, ih2, narg, ia, read_method
@@ -19,16 +19,16 @@ integer :: ix, iy, iz
  character(len=2) :: ch2
  character(len=125) :: finp, fconfig, fsave 
 !-new variables:--------------------------------------------
-real(8), dimension(:,:), allocatable :: VV, dRRold, dRRnew
-real(8), dimension(3) :: summom, sumvel, sum_dip, avg_box, avg_box2, sum_box, sum_box2
-real(8) :: delt, delt2,  uk,  imassO, imassH
-real(8) :: temp, sum_temp, sum_press, sys_temp, avg_vel, init_energy, sum_RMSenergy
-real(8) :: tot_energy, sum_tot_energy,  sum_tot_energy2, sum_energy2, sum_simple_energy, sum_simple_energy2, simple_energy
-real(8) :: specific_heat, avg_temp, init_temp, sum_dip2, sum_simple_press, simple_sys_press, sum_pot_en_per_mol, sum_dip_mag
-real(8) :: dielectric_constant, diel_prefac, dielectric_error, sys_press, init_time=0d0
-real(8), dimension(1000)  :: dielectric_running
+double precision, dimension(:,:), allocatable :: VV, dRRold, dRRnew
+double precision, dimension(3) :: summom, sumvel, sum_dip, avg_box, avg_box2, sum_box, sum_box2
+double precision :: delt, delt2,  uk,  imassO, imassH
+double precision :: temp, sum_temp, sum_press, sys_temp, avg_vel, init_energy, sum_RMSenergy
+double precision :: tot_energy, sum_tot_energy,  sum_tot_energy2, sum_energy2, sum_simple_energy, sum_simple_energy2, simple_energy
+double precision :: specific_heat, avg_temp, init_temp, sum_dip2, sum_simple_press, simple_sys_press, sum_pot_en_per_mol, sum_dip_mag
+double precision :: dielectric_constant, diel_prefac, dielectric_error, sys_press, init_time=0d0
+double precision, dimension(1000)  :: dielectric_running
 integer  :: dielectric_index = 1
-real(8) ::  isotherm_compress
+double precision ::  isotherm_compress
 integer, dimension(:), allocatable :: seed
  character(len=125) :: dip_file
  character(len=11)  :: bead_thermostat_type
@@ -45,35 +45,35 @@ integer :: lundip_out, luncoord_out, lunCHARGESOUT, lunvel_out,  lunTP_out
 integer :: lunEdip_out, lunIMAGEDIPOLESOUT, lunTD_out, lunOUTPUTIMAGES
 
 !N-H variables
-real(8), save :: tau, tau_centroid, s, sbead
+double precision, save :: tau, tau_centroid, s, sbead
 integer, save :: global_chain_length, bead_chain_length 
 
 !Nose-Hoover chain velocities for all beads are stored here
-real(8), dimension(:,:,:,:), allocatable :: vxi_beads
+double precision, dimension(:,:,:,:), allocatable :: vxi_beads
 
 !Nose-Hoover global chain velocities are stored here
-real(8), dimension(:), allocatable     :: vxi_global
+double precision, dimension(:), allocatable     :: vxi_global
 
 !-Berendsen thermostat variables
-real(8) :: tau_P, ref_P, press, CompFac, scale_factor
+double precision :: tau_P, ref_P, press, CompFac, scale_factor
 
 !- Variables for the paralleziation / PIMD
-real(8), dimension(:,:,:), allocatable :: RRt, PPt, dip_momIt, dip_momEt, dRRt
-real(8), dimension(:,:), allocatable :: RRc, PPc
-real(8), dimension(:), allocatable :: Upott, Virialt, virialct
-real(8) ::  Upot,  virial, virialc, omegan, kTN, iNbeads, setNMfreq
-real(8) :: radiusH, radiusO, sum_radiusO, sum_radiusH
+double precision, dimension(:,:,:), allocatable :: RRt, PPt, dip_momIt, dip_momEt, dRRt
+double precision, dimension(:,:), allocatable :: RRc, PPc
+double precision, dimension(:), allocatable :: Upott, Virialt, virialct
+double precision ::  Upot,  virial, virialc, omegan, kTN, iNbeads, setNMfreq
+double precision :: radiusH, radiusO, sum_radiusO, sum_radiusH
 integer :: Nnodes, pid, j, k, ierr, Nbatches, counti, bat
 integer :: status2(MPI_STATUS_SIZE)
 
 ! time variable
 character(8)  :: date
 character(10) :: time
-real(8) :: seconds 
+double precision :: seconds 
 
 !variables for multiple timestep / contraction
 integer :: intra_timesteps, num_SIESTA_nodes
-real(8) :: deltfast, delt2fast  
+double precision :: deltfast, delt2fast  
 character(len=200) :: siesta_name
 
  contains
@@ -87,9 +87,9 @@ character(len=200) :: siesta_name
 !where beads are outside the box
 subroutine PBCs(RRt, RRc)
  Implicit none 
- real(8), dimension(3, Natoms,Nbeads), intent(inout) :: RRt
- real(8), dimension(3, Natoms), intent(inout) :: RRc
- real(8), dimension(3, Natoms) :: shifts 
+ double precision, dimension(3, Natoms,Nbeads), intent(inout) :: RRt
+ double precision, dimension(3, Natoms), intent(inout) :: RRc
+ double precision, dimension(3, Natoms) :: shifts 
  integer :: i
 
 	!store the shifts here 
@@ -175,8 +175,8 @@ end subroutine bead_thermostat
 !----------------------------------------------------------------------------------!
 subroutine calc_radius_of_gyration(RRt, RRc) 
  Implicit None
- real(8), dimension(3,Natoms,Nbeads),intent(in)  :: RRt
- real(8), dimension(3,Natoms),intent(in)         :: RRc
+ double precision, dimension(3,Natoms,Nbeads),intent(in)  :: RRt
+ double precision, dimension(3,Natoms),intent(in)         :: RRc
  integer    	    :: i, j, iH1, iH2, iO
 
  radiusH = 0d0 
@@ -224,8 +224,8 @@ end subroutine Pcouple
 !----------------------------------------------------------------------------------!
 subroutine initialize_beads
 use NormalModes
-real(8), dimension(:,:), allocatable :: RRtemp
-real(8) :: avgrO, avgrH
+double precision, dimension(:,:), allocatable :: RRtemp
+double precision :: avgrO, avgrH
 allocate(RRtemp(3,Nbeads))
 
 !predict average radius of the ring polymer
@@ -329,7 +329,7 @@ end subroutine initialize_velocities
 !---------------------------------------------------------------------------------
 subroutine calc_uk
  use NormalModes
- real(8), dimension(3,Nbeads) :: PPtr 
+ double precision, dimension(3,Nbeads) :: PPtr 
 
 
 if ((setNMfreq .eq. 0) .or. (Nbeads .eq. 1) ) then 
