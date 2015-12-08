@@ -1,3 +1,5 @@
+
+
 !---------------------------------------------------------------------!
 !-----------------Initialize potential variables ---------------------
 !---------------------------------------------------------------------!
@@ -65,7 +67,6 @@ else if (pot_model==3) then
    fdI = 4; ldI=4
         
    !GROMACS VdW shift parameters. see GROMACS manual Ch. 4
-   !D.C. Elton
    if (Rc .eq. rc1) then
 	shiftA = 0
 	shiftB = 0 
@@ -73,6 +74,7 @@ else if (pot_model==3) then
 	shiftA = - (10*Rc - 7*rc1 )/(Rc**8 * (Rc - rc1)**2) 
    	shiftB =   (9*Rc - 7*rc1 )/ (Rc**8 * (Rc - rc1)**3)
    endif
+
 
    !Coloumb shift parameters (not used & not recommended!)
    !shiftAc = -(5*Rc - 2*rc1 )/(Rc**3 * (Rc - rc1)**2 )
