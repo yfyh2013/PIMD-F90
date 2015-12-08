@@ -7,10 +7,10 @@
 
 module geometry_calculator
 implicit none
-real, save :: sum_HH=0,   sum_OH=0,  sum_HOH=0 !distances
-real, save :: sum_HH2=0,  sum_OH2=0, sum_HOH2=0 !distances squared
-real, save :: bsum_HH=0,  bsum_OH=0,  bsum_HOH=0 !bead-bead distances
-real, save :: bsum_HH2=0, bsum_OH2=0, bsum_HOH2=0 !bead-bead distances2
+double precision, save :: sum_HH=0,   sum_OH=0,  sum_HOH=0    !centroid-centroid distances
+double precision, save :: sum_HH2=0,  sum_OH2=0, sum_HOH2=0   !centroid-centroid distances squared
+double precision, save :: bsum_HH=0,  bsum_OH=0,  bsum_HOH=0  !bead-bead distances
+double precision, save :: bsum_HH2=0, bsum_OH2=0, bsum_HOH2=0 !bead-bead distances squared
 
 integer, save :: num_total=0
 
