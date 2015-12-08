@@ -248,9 +248,9 @@ endif
 if ((CENTROIDTHERMOSTAT .or. BEADTHERMOSTAT) .and. (Nbeads .eq. 1)) then
 	write(lunTP_out,*) "InputOutput: WARNING: Bead/centroid thermostating does not make much sense with 1 bead."
 	write(lunTP_out,*) "InputOutput: WARNING: The dynamics will be unphysical since every atomic DOF will be thermostated. "
-	write(lunTP_out,*) "InputOutput: WARNING: --- The bead thermostat is being turned off ----"
-	if (CENTROIDTHERMOSTAT) CENTROIDTHERMOSTAT = .false.
-	if (BEADTHERMOSTAT) BEADTHERMOSTAT = .false.
+	!write(lunTP_out,*) "InputOutput: WARNING: --- The bead thermostat is being turned off ----"
+	!if (CENTROIDTHERMOSTAT) CENTROIDTHERMOSTAT = .false.
+	!if (BEADTHERMOSTAT) BEADTHERMOSTAT = .false.
 endif
 
 if (BEADTHERMOSTAT .and. .not. (THERMOSTAT)) then
@@ -449,9 +449,9 @@ subroutine open_files
 
  if (coord_out)      call io_open(luncoord_out,'out_'//TRIM(fsave)//'_coord.xyz')
  if (vel_out)        call io_open(lunVEL_OUT,'out_'//TRIM(fsave)//'_momenta.dat')
- if (OUTPUTIMAGES)   call io_open(lunOUTPUTIMAGES,'out_'//TRIM(fsave)//'_images_coord.xyz',APPEND=.true.)
+ if (OUTPUTIMAGES)   call io_open(lunOUTPUTIMAGES,'out_'//TRIM(fsave)//'_images_coord.xyz')!,APPEND=.true.)
  if (dip_out)        call io_open(lundip_out,'out_'//TRIM(fsave)//'_dip.dat')
- if (TD_out)         call io_open(lunTD_out,'out_'//TRIM(fsave)//'_tot_dip.dat',APPEND=.true.)
+ if (TD_out)         call io_open(lunTD_out,'out_'//TRIM(fsave)//'_tot_dip.dat') !,APPEND=.true.)
  if  (Edip_out)      call io_open(lunEdip_out,'out_'//TRIM(fsave)//'_Edip.dat')
  if (BOXSIZEOUT)     call io_open(lunBOXSIZEOUT,'out_'//TRIM(fsave)//'_box.dat')
  if (CHARGESOUT)     call io_open(lunCHARGESOUT,'out_'//TRIM(fsave)//'_chgs.dat')

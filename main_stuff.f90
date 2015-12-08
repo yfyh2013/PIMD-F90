@@ -106,6 +106,7 @@ subroutine PBCs(RRt, RRc)
 end subroutine PBCs
 
 
+
 !----------------------------------------------------------------------------------!
 !-------------- calling bead thermostat ------------------------------------------- 
 !----------------------------------------------------------------------------------!
@@ -113,8 +114,8 @@ subroutine bead_thermostat
  use NormalModes
  use Langevin 
  Implicit None
- real(8), dimension(3,Nbeads) :: PPtr 
- real(8) :: uk_bead, tau, imass
+ double precision, dimension(3,Nbeads) :: PPtr 
+ double precision :: uk_bead, tau, imass
  Integer :: i, j, k 
 !- Calling Langevin thermostat -----------------------------------------------------
  if (bead_thermostat_type .eq. 'Langevin') then
@@ -331,8 +332,7 @@ subroutine calc_uk
  real(8), dimension(3,Nbeads) :: PPtr 
 
 
-if (setNMfreq .eq. 0) then 
-
+if ((setNMfreq .eq. 0) .or. (Nbeads .eq. 1) ) then 
 
  uk = 0 
  do j = 1, Nbeads

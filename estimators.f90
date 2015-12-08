@@ -33,20 +33,20 @@ subroutine quantum_virial_estimators(RRt, virial, virialc, qEnergy, qPress, sys_
 end subroutine quantum_virial_estimators
 
 
-!----------------------------------------------------------------------------------
-!- Simple quantum estimators for energy & pressure 
-!- these simple estimators take a long time to converge with 4+ beads
-!----------------------------------------------------------------------------------
+!----------------------------------------------------------------------------------!
+!- Simple quantum estimators for energy & pressure --------------------------------
+!----------------------------------------------------------------------------------!
 subroutine simple_quantum_estimators(RRt, virial, qEnergy, qPress, sys_temp, Upot) 
+ use consts 
  use NormalModes !need MassScaleFactor
- implicit none
+ Implicit none
  double precision, dimension(3,Natoms,Nbeads),intent(in)  :: RRt  !coords in Ang
  double precision, intent(in)      :: sys_temp       !temp in Kelvin
- double precision, intent(in)      :: Upot 	!potential energy in kcal/mol
- double precision, intent(in)      :: virial 	!virial
+ double precision,  intent(in)   ::  Upot 	!potential energy in kcal/mol
+ double precision,  intent(in)   ::  virial 	!virial
  double precision, intent(out)     :: qEnergy  	!energy out in kcal/mol
  double precision, intent(out)     :: qPress  	!pressure out in bar
- double precision 		   :: KE, K0, mass
+ double precision 		      :: KE, K0, mass
  integer :: i, j, k 
 
  !Note on units : it is assumed that dRRt is in

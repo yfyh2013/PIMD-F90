@@ -34,9 +34,9 @@ logical :: EWALD = .true.
 type(t_neigh) :: neigh 
 
 if (.not. allocated(R) .or. Natoms/=pr_Natoms .or. &
-    dsqrt(dot_product(box-pr_box, box-pr_box))>1.d-12) then
-	pr_Natoms = Natoms
-    pr_box = box
+      dsqrt(dot_product(box-pr_box, box-pr_box))>1.d-12) then
+pr_Natoms = Natoms
+   pr_box = box
 endif
 
 virt = 0.d0
@@ -275,7 +275,6 @@ do iat=fH, lM
    dR(1:3, iat) = dR(1:3, iat) - charge(iat) * Efq(1:3,iat)
 enddo
 endif !(EWALD) then 
-
 !........................................................................................!
 !.......... Initial guess of induced dipoles ............................................!
 !........................................................................................!
@@ -391,6 +390,7 @@ enddo
 Uind = -0.5d0*sum(dip(1:3,fd:ld)*Efq(1:3,fd:ld));
 itmp = mod(predict_step, 4)+1
 if (guess_initdip) tx_dip(1:3, fd:ld, itmp) = dip(1:3, fd:ld)
+
 
 
 !........................................................................................!
