@@ -31,6 +31,7 @@ subroutine full_bead_forces
 	virialt(k) = virt(1,1) + virt(2,2) + virt(3,3)	
 
 	!recieve stuff from nodes
+#ifdef parallel
 	do i = 1, Nnodes - 1
 		k = bat*Nnodes + i  
 		!masternode receive derivatives
@@ -45,8 +46,10 @@ subroutine full_bead_forces
 		if (dip_out .or. TD_out) call MPI_Recv(dip_momIt(:,:,k), 3*Nwaters, MPI_DOUBLE_PRECISION, i, 0, MPI_COMM_WORLD, status2, ierr)
 		if (Edip_out) call MPI_Recv(dip_momEt(:,:,k), 3*Nwaters, MPI_DOUBLE_PRECISION, i, 0, MPI_COMM_WORLD, status2, ierr)
 	enddo
+#endif
     else
-		!slavenode recieve coords from master node
+#ifdef parallel
+    !slavenode recieve coords from master node
 		call MPI_Recv(RR, counti, MPI_DOUBLE_PRECISION, 0, 0, MPI_COMM_WORLD, status2, ierr)
 		!slavenode recieve centroid coords from master node
 		call MPI_Recv(RRc, 3*Natoms, MPI_DOUBLE_PRECISION, 0, 0, MPI_COMM_WORLD, status2, ierr)
@@ -64,9 +67,10 @@ subroutine full_bead_forces
 		!slavenode send back dipole moments 
 		if (dip_out .or. TD_out) call MPI_Send(dip_momI, 3*Nwaters, MPI_DOUBLE_PRECISION, 0, 0, MPI_COMM_WORLD, ierr)
 		if (Edip_out) call MPI_Send(dip_momE, 3*Nwaters, MPI_DOUBLE_PRECISION, 0, 0, MPI_COMM_WORLD, ierr)
+#endif
     endif
     Call MPI_Barrier(MPI_COMM_WORLD, ierr)
-  
+ 
  enddo! j = 0, Nbatches - 1 !batch index
 
 if (pid .eq. 0) then
