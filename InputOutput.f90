@@ -583,11 +583,12 @@ subroutine write_out
  
  !caculate total dipole moment (in Debye)
  dip_mom(:) = sum(dip_momI(:,:), dim=2)
+ sum_dip  = sum_dip  + dip_mom
+
  
  !update quantities for dielectric constant 
  !it really isn't necessary to do this every timestep, so we do it every 10 steps
  if (DIELECTRICOUT .and. ( mod(t,10) .eq. 0 )  ) then 
-	sum_dip  = sum_dip  + dip_mom
 	sum_dip2 = sum_dip2 + sum(dip_mom**2)
 	ttt = ttt + 1
  endif
@@ -637,6 +638,9 @@ subroutine write_out
 		!	dielectric_index = dielectric_index + 1
 		!endif 
 	endif 
+	
+	write(lunTP_out,'(1x,f6.2)',advance='no') dsqrt(dot_product(sum_dip,sum_dip))/tr !dipole moment
+
 
 	!feature to output the current density (for debugging the barostat) 
 	!write(lunTP_out,'(1x,f10.6)',advance='no') Nwaters*(massO+2*massH)*amu2grams/(box(1)*box(2)*box(3)*(a2m*100)**3)
