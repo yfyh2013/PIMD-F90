@@ -24,8 +24,8 @@ double precision, dimension(3) :: summom, sumvel, sum_dip, avg_box, avg_box2, su
 double precision :: delt, delt2,  uk,  imassO, imassH
 double precision :: temp, sum_temp, sum_press, sys_temp, avg_vel, init_energy, sum_RMSenergy
 double precision :: tot_energy, sum_tot_energy,  sum_tot_energy2, sum_energy2, sum_simple_energy, sum_simple_energy2, simple_energy
-double precision :: specific_heat, avg_temp, init_temp, sum_dip2, sum_simple_press, simple_sys_press, sum_pot_en_per_mol, sum_dip_mag
-double precision :: dielectric_constant, diel_prefac, dielectric_error, sys_press, init_time=0d0
+double precision :: specific_heat, avg_temp, init_temp, sum_dip2, sum_simple_press, simple_sys_press, sum_pot_en_per_mol
+double precision :: dielectric_constant, diel_prefac, dielectric_error, sys_press, init_time=0d0, sum_dip_mag
 double precision, dimension(1000)  :: dielectric_running
 integer  :: dielectric_index = 1
 double precision ::  isotherm_compress

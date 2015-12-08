@@ -277,7 +277,8 @@ subroutine calc_dip_moments(dip_momIt, RRt)
  implicit none
  double precision, dimension(3, Nwaters, Nbeads), intent(out) :: dip_momIt
  double precision, dimension(3, 3*Nwaters, Nbeads), intent(in) :: RRt
- double precision, dimension(3,3) :: r1, dq3
+ double precision, dimension(3,3) :: r1
+ double precision, dimension(3,3,3) :: dq3
  double precision, dimension(3) :: roh1, roh2, r3, summ, q3
  double precision :: e1, chgH1, chgH2, tmp
  integer :: iw, j, io, ih1, ih2
