@@ -12,6 +12,10 @@ subroutine full_bead_forces
 
  do bat = 0, Nbatches - 1 !batch index
 
+	if ((pot_model .eq. 6).and.(mod(t,2000).eq.0)) then 
+		call system("rm "//trim(sys_label)//trim(str(pid))//".out") !clean out .out files
+	endif 
+	
     !we want to send a (3 x Natoms) array to each processor 
     if (pid .eq. 0) then
 

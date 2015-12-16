@@ -8,8 +8,8 @@
 module spectral_properties
  use consts
  implicit none
- Integer 			 		 :: NumPointsOut = 250 !maximum number of points to use 
- double precision, parameter :: MaxFreqOut = 5000  !maximum frequency to plot (cm^-1)
+ Integer 			 		 :: NumPointsOut = 350 !maximum number of points to use 
+ double precision, parameter :: MaxFreqOut = 7000  !maximum frequency to plot (cm^-1)
  
  contains 
  
