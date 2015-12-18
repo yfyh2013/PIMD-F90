@@ -45,7 +45,7 @@ subroutine read_input_file
  read(lun,*)CALC_RADIUS_GYRATION
  read(lun,*)DIELECTRICOUT
  read(lun,*)CHARGESOUT
- read(lun,*)PRINTFINALCONFIGURATION
+ read(lun,*)WRITECHECKPOINTS
  read(lun,*)td_freq
  read(lun,*)tp_freq
  read(lun,*)ti_freq
@@ -185,7 +185,10 @@ subroutine init_potential_all_nodes
   
  if (pot_model .eq. 6) then
   
-	if (CONTRACTION .eqv. .false.) then 
+	call system("export GFORTRAN_UNBUFFERED_ALL=y")
+
+    if (CONTRACTION .eqv. .false.) then
+        call sleep(pid) !stagger the system calls from different MPI processes a bit - important fix
 	
 		!setup Nnodes SIESTA proccesses sharing num_SIESTA_nodes
 		nodes_per_process = floor(real(num_SIESTA_nodes)/real(Nnodes)) 
@@ -746,7 +749,15 @@ subroutine write_out
 		flush(lunTD_out)
 #endif
   	endif
- endif !t .gt. eq_timesteps
+        
+    if (WRITECHECKPOINTS) then 
+        if (mod(t,2000) .eq. 0) then 
+            call io_open(lun,'out_'//TRIM(fsave)//'_checkpoint_image.img')
+            call save_configuration(lun, RRt, PPt, Upot, t,delt) 
+            call io_close(lun)
+        endif
+    endif
+  endif !t .gt. eq_timesteps
 
 !box size output stuff 
 if (BAROSTAT) then 
@@ -834,8 +845,8 @@ subroutine print_run
  if (CALCDOS)       call calc_DOS(Hvelocities,box,delt,fsave,avg_temp/Nbeads)
 
  
- if (PRINTFINALCONFIGURATION) then 
-	call io_open(lun,'out_'//TRIM(fsave)//'_fin_image.img')
+ if (WRITECHECKPOINTS) then 
+	call io_open(lun,'out_'//TRIM(fsave)//'_checkpoint_image.img')
 	call save_configuration(lun, RRt, PPt, Upot, t,delt) 
 	call io_close(lun)
  endif

@@ -35,7 +35,7 @@ integer, dimension(:), allocatable :: seed
 integer :: num_timesteps, t, t_freq, tp_freq, td_freq, ti_freq, m, clock, eq_timesteps, ttt, tr 
 logical :: dip_out, coord_out, TD_out, vel_out, TP_out, Edip_out 
 logical :: BAROSTAT, PEQUIL, BOXSIZEOUT, THERMOSTAT, GENVEL, INPCONFIGURATION, IMAGEDIPOLESOUT
-logical :: DIELECTRICOUT, PRINTFINALCONFIGURATION, OUTPUTIMAGES, SIMPLE_ENERGY_ESTIMATOR
+logical :: DIELECTRICOUT, WRITECHECKPOINTS, OUTPUTIMAGES, SIMPLE_ENERGY_ESTIMATOR
 logical :: CALCIRSPECTRA, CALCDIFFUSION, CALCDOS
 logical ::  BEADTHERMOSTAT, CENTROIDTHERMOSTAT, CALC_RADIUS_GYRATION, CHARGESOUT, EXISTS, CALCGEOMETRY
 
