@@ -43,10 +43,11 @@ end subroutine io_assign
 !---------------------------------------------------
 !Assign & open a unit, and backup old files 
 !---------------------------------------------------
-subroutine io_open(lun,filename,APPEND)
+subroutine io_open(lun,filename,APPEND,REPLACE)
  integer, intent(inout) :: lun
  character(len=*), intent(in) :: filename
  logical, optional :: APPEND 
+ logical, optional :: REPLACE 
  logical :: EXISTS
  
  call io_assign(lun)
@@ -56,6 +57,8 @@ subroutine io_open(lun,filename,APPEND)
  if (EXISTS) then
 	if (present(APPEND) .and. APPEND .eqv. .true.) then 
 		open(lun, file=filename, status="old", position="append", action="write")
+	else if (present(REPLACE) .and. REPLACE .eqv. .true.) then 
+		open(lun, file=filename, status="replace", action="write")
 	else 
 		call system('mv '//filename//' '//filename//'_backup.dat')
 		open(lun, file=filename, action="write")

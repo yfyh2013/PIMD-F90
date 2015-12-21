@@ -7,13 +7,18 @@ module force_calc
 !--------------------------------------------------------------------------------------------
 subroutine full_bead_forces
  use main_stuff 
+ use lun_management
  use math, only:str
  Implicit None 
+ integer :: lun_clean
 
+ 
  do bat = 0, Nbatches - 1 !batch index
 
 	if ((pot_model .eq. 6).and.(mod(t,2000).eq.0).and.(t.gt.0)) then 
-		call system("rm "//trim(sys_label)//trim(str(pid))//".out") !clean out .out files
+		call io_open(lun_clean,trim(sys_label)//trim(str(pid))//".out",REPLACE=.true.) !clean out .out files
+		write(lun_clean) " "
+		call io_close(lun_clean)
 	endif 
 	
     !we want to send a (3 x Natoms) array to each processor 
