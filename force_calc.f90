@@ -241,7 +241,7 @@ if (pid .eq. 0) then
 		virialcmon = virialcmon + dot_product(roh1, dr1(:,2)) 
 		virialcmon = virialcmon + dot_product(roh2, dr1(:,3)) 
 
-		!do virial
+		!do normal virial
 		roh1 = RRt(1:3, ih1, j) - RRt(1:3, iO, j)
        	roh1 = roh1 - box*anint(roh1*boxi) !PBC
 		roh2 = RRt(1:3, ih2, j) - RRt(1:3, iO, j)

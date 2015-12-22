@@ -328,8 +328,8 @@ subroutine siesta_quit_process(label)
       close(iuf,status="delete")     ! Close forces pipe
 
       !cleanup by removing pipe files
-      call system('rm '//trim(label)//'.coords')
-      call system('rm '//trim(label)//'.forces')
+      !call system('rm '//trim(label)//'.coords')
+      !call system('rm '//trim(label)//'.forces')
       
       if (ip < np) then              ! Move last process to this slot
         p(ip)%label = p(np)%label

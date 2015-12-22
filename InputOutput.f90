@@ -407,7 +407,7 @@ end subroutine master_node_init
 Subroutine read_coords_and_init
 
 if (INPCONFIGURATION) then 
-	call load_configuration(lunXYZ)
+	call load_checkpoint(lunXYZ)
 else
 	if (read_method .eq. 0) then
 		do i=1, Nwaters
@@ -753,7 +753,7 @@ subroutine write_out
     if (WRITECHECKPOINTS) then 
         if (mod(t,2000) .eq. 0) then 
             call io_open(lun,'out_'//TRIM(fsave)//'_checkpoint_image.img')
-            call save_configuration(lun, RRt, PPt, Upot, t,delt) 
+            call save_checkpoint(lun, RRt, PPt, Upot, t,delt) 
             call io_close(lun)
         endif
     endif
@@ -841,13 +841,13 @@ subroutine print_run
 	write(lunTP_out,'(a50, i5)') " points used to compute dielectric constant: ", ttt
  endif
 
- if (CALCIRSPECTRA) call calc_infrared_spectrum(dip_mom_all_times,box,delt,fsave,avg_temp/Nbeads)
- if (CALCDOS)       call calc_DOS(Hvelocities,box,delt,fsave,avg_temp/Nbeads)
+ if (CALCIRSPECTRA .and. (num_timesteps .gt. 10)) call calc_infrared_spectrum(dip_mom_all_times,box,delt,fsave,avg_temp/Nbeads)
+ if (CALCDOS .and. (num_timesteps .gt. 10))       call calc_DOS(Hvelocities,box,delt,fsave,avg_temp/Nbeads)
 
  
  if (WRITECHECKPOINTS) then 
-	call io_open(lun,'out_'//TRIM(fsave)//'_checkpoint_image.img')
-	call save_configuration(lun, RRt, PPt, Upot, t,delt) 
+	call io_open(lun,'out_'//TRIM(fsave)//'_finalchk.img')
+	call save_checkpoint(lun, RRt, PPt, Upot, t, delt) 
 	call io_close(lun)
  endif
 
@@ -973,7 +973,7 @@ end subroutine save_XYZ
 !-----------------------------------------------------------------------------------------
 !--------------Write out configuration "image" ------------------------------------------
 !-----------------------------------------------------------------------------------------
-subroutine save_configuration(iun, RRt, PPt, Upot, t, delt) 
+subroutine save_checkpoint(iun, RRt, PPt, Upot, t, delt) 
 use system_mod
 use consts
 implicit none
@@ -1010,13 +1010,13 @@ write(iun,'(f12.6,2x,f12.6,3(1x,f12.6))') t*delt + init_time,  box
  if(allocated(vxi_global)) then 
 	write(iun,*) vxi_global
  endif 
-end subroutine save_configuration
+end subroutine save_checkpoint
 
 
 !-----------------------------------------------------------------------------------------
 !--------------load configuration "image" (header is loaded earlier) --------------------
 !-----------------------------------------------------------------------------------------
-subroutine load_configuration(iun) 
+subroutine load_checkpoint(iun) 
  use system_mod
  use consts
  implicit none
@@ -1060,11 +1060,11 @@ subroutine load_configuration(iun)
  !check PBCs
  call PBCs(RRt, RRc) 
  
-end subroutine load_configuration
+end subroutine load_checkpoint
 
 
 !-----------------------------------------------------------------------------------------
-!--------------Shutdown program ---------------------------------------------------------
+!--------------Shutdown program --------------clear-------------------------------------------
 !-----------------------------------------------------------------------------------------
 subroutine shutdown 
  use system_mod
@@ -1074,7 +1074,7 @@ subroutine shutdown
 	call print_run
  endif
 
- if (pot_model == 6) call siesta_quit( trim(sys_label) )
+ if (pot_model == 6) call siesta_quit('all')
  
  call MPI_Barrier(MPI_COMM_WORLD, ierr)
  call MPI_Finalize(ierr)
