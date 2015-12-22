@@ -87,7 +87,7 @@ subroutine read_input_file
  SIMPLE_ENERGY_ESTIMATOR = .true. !setting this to true will output the simple energy to temp/press file
  CALCIRSPECTRA = .false. !store dipole moments and calculate IR spectra at end of run
  CALCDOS = .true. 
- 
+ RESTART = .false. 
 end subroutine read_input_file 
 
 
@@ -445,20 +445,20 @@ subroutine open_files
  logical :: EXISTS
  
  if (TP_out) then 
-	call io_open(lunTP_out,'out_'//TRIM(fsave)//'_TempPress.dat')
+	call io_open(lunTP_out,'out_'//TRIM(fsave)//'_TempPress.dat',APPEND=RESTART)
  else 
 	lunTP_out = io_get_stdout()
  endif 
 
- if (coord_out)      call io_open(luncoord_out,'out_'//TRIM(fsave)//'_coord.xyz')
- if (vel_out)        call io_open(lunVEL_OUT,'out_'//TRIM(fsave)//'_momenta.dat')
- if (OUTPUTIMAGES)   call io_open(lunOUTPUTIMAGES,'out_'//TRIM(fsave)//'_images_coord.xyz')!,APPEND=.true.)
- if (dip_out)        call io_open(lundip_out,'out_'//TRIM(fsave)//'_dip.dat')
- if (TD_out)         call io_open(lunTD_out,'out_'//TRIM(fsave)//'_tot_dip.dat') !,APPEND=.true.)
- if  (Edip_out)      call io_open(lunEdip_out,'out_'//TRIM(fsave)//'_Edip.dat')
- if (BOXSIZEOUT)     call io_open(lunBOXSIZEOUT,'out_'//TRIM(fsave)//'_box.dat')
- if (CHARGESOUT)     call io_open(lunCHARGESOUT,'out_'//TRIM(fsave)//'_chgs.dat')
- if(IMAGEDIPOLESOUT) call io_open(lunIMAGEDIPOLESOUT,'out_'//TRIM(fsave)//'_images_dip.dat')
+ if (coord_out)      call io_open(luncoord_out,'out_'//TRIM(fsave)//'_coord.xyz',APPEND=RESTART)
+ if (vel_out)        call io_open(lunVEL_OUT,'out_'//TRIM(fsave)//'_momenta.dat',APPEND=RESTART)
+ if (OUTPUTIMAGES)   call io_open(lunOUTPUTIMAGES,'out_'//TRIM(fsave)//'_images_coord.xyz',APPEND=RESTART)
+ if (dip_out)        call io_open(lundip_out,'out_'//TRIM(fsave)//'_dip.dat',APPEND=RESTART)
+ if (TD_out)         call io_open(lunTD_out,'out_'//TRIM(fsave)//'_tot_dip.dat',APPEND=RESTART)
+ if  (Edip_out)      call io_open(lunEdip_out,'out_'//TRIM(fsave)//'_Edip.dat',APPEND=RESTART)
+ if (BOXSIZEOUT)     call io_open(lunBOXSIZEOUT,'out_'//TRIM(fsave)//'_box.dat',APPEND=RESTART)
+ if (CHARGESOUT)     call io_open(lunCHARGESOUT,'out_'//TRIM(fsave)//'_chgs.dat',APPEND=RESTART)
+ if(IMAGEDIPOLESOUT) call io_open(lunIMAGEDIPOLESOUT,'out_'//TRIM(fsave)//'_images_dip.dat',APPEND=RESTART)
 
 end subroutine open_files
 
