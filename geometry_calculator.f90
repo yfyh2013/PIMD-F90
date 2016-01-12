@@ -27,7 +27,7 @@ subroutine calc_geometry(RR, RRt)
  double precision, dimension(3) :: ROH1, ROH2, RHH
  double precision :: d_HH, d_OH1, d_OH2, d_HOH
  integer ::  ih1, ih2, io, i, j
-
+ double precision, parameter :: dOHmax = 1.5d0
 
  do i = 1, Nwaters
 	ih1 = 3*i
@@ -39,13 +39,17 @@ subroutine calc_geometry(RR, RRt)
 
 	ROH2 = RR(:,io)  - RR(:,ih2)
 	ROH2 = ROH2 - box*anint(ROH2*boxi)!PBC
-
+	
 	RHH  = RR(:,ih2) - RR(:,ih1)
 	RHH  = RHH - box*anint(RHH*boxi) !PBC
 	
 	d_HH  = dsqrt( dot_product(RHH,RHH) ) 
 	d_OH1 = dsqrt( sum(ROH1**2) ) 
 	d_OH2 = dsqrt( sum(ROH2**2) )  
+
+	if (d_OH1 .gt. dOHmax) write (*,*) "WARNING dOH > ", dOHmax, " = ", d_OH1
+	if (d_OH2 .gt. dOHmax) write (*,*) "WARNING dOH > ", dOHmax, " = ", d_OH2
+	
 	d_HOH = dacos( (d_OH1**2 + d_OH2**2 - d_HH**2)/(2d0*d_OH1*d_OH2) )
 	
 	sum_HH  = sum_HH  + d_HH    	

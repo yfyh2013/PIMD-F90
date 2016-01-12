@@ -12,7 +12,6 @@ subroutine full_bead_forces
  Implicit None 
  integer :: lun_clean
 
- 
  do bat = 0, Nbatches - 1 !batch index
 
 	!if ((pot_model .eq. 6).and.(mod(t,2000).eq.0).and.(t.gt.0)) then 
