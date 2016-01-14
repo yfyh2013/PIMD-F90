@@ -11,8 +11,10 @@ double precision, save :: sum_HH=0,   sum_OH=0,  sum_HOH=0    !centroid-centroid
 double precision, save :: sum_HH2=0,  sum_OH2=0, sum_HOH2=0   !centroid-centroid distances squared
 double precision, save :: bsum_HH=0,  bsum_OH=0,  bsum_HOH=0  !bead-bead distances
 double precision, save :: bsum_HH2=0, bsum_OH2=0, bsum_HOH2=0 !bead-bead distances squared
+double precision, save :: max_OH=0, bmax_OH=0
 
 integer, save :: num_total=0
+
 
  contains 
  
@@ -49,6 +51,8 @@ subroutine calc_geometry(RR, RRt)
 
 	if (d_OH1 .gt. dOHmax) write (*,*) "WARNING dOH > ", dOHmax, " = ", d_OH1
 	if (d_OH2 .gt. dOHmax) write (*,*) "WARNING dOH > ", dOHmax, " = ", d_OH2
+	if (d_OH1 .gt. max_OH) max_OH = d_OH1
+	if (d_OH2 .gt. max_OH) max_OH = d_OH1
 	
 	d_HOH = dacos( (d_OH1**2 + d_OH2**2 - d_HH**2)/(2d0*d_OH1*d_OH2) )
 	
@@ -62,6 +66,7 @@ subroutine calc_geometry(RR, RRt)
 
  enddo 
  
+ !repeat calculations for all bead images 
   do j = 1, Nbeads 
 	do i = 1, Nwaters
 		ih1 = 3*i
@@ -81,6 +86,9 @@ subroutine calc_geometry(RR, RRt)
 		d_OH1 = dsqrt( sum(ROH1**2) ) 
 		d_OH2 = dsqrt( sum(ROH2**2) )  
 		d_HOH = dacos( (d_OH1**2 + d_OH2**2 - d_HH**2)/(2.0*d_OH1*d_OH2) )
+		
+		if (d_OH1 .gt. bmax_OH) bmax_OH = d_OH1
+		if (d_OH2 .gt. bmax_OH) bmax_OH = d_OH1
 	
 		bsum_HH  = bsum_HH  + d_HH    	
 		bsum_OH  = bsum_OH  + d_OH1 + d_OH2
@@ -144,6 +152,7 @@ subroutine write_out_geometry(iun, Nbeads)
  write(iun,'(a40,f12.3,a4,2f12.3,a4,f12.3)') "average HH distance : ", avg_HH, " +/-", RMS_HH, bavg_HH, " +/-", bRMS_HH  
  write(iun,'(a40,f12.3,a4,2f12.3,a4,f12.3)') "average OH distance : ", avg_OH, " +/-", RMS_OH, bavg_OH, " +/-", bRMS_OH  
  write(iun,'(a40,f12.3,a4,2f12.3,a4,f12.3)') "  average HOH angle : ", avg_HOH, " +/-", RMS_HOH, bavg_HOH, " +/-", bRMS_HOH  
+ write(iun,'(a40,f12.3,a11,f12.3)')           " max OH distance    : ", max_OH, " max bead OH = ", bmax_OH
 #ifdef FC_HAVE_FLUSH
  call flush(iun) 
 #endif
@@ -160,6 +169,7 @@ subroutine reset_geometry
  sum_HH2=0; sum_OH2=0; sum_HOH2=0 
  bsum_HH=0;   bsum_OH=0;  bsum_HOH=0  
  bsum_HH2=0; bsum_OH2=0; bsum_HOH2=0; num_total=0
+ max_OH=0; bmax_OH=0
 endsubroutine
  
 endmodule geometry_calculator

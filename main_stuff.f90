@@ -78,9 +78,10 @@ character(len=200) :: siesta_name
 
  contains
 
-!----------------------------------------------------------------------------------!
-!---------- Periodic Boundary conditions for the beads ----------------------------
-!----------------------------------------------------------------------------------!
+!----------------------------------------------------------------------------------
+!---------- Periodic Boundary conditions for the beads ---------------------------
+!----------------------------------------------------------------------------------
+!The box is assume to span [-L/2, L/2]
 !The PBCs follow the bead centroid - if the bead centroid crosses the edge of the box,
 !then all the beads move with it. This means that at any time, some beads may lie 
 !outside the box. The potential(RR, ...) subroutine must be able to handle situations

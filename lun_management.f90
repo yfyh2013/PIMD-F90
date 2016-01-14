@@ -76,7 +76,11 @@ EndSubroutine io_open
 subroutine io_close(lun)
       integer, intent(in) :: lun
       close(lun)
-      if ((lun .ge. min_lun) .and. (lun .le. max_lun)) lun_is_free(lun) = .true.
+      if ((lun .ge. min_lun) .and. (lun .le. max_lun)) then 
+		lun_is_free(lun) = .true.
+	  else
+		write(*,*) "WARNING program closed a lun that was never created in lun management" 
+	  endif
 end subroutine io_close
 
 

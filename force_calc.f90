@@ -329,8 +329,6 @@ end subroutine calc_dip_moments
 
 
 
-
-
 !---------------------------------------------------------------------
 !-----------------Call correct potential ----------------------------
 !---------------------------------------------------------------------
@@ -370,6 +368,8 @@ subroutine potential(RR, RRc, Upot, dRR, virt, virialc, dip_momI, Edip_mom, chg,
 
 if (pot_model==2 .or. pot_model==3) then
     call pot_ttm(RR, RRc, Upot, dRR, virt, virialc, dip_momI, Edip_mom, chg,t)
+    !write(*,*) "foces (ev/Ang): ", -1.0*dRR/EVTOKCALPERMOLE
+
  else if (pot_model==4 .or. pot_model==5) then
      call pot_spc(RR, Upot, dRR, virt, dip_momI, chg)
  else if (pot_model==6) then 
@@ -377,6 +377,10 @@ if (pot_model==2 .or. pot_model==3) then
 	call start_timer("SIESTA")
     call siesta_forces( trim(sys_lab), Natoms, RR, cell=siesta_box, energy=Upot, fa=dRR)
     call stop_timer("SIESTA")
+    
+    !write(*,*) "energy (eV):    ", Upot
+    !write(*,*) "foces (ev/Ang): ", -1.0*dRR
+    
     Upot = Upot*EVTOKCALPERMOLE
     dRR = -1d0*dRR*EVTOKCALPERMOLE    
 

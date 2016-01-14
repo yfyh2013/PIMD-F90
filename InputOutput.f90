@@ -405,7 +405,9 @@ end subroutine master_node_init
 !---------------- read in and intialize RRc from ------------------------
 !----------------------------------------------------------------------------------
 Subroutine read_coords_and_init
+ double precision, dimension(3) :: avgRR
 
+ avgRR = 0
 if (INPCONFIGURATION) then 
 	call load_checkpoint(lunXYZ)
 else
@@ -422,11 +424,17 @@ else
 	else if (read_method==1) then
 		do i=1, Natoms
 			read(lunXYZ,*)ch2, RRc(1:3, i)
+			avgRR = avgRR    + RRc(:, i)
 		enddo
 	else 
 		write(*,*) "ERROR: Invalid read method!!"
 		stop
 	endif 
+	
+	avgRR = avgRR/Natoms
+	do i=1, Natoms
+		RRc(:,i) = RRc(:,i) - avgRR
+	enddo
 
 	call initialize_beads      ! Initialize RRt
 	call initialize_velocities ! Initialize PPt
@@ -665,7 +673,7 @@ subroutine write_out
  !-------------------------------------------------------------
  if (t .gt. eq_timesteps) then
  
-    if (CALCIRSPECTRA) dip_mom_all_times(1:3, tr) = real(dip_mom(:))
+    if (CALCIRSPECTRA) dip_mom_all_times(:, tr) = real(dip_mom(:))
     if (CALCDOS) then
     	!calculate centroid momenta
 		PPc = sum(PPt,3)/Nbeads 
@@ -750,13 +758,13 @@ subroutine write_out
 #endif
   	endif
         
-    if (WRITECHECKPOINTS) then 
-        if (mod(t,2000) .eq. 0) then 
-            call io_open(lun,'out_'//TRIM(fsave)//'_checkpoint_image.img')
-            call save_checkpoint(lun, RRt, PPt, Upot, t,delt) 
-            call io_close(lun)
-        endif
-    endif
+   ! if (WRITECHECKPOINTS) then 
+    !    if (mod(t,2000) .eq. 0) then 
+    !        call io_open(lun,'out_'//TRIM(fsave)//'_checkpoint_image.img',REPLACE=.true.)
+    !        call save_checkpoint(lun, RRt, PPt, Upot, t,delt) 
+    !        call io_close(lun)
+    !    endif
+    !endif
   endif !t .gt. eq_timesteps
 
 !box size output stuff 
@@ -910,7 +918,7 @@ double precision, dimension( Natoms ), intent(in) :: chg
 integer, intent(in) :: lunTP_out
 integer :: iw
 
-dip_mom(1:3) = sum(dip_momI(1:3, 1:Nwaters), dim=2)
+dip_mom(:) = sum(dip_momI(:, 1:Nwaters), dim=2)
 
 write( lunTP_out,'(a50,f14.6)')"Potential Energy (kcal/mol) = ", Upot
 write( lunTP_out,'(a50,f14.6)')"Estimated Enthalpy of Vaporization &
@@ -921,12 +929,12 @@ write( lunTP_out,'(a50,f14.6)')"Long range vdw Energy = ", Uvdw_lrc
 write( lunTP_out,'(a50,f14.6)')"electrostatic  Energy = ", Uelec
 write( lunTP_out,'(a50,f14.6)')"induced Energy = ", Uind
 write( lunTP_out,'(a50,3(1x,f12.3))')"Dipole moment [Debye] : ",dip_mom*DEBYE/CHARGECON
-write( lunTP_out,'(a/3(10x,f14.5,1x))')"Virial tensor",virt(1:3,1:3)
+write( lunTP_out,'(a/3(10x,f14.5,1x))')"Virial tensor",virt(:,:)
 !write(*,'(/a/)')"DERIVATIVES"
 !do iw=1, Nwaters
-!   write(*,'(a2,3x,3(f12.6,2x))')"O ",dRR(1:3, 3*iw-2)
-!   write(*,'(a2,3x,3(f12.6,2x))')"H ",dRR(1:3, 3*iw-1)
-!   write(*,'(a2,3x,3(f12.6,2x))')"H ",dRR(1:3, 3*iw-0)
+!   write(*,'(a2,3x,3(f12.6,2x))')"O ",dRR(:, 3*iw-2)
+!   write(*,'(a2,3x,3(f12.6,2x))')"H ",dRR(:, 3*iw-1)
+!   write(*,'(a2,3x,3(f12.6,2x))')"H ",dRR(:, 3*iw-0)
 !enddo
 end subroutine print_pot
 
@@ -949,22 +957,22 @@ write(iun,*) ""
 if (read_method==0) then
    do i=1, Nwaters
       iO = 3*i-2
-      write(iun,'(a2,3(1x,f12.6))')'O ',RR(1:3, iO)
+      write(iun,'(a2,3(1x,f12.6))')'O ',RR(:, iO)
    enddo
    do i=1, Nwaters
       ih1 = 3*i-1
       ih2 = 3*i
-      write(iun,'(a2,3(1x,f12.6))')'H ',RR(1:3, ih1)
-      write(iun,'(a2,3(1x,f12.6))')'H ',RR(1:3, ih2)
+      write(iun,'(a2,3(1x,f12.6))')'H ',RR(:, ih1)
+      write(iun,'(a2,3(1x,f12.6))')'H ',RR(:, ih2)
    enddo
 else if (read_method==1) then
    do i=1, Nwaters
       iO = 3*i-2
       ih1 = 3*i-1
       ih2 = 3*i
-      write(iun,'(a2,3(1x,f12.6))')'O ',RR(1:3, iO)
-      write(iun,'(a2,3(1x,f12.6))')'H ',RR(1:3, ih1)
-      write(iun,'(a2,3(1x,f12.6))')'H ',RR(1:3, ih2)
+      write(iun,'(a2,3(1x,f12.6))')'O ',RR(:, iO)
+      write(iun,'(a2,3(1x,f12.6))')'H ',RR(:, ih1)
+      write(iun,'(a2,3(1x,f12.6))')'H ',RR(:, ih2)
    enddo
 endif
 end subroutine save_XYZ
@@ -978,7 +986,7 @@ use system_mod
 use consts
 implicit none
 double precision, dimension(3, Natoms,Nbeads), intent(in) :: RRt, PPt
-double precision :: delt, Upot
+double precision, intent(in) :: delt, Upot
 integer ::  i, j, k, iO, ih1, ih2, t
 integer, intent(in) :: iun 
 
@@ -989,13 +997,13 @@ write(iun,'(f12.6,2x,f12.6,3(1x,f12.6))') t*delt + init_time,  box
       ih1 = 3*i-1
       ih2 = 3*i
 	do j = 1, Nbeads
-	      write(iun,'(a2,6(1x,f12.6))')'O ',RRt(1:3, iO,  j), PPt(1:3, iO,  j)*imassO
+	      write(iun,'(a2,6(1x,f12.6))')'O ',RRt(:, iO,  j), PPt(:, iO,  j)*imassO
 	enddo
 	do j = 1, Nbeads
-	 	write(iun,'(a2,6(1x,f12.6))')'H ',RRt(1:3, ih1, j), PPt(1:3, ih1, j)*imassH
+	 	write(iun,'(a2,6(1x,f12.6))')'H ',RRt(:, ih1, j), PPt(:, ih1, j)*imassH
 	enddo
 	do j = 1, Nbeads
-	      write(iun,'(a2,6(1x,f12.6))')'H ',RRt(1:3, ih2, j), PPt(1:3, ih2, j)*imassH
+	      write(iun,'(a2,6(1x,f12.6))')'H ',RRt(:, ih2, j), PPt(:, ih2, j)*imassH
 	enddo
    enddo
  if (allocated(vxi_beads)) then  
