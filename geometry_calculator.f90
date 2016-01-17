@@ -7,14 +7,16 @@
 
 module geometry_calculator
 implicit none
+integer, parameter          :: NUM_BINS = 80
+double precision, parameter :: MIN_BIN  = .6  !Ang
+double precision, parameter :: MAX_BIN  = 1.6 !Ang 
 double precision, save :: sum_HH=0,   sum_OH=0,  sum_HOH=0    !centroid-centroid distances
 double precision, save :: sum_HH2=0,  sum_OH2=0, sum_HOH2=0   !centroid-centroid distances squared
 double precision, save :: bsum_HH=0,  bsum_OH=0,  bsum_HOH=0  !bead-bead distances
 double precision, save :: bsum_HH2=0, bsum_OH2=0, bsum_HOH2=0 !bead-bead distances squared
 double precision, save :: max_OH=0, bmax_OH=0
-
 integer, save :: num_total=0
-
+double precision, dimension(NUM_BINS),save :: dOHhist=0, bdOHhist=0
 
  contains 
  
@@ -53,6 +55,8 @@ subroutine calc_geometry(RR, RRt)
 	if (d_OH2 .gt. dOHmax) write (*,*) "WARNING dOH > ", dOHmax, " = ", d_OH2
 	if (d_OH1 .gt. max_OH) max_OH = d_OH1
 	if (d_OH2 .gt. max_OH) max_OH = d_OH1
+	call binit(dOHhist, d_OH1)
+	call binit(dOHhist, d_OH2)
 	
 	d_HOH = dacos( (d_OH1**2 + d_OH2**2 - d_HH**2)/(2d0*d_OH1*d_OH2) )
 	
@@ -87,8 +91,12 @@ subroutine calc_geometry(RR, RRt)
 		d_OH2 = dsqrt( sum(ROH2**2) )  
 		d_HOH = dacos( (d_OH1**2 + d_OH2**2 - d_HH**2)/(2.0*d_OH1*d_OH2) )
 		
+		if (d_OH1 .gt. dOHmax) write (*,*) "WARNING bead dOH > ", dOHmax, " = ", d_OH1
+		if (d_OH2 .gt. dOHmax) write (*,*) "WARNING bead dOH > ", dOHmax, " = ", d_OH2
 		if (d_OH1 .gt. bmax_OH) bmax_OH = d_OH1
-		if (d_OH2 .gt. bmax_OH) bmax_OH = d_OH1
+		if (d_OH2 .gt. bmax_OH) bmax_OH = d_OH2
+		call binit(bdOHhist, d_OH1)
+		call binit(bdOHhist, d_OH2)
 	
 		bsum_HH  = bsum_HH  + d_HH    	
 		bsum_OH  = bsum_OH  + d_OH1 + d_OH2
@@ -119,6 +127,8 @@ subroutine write_out_geometry(iun, Nbeads)
  double precision :: avg_OH2, avg_HH2, avg_HOH2, RMS_OH, RMS_HH, RMS_HOH
  double precision :: bavg_OH, bavg_HH, bavg_HOH
  double precision :: bavg_OH2,bavg_HH2,bavg_HOH2, bRMS_OH, bRMS_HH, bRMS_HOH
+ double precision :: delta
+ integer :: i
  
  bnum_total = num_total*Nbeads
  
@@ -153,6 +163,13 @@ subroutine write_out_geometry(iun, Nbeads)
  write(iun,'(a40,f12.3,a4,2f12.3,a4,f12.3)') "average OH distance : ", avg_OH, " +/-", RMS_OH, bavg_OH, " +/-", bRMS_OH  
  write(iun,'(a40,f12.3,a4,2f12.3,a4,f12.3)') "  average HOH angle : ", avg_HOH, " +/-", RMS_HOH, bavg_HOH, " +/-", bRMS_HOH  
  write(iun,'(a40,f12.3,a11,f12.3)')           " max OH distance    : ", max_OH, " max bead OH = ", bmax_OH
+ 
+ delta = (MAX_BIN-MIN_BIN)/NUM_BINS
+ write(iun,'(a40,f12.6,a3)') "histogram bin size = ", delta, " Ang"
+ write(iun,'(a80)') "dOH histograms (centroid-centroid , bead-bead)"
+ do i = 1, NUM_BINS
+	write(iun,'(3f12.6)') MIN_BIN + delta*i, dOHhist(i)/(2*num_total), bdOHhist(i)/(2*bnum_total)
+ enddo
 #ifdef FC_HAVE_FLUSH
  call flush(iun) 
 #endif
@@ -171,5 +188,41 @@ subroutine reset_geometry
  bsum_HH2=0; bsum_OH2=0; bsum_HOH2=0; num_total=0
  max_OH=0; bmax_OH=0
 endsubroutine
+
+
+
+!-------------------------------------------------------------
+!-- histogram binning ---------------------------------------
+!-------------------------------------------------------------
+subroutine binit(hist,thing_to_bin)
+ implicit none 
+ double precision, dimension(:), intent(inout) :: hist
+ double precision, intent(in) :: thing_to_bin
+ double precision :: lever, delta, remain
+ integer :: bin
+
+ delta = (MAX_BIN-MIN_BIN)/NUM_BINS 
+  
+ if ((thing_to_bin .gt. MIN_BIN) .and. (thing_to_bin .lt. MAX_BIN)) then
+
+	bin = anint( (thing_to_bin-MIN_BIN)/delta)
+	!remain = mod( (thing_to_bin-MIN_BIN), delta)
+
+	if (bin .eq. 0) bin = 1
+	if (bin .gt. NUM_BINS) bin = NUM_BINS
+	
+	!!bining with splitting between two closest bins!!
+	!lever = remain/delta
+	!hist(bin)  		        		 = hist(bin) 	+ 1 - lever
+	!hist(bin+int(sign(1.d0,lever)))  = hist(bin+1) + remain/delta
+
+	!normal bining 
+	hist(bin) = hist(bin) + 1
+	
+ endif 
+endsubroutine binit
+
+
+
  
 endmodule geometry_calculator

@@ -757,14 +757,19 @@ subroutine write_out
 		flush(lunTD_out)
 #endif
   	endif
-        
-   ! if (WRITECHECKPOINTS) then 
-    !    if (mod(t,2000) .eq. 0) then 
-    !        call io_open(lun,'out_'//TRIM(fsave)//'_checkpoint_image.img',REPLACE=.true.)
-    !        call save_checkpoint(lun, RRt, PPt, Upot, t,delt) 
-    !        call io_close(lun)
-    !    endif
-    !endif
+     
+   if (mod(t,2000) .eq. 0) then 
+		if (WRITECHECKPOINTS) then 
+			call io_open(lun,'out_'//TRIM(fsave)//'_checkpoint_image.img',REPLACE=.true.)
+			call save_checkpoint(lun, RRt, PPt, Upot, t,delt) 
+			call io_close(lun)
+		endif
+		if (CALCGEOMETRY) then 
+			call write_out_geometry(lunTP_out,Nbeads)
+		endif 
+    endif
+    
+
   endif !t .gt. eq_timesteps
 
 !box size output stuff 
