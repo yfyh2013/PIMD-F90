@@ -33,7 +33,6 @@ MD OPTIONS
 5d0 4.9d0 1.d-6           ! realspace cutoff (Ang), start of VdW force switch (Ang) (TTM3F only), eps for aewald
 15  0.7  1.d-2 .f.  .f. ! params for dipole iterative procedure: Max iterations, pol factor, accuracy, guess initial?, debug output
 .f.					 	! generate initial velocities? 
-.f.   			     	! input initial configuration? 
 .t.    			 		! Global thermostat? t/f
 .f.      				! Thermostat non-centroid modes ? 
 .f.			 			! Thermostat centroid mode ?
@@ -54,3 +53,4 @@ MORE RUN OPTIONS
 5			 ! ratio of slow timestep / fast timestep for contraction scheme
 15.994		 ! mass of Oxygen (au)
 1.008		 ! mass of Hyrdrogen
+.false.      ! restart? (append to previous files) 

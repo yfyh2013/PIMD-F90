@@ -57,7 +57,6 @@ subroutine read_input_file
  read(lun,*)Rc, rc1, eps_ewald
  read(lun,*)polar_maxiter, polar_sor, polar_eps, guess_initdip, print_dipiters
  read(lun,*)GENVEL
- read(lun,*)INPCONFIGURATION
  read(lun,*)THERMOSTAT
  read(lun,*)BEADTHERMOSTAT
  read(lun,*)CENTROIDTHERMOSTAT
@@ -78,16 +77,16 @@ subroutine read_input_file
  read(lun,*)intra_timesteps
  read(lun,*)massO
  read(lun,*)massH
+ read(lun,*)RESTART
  call io_close(lun)  
 
- !other options: 
+ !other hardcoded options: 
  CALCGEOMETRY = .true. !computes averge geometry of h2o molecules and outputs at end
  CALCDIFFUSION = .true. !computes diffusion constant of oxygen atoms
  read_method = 1 !read_method(=0,1) (0 for OOOO....HHHHH and 1 for OHHOHHOHH...)
  SIMPLE_ENERGY_ESTIMATOR = .true. !setting this to true will output the simple energy to temp/press file
  CALCIRSPECTRA = .false. !store dipole moments and calculate IR spectra at end of run
  CALCDOS = .true. 
- RESTART = .false. 
 end subroutine read_input_file 
 
 
@@ -95,12 +94,24 @@ end subroutine read_input_file
 !---------------- Initialize some variables for all nodes ------------------------
 !----------------------------------------------------------------------------------
 subroutine read_and_initialize_all_nodes
- integer :: NbeadsIn
+ integer :: NbeadsIn, slen
 
  !read the number of atoms, dimension of box and atomic coordinates 
  call io_assign(lunXYZ)
  open(lunXYZ,file=fconfig,status='old', action="read")
-
+ 
+ slen = len(trim(fconfig))
+ 
+ !Read file suffix and determine if its an .xyz or image (.img) file 
+ if (fconfig(slen-3:slen) .eq. ".img") then 
+	INPCONFIGURATION = .true.
+ else if (fconfig(slen-3:slen) .eq. ".xyz") then 
+	INPCONFIGURATION = .false.
+ else
+	write(*,*) "ERROR: could not determine input file format. File must be *.xyz or *.img"
+	stop
+ endif 
+ 
  if (INPCONFIGURATION) then
 	
 	read(lunXYZ,'(2i10)') Natoms, NbeadsIn

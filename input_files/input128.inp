@@ -33,7 +33,6 @@ MD OPTIONS
 'siesta','128h2o', 1		!name of siesta executable, system label, number of siesta nodes
 15  0.7  1.d-2 .f.  .f.     ! params for dipole iterative procedure: Max iterations, pol factor, accuracy, guess initial?, debug output
 .t.			 ! generate initial velocities? 
-.f. 		         ! input initial configuration? 
 .t.                 	 ! Global thermostat? t/f
 .t.                      ! Thermostat non-centroid modes ? 
 .t.			 ! Thermostat centroid mode ?
@@ -54,3 +53,4 @@ MORE RUN OPTIONS
 5			 ! ratio of slow timestep / fast timestep for contraction scheme
 15.994			 ! mass of Oxygen (au)
 1.008			 ! mass of Hyrdrogen
+.false.       !restart (append to existing files)? 
