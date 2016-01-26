@@ -10,7 +10,7 @@ subroutine full_bead_forces
  use lun_management
  use math, only:str
  Implicit None 
- integer :: lun_clean
+! integer :: lun_clean
 
  do bat = 0, Nbatches - 1 !batch index
 
@@ -19,7 +19,7 @@ subroutine full_bead_forces
 	!	write(lun_clean) " "
 	!	call io_close(lun_clean)
 	!endif 
-	
+
     !we want to send a (3 x Natoms) array to each processor 
     if (pid .eq. 0) then
 
@@ -88,7 +88,7 @@ if (pid .eq. 0) then
  
  !computation of dipole moments for the SIESTA case 
  if (pot_model .eq. 6) then 
-	call calc_dip_moments(dip_momIt, RRt)
+	call calc_gas_phase_dip_moments(dip_momIt, RRt)
  endif
  
 endif 
@@ -113,8 +113,7 @@ subroutine contracted_forces
  double precision, dimension(3,Natoms,Nbeads)  ::  dRRfast
  double precision, dimension(3,Natoms) :: dRRc
  double precision, dimension(3,3)      :: dr1, r1
- double precision, dimension(3,3,3) :: dq3
- double precision, dimension(3)        :: roh1, roh2, rh1m, rh2m, rM, q3
+ double precision, dimension(3)        :: roh1, roh2 
  integer :: tintra, iM
 
  tmp = 0.5d0*gammaM/(1.d0-gammaM)
@@ -161,7 +160,7 @@ if (pid .eq. 0) then
 		do iw = 1, Nwaters
 			iO=3*iw-2; iH1 = 3*iw-1; iH2=3*iw-0
 
-	   		r1(1:3, 1:3) = RRt(1:3, (/iO, ih1, ih2/), j)
+	   		r1(1:3, 1:3) = RRt(1:3, (/iO, iH1, iH2/), j)
 
 		  	call pot_nasa(r1, dr1, e1, box, boxi)  
 
@@ -171,33 +170,6 @@ if (pid .eq. 0) then
 			!and calculate dipole moments using dip. mom. surface 
 			if (tintra .eq. intra_timesteps) then
 				Umonomers = Umonomers + e1
-
-				!get charges
-				call dms_nasa(r1, q3, dq3,box,boxi)
-
-				q3 = q3*CHARGECON
-
-				chgH1 = q3(2) + tmp*(q3(2)+q3(3))
-				chgH2 = q3(3) + tmp*(q3(2)+q3(3))
-
-				roh1 = RRt(:, iH1, j) - RRt(:, iO, j)
-   				roh1 = roh1 - box*anint(roh1*boxi)!PBC
-				roh2 = RRt(:, iH2, j) - RRt(:, iO, j)
-  				roh2 = roh2 - box*anint(roh2*boxi)!PBC
-  				
-				!get m site position
-				if ((pot_model .eq. 3) .or. (pot_model .eq. 4)) then 
-					Rm = 0.5d0*gammaM*( roh1(:) + roh2(:) ) + RRt(:, iO, j)
-	
-					rh1m = RRt(:, iH1, j) - Rm
-					rh1m = rh1m - box*anint(rh1m*boxi)!PBC
-					rh2m = RRt(:, iH2, j) - Rm
-					rh2m = rh2m - box*anint(rh2m*boxi)!PBC
-  	
-					dip_momIt(:,iw,j) = chgH1*rh1m + chgH2*rh2m
-				else
-					dip_momIt(:,iw,j) = chgH1*roh1 + chgH2*roh2
-				endif
 			endif
 		enddo
 	enddo
@@ -207,6 +179,8 @@ if (pid .eq. 0) then
 
  enddo !tintra  = 1.. 
 
+ call calc_gas_phase_dip_moments(dip_momIt, RRt)
+ 
  !calculate centroid positions
  RRc = sum(RRt,3)/Nbeads
 
@@ -232,18 +206,18 @@ if (pid .eq. 0) then
 		iO=3*iw-2; iH1 = 3*iw-1; iH2=3*iw-0
 
 		!do centroid virial first
-		roh1 = RRc(1:3, ih1) - RRc(1:3, iO)
+		roh1 = RRc(1:3, iH1) - RRc(1:3, iO)
 		roh1 = roh1 - box*anint(roh1*boxi) !PBC
-		roh2 = RRc(1:3, ih2) - RRc(1:3, iO)
+		roh2 = RRc(1:3, iH2) - RRc(1:3, iO)
 		roh2 = roh2 - box*anint(roh2*boxi) !PBC
 
 		virialcmon = virialcmon + dot_product(roh1, dr1(:,2)) 
 		virialcmon = virialcmon + dot_product(roh2, dr1(:,3)) 
 
 		!do normal virial
-		roh1 = RRt(1:3, ih1, j) - RRt(1:3, iO, j)
+		roh1 = RRt(1:3, iH1, j) - RRt(1:3, iO, j)
        	roh1 = roh1 - box*anint(roh1*boxi) !PBC
-		roh2 = RRt(1:3, ih2, j) - RRt(1:3, iO, j)
+		roh2 = RRt(1:3, iH2, j) - RRt(1:3, iO, j)
        	roh2 = roh2 - box*anint(roh2*boxi) !PBC
 
 		virialmon = virialmon + dot_product(roh1, dr1(:,2))
@@ -278,18 +252,18 @@ end subroutine contracted_forces
 !- Calculate dipole moments using the TIP4P/2005 charges and m-site 
 !- for the coordinates obtained from a SIESTA calculation 
 !---------------------------------------------------------------------
-subroutine calc_dip_moments(dip_momIt, RRt)
+subroutine calc_gas_phase_dip_moments(dip_momIt, RRt)
  use consts
  use pot_mod
  use system_mod !source of Nbeads, box, boxi
  implicit none
  double precision, dimension(3, Nwaters, Nbeads), intent(out) :: dip_momIt
  double precision, dimension(3, 3*Nwaters, Nbeads), intent(in) :: RRt
- double precision, dimension(3,3) :: r1
+ double precision, dimension(3,3)   :: r1
  double precision, dimension(3,3,3) :: dq3
- double precision, dimension(3) :: roh1, roh2, r3, summ, q3
+ double precision, dimension(3) :: roh1, roh2, r3, summ, q3, Rm, rh1m, rh2m
  double precision :: e1, chgH1, chgH2, tmp
- integer :: iw, j, io, ih1, ih2
+ integer :: iw, j, io, iH1, iH2
  double precision, parameter :: rOM = .1546
  double precision, parameter :: qH_TIP4P = .5564
  double precision, parameter :: qO_TIP4P = -1.1128
@@ -298,11 +272,9 @@ subroutine calc_dip_moments(dip_momIt, RRt)
  
  do j = 1, Nbeads
 	do iw = 1, Nwaters
-		io  = 3*iw 
-		ih1 = 3*iw - 1 
-		ih2 = 3*iw - 2
-	
-  		r1(1:3, 1:3) = RRt(1:3, (/iO, ih1, ih2/), j)
+		iO=3*iw-2; iH1 = 3*iw-1; iH2=3*iw-0
+
+  		r1(1:3, 1:3) = RRt(1:3, (/iO, iH1, iH2/), j)
 
   		!get charges
 		call dms_nasa(r1, q3, dq3,box,boxi)
@@ -317,6 +289,20 @@ subroutine calc_dip_moments(dip_momIt, RRt)
   		roh2 = roh2 - box*anint(roh2*boxi)!PBC
  
 		dip_momIt(:,iw,j) = chgH1*roh1 + chgH2*roh2
+		
+     	!get m site position if necessary
+		if ((pot_model .eq. 3) .or. (pot_model .eq. 4)) then 
+			Rm = 0.5d0*gammaM*( roh1(:) + roh2(:) ) + RRt(:, iO, j)
+	
+			rh1m = RRt(:, iH1, j) - Rm
+			rh1m = rh1m - box*anint(rh1m*boxi)!PBC
+			rh2m = RRt(:, iH2, j) - Rm
+			rh2m = rh2m - box*anint(rh2m*boxi)!PBC
+  	
+			dip_momIt(:,iw,j) = chgH1*rh1m + chgH2*rh2m
+		else
+			dip_momIt(:,iw,j) = chgH1*roh1 + chgH2*roh2
+		endif
 
 		!!! TIP4P/2005f dipole moment calculation
 		!summ = roh1 + roh2!find vector to M-site
@@ -325,7 +311,7 @@ subroutine calc_dip_moments(dip_momIt, RRt)
 	enddo
  enddo
   
-end subroutine calc_dip_moments
+end subroutine calc_gas_phase_dip_moments
 
 
 
