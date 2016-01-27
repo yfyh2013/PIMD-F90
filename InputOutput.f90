@@ -666,8 +666,7 @@ subroutine write_out
 		!endif 
 	endif 
 	
-	!write(lunTP_out,'(1x,f6.2)',advance='no') sum_dip_mag/tr/Nwaters !avg dipole moment
-
+	write(lunTP_out,'(1x,f6.2)',advance='no') sum_dip_mag/tr/Nwaters !avg dipole moment
 
 	!feature to output the current density (for debugging the barostat) 
 	!write(lunTP_out,'(1x,f10.6)',advance='no') Nwaters*(massO+2*massH)*amu2grams/(box(1)*box(2)*box(3)*(a2m*100)**3)

@@ -88,7 +88,7 @@ if (pid .eq. 0) then
  
  !computation of dipole moments for the SIESTA case 
  if (pot_model .eq. 6) then 
-	call calc_gas_phase_dip_moments(dip_momIt, RRt)
+	call calc_monomer_dip_moments(dip_momIt, RRt)
  endif
  
 endif 
@@ -179,8 +179,6 @@ if (pid .eq. 0) then
 
  enddo !tintra  = 1.. 
 
- call calc_gas_phase_dip_moments(dip_momIt, RRt)
- 
  !calculate centroid positions
  RRc = sum(RRt,3)/Nbeads
 
@@ -189,7 +187,7 @@ if (pid .eq. 0) then
  
  !check PBCs
  call PBCs(RRt, RRc)
-
+ 
  call stop_timer("MonomerPIMD")
  
  !intermolecular force calculation
@@ -223,15 +221,31 @@ if (pid .eq. 0) then
 		virialmon = virialmon + dot_product(roh1, dr1(:,2))
 		virialmon = virialmon + dot_product(roh2, dr1(:,3)) 
 	enddo
-	!add polarization dipoles
-   	dip_momIt(:,:,j) = dip_momIt(:,:,j) + dip_momE
-   	dip_momEt(:,:,j) = dip_momE
-   enddo
+ enddo
+
  
-   !update Upot, virial and virialc
-   Upot    = Upot*Nbeads + Umonomers !potential energy for the ENTIRE system (all images)
-   virial  = virialmon + virt(1,1) + virt(2,2) + virt(3,3) !virial for the ENTIRE system (all images)
-   virialc = virialcmon/Nbeads + virialc
+ !calculate dipole moments 
+ if (pot_model .eq. 6) then
+ 
+ 	call calc_monomer_dip_moments(dip_momIt, RRt)
+ 
+ 	call dip_ttm(RRc, dip_momI, dip_momE, chg, t)
+ 
+ else if ((pot_model .eq. 3) .or. (pot_model .eq. 4)) then
+	call calc_monomer_dip_moments(dip_momIt, RRt)
+	!add polarization dipoles calculated from intermolecular force calc 
+	do j = 1, Nbeads
+		dip_momIt(:,:,j) = dip_momIt(:,:,j) + dip_momE
+		dip_momEt(:,:,j) = dip_momE
+	 enddo 
+ endif
+ 
+ 
+   
+ !update Upot, virial and virialc
+ Upot    = Upot*Nbeads + Umonomers !potential energy for the ENTIRE system (all images)
+ virial  = virialmon + virt(1,1) + virt(2,2) + virt(3,3) !virial for the ENTIRE system (all images)
+ virialc = virialcmon/Nbeads + virialc
 
 endif !(pid .eq. 0) then
  
@@ -252,7 +266,7 @@ end subroutine contracted_forces
 !- Calculate dipole moments using the TIP4P/2005 charges and m-site 
 !- for the coordinates obtained from a SIESTA calculation 
 !---------------------------------------------------------------------
-subroutine calc_gas_phase_dip_moments(dip_momIt, RRt)
+subroutine calc_monomer_dip_moments(dip_momIt, RRt)
  use consts
  use pot_mod
  use system_mod !source of Nbeads, box, boxi
@@ -311,7 +325,7 @@ subroutine calc_gas_phase_dip_moments(dip_momIt, RRt)
 	enddo
  enddo
   
-end subroutine calc_gas_phase_dip_moments
+end subroutine calc_monomer_dip_moments
 
 
 

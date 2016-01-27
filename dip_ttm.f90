@@ -2,14 +2,14 @@
 ! Dipole moments from TTM3F
 ! scaled down version of pot_ttm.f90 that only calculates dipole moments
 !----------------------------------------------------
-subroutine dip_ttm(RR, dip_momI, Edip_mom, t)
+subroutine dip_ttm(RR, dip_momI, dip_momE, chg, t)
 use consts
 use system_mod
 use pot_mod
 use neigh_mod
 implicit none
 double precision, dimension(3, Natoms), intent(in) :: RR 
- double precision, dimension(3, NWaters), intent(out) :: dip_momI, Edip_mom
+ double precision, dimension(3, NWaters), intent(out) :: dip_momI, dip_momE
 double precision, dimension(Natoms), intent(out) :: chg
 integer :: itmp, i, is, j, js, iw, jw, iO, ih1, ih2, iOa, iH1a, iH2a, iM, jO, jH1, jH2, jM
 integer :: iat, jat, isp, jsp, jsp0, i3, j3, ii, jj, kk, ix, iy
@@ -21,11 +21,41 @@ double precision, dimension(3) :: qdqd,q3, Ri,Rij, dij,di,dj, roh1,roh2,rhh, Rij
 double precision, dimension(3, 3) :: r1, dr1, vij, dd3, arr33, dgrad
 double precision, dimension(3,3,3) :: dq3 
 double precision, dimension(4) :: dpcf
-! double precision :: factor, deltadip, stath 
+double precision :: factor, deltadip, stath 
 integer :: iter
 integer, intent(in) :: t
 logical :: EWALD = .true.
 type(t_neigh) :: neigh 
+double precision :: polfacO, polfacH, polfacM
+
+
+!initial allocations if necessay (copied from pot_mod)
+if (.not. allocated(dip)) then 
+   Nwaters = Natoms/3
+   NatomsM = 4*Nwaters
+   fO=1;   lO=Nwaters
+   fH=Nwaters+1; lH=3*Nwaters
+   fM=3*Nwaters+1; lM=4*Nwaters
+   fO3=3*fO-2; lO3=3*lO
+   fH3=3*fH-2; lH3=3*lH
+   fM3=3*fM-2; lM3=3*lM
+   fdI = 4; ldI=4
+	polfac(1:4)=(/ polfacO**(1.d0/6.d0), polfacH**(1.d0/6.d0), polfacH**(1.d0/6.d0), polfacM**(1.d0/6.d0) /)
+   polfac(1:4)=1.d0/polfac(1:4)**3
+ 
+	allocate(neigh_list(2, Nwaters*Nwaters/2))
+	allocate(R(3, NatomsM))
+	allocate(charge(NatomsM))
+	allocate(Efq(3,NatomsM))
+ 
+   allocate(Efd(3,NatomsM))
+   allocate(dip(3,fd:ld))
+   allocate(dipt(fd:ld, 3))
+   allocate(olddip(3,fd:ld))
+   allocate(tx_dip(3,fd:ld, 4))  
+   tx_dip = 0 
+endif
+
 
 dip = 0.d0
 olddip = 0.d0
@@ -36,8 +66,7 @@ do iw=1, Nwaters
    iOa=3*iw-2; iH1a=3*iw-1; iH2a=3*iw
    iO=fO+iw-1; iH1=iO+Nwaters; iH2=iO+2*Nwaters; iM=iO+3*Nwaters
    R(1:3, (/iO, iH1, iH2/)) = RR(1:3, (/iOa, ih1a, ih2a/) )! * boxi
-   RRRc(1:3, (/iO, iH1, iH2/)) = RRc(1:3, (/iOa, ih1a, ih2a/) )! * boxi
-  
+   
 !.... determine M-site positions for R
    roh1 = R(1:3, iH1) - R(1:3,iO)
    roh1 = roh1 - box*anint(roh1*boxi)!PBC
@@ -51,8 +80,6 @@ enddo
 
 tmp = 0.5d0*gammaM/(1.d0-gammaM)
 charge = 0.d0
-grdq = 0.d0
-dR = 0.d0
 do iw=1, Nwaters
    iO=fO+iw-1; iH1=iO+Nwaters; iH2=iO+2*Nwaters; iM=iO+3*Nwaters
    r1(1:3, 1:3) = R(1:3, (/iO, ih1, ih2/) )
@@ -218,7 +245,7 @@ do iw=1, Nwaters
    do isp=fdI, ldI
        iat= iw + (isp-1)*Nwaters
        dip_momI(1:3, iw) = dip(1:3, iat) + dip_momI(1:3, iw)
-       Edip_mom(1:3, iw) = dip(1:3, iat) !sum of polarization dipole(s) for each atom in molecule
+       dip_momE(1:3, iw) = dip(1:3, iat) !sum of polarization dipole(s) for each atom in molecule
    enddo
 enddo
 end subroutine dip_ttm
@@ -226,46 +253,46 @@ end subroutine dip_ttm
 
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-subroutine get_dd3(R, ts1, ts2, dd3)
-implicit none
-double precision, dimension(3) :: R
-double precision :: ts1, ts2
-double precision, dimension(3,3) :: dd3
+!subroutine get_dd3(R, ts1, ts2, dd3)
+!implicit none
+!double precision, dimension(3) :: R
+!double precision :: ts1, ts2
+!double precision, dimension(3,3) :: dd3
 
-dd3(1,1) = 3.d0*ts2*R(1)*R(1) - ts1
-dd3(2,2) = 3.d0*ts2*R(2)*R(2) - ts1
-dd3(3,3) = 3.d0*ts2*R(3)*R(3) - ts1
-dd3(1,2) = 3.d0*ts2*R(1)*R(2)
-dd3(1,3) = 3.d0*ts2*R(1)*R(3)
-dd3(2,3) = 3.d0*ts2*R(2)*R(3)
-dd3(2,1) = dd3(1,2); dd3(3,1) = dd3(1,3); dd3(3,2) = dd3(2,3)
+!dd3(1,1) = 3.d0*ts2*R(1)*R(1) - ts1
+!dd3(2,2) = 3.d0*ts2*R(2)*R(2) - ts1
+!dd3(3,3) = 3.d0*ts2*R(3)*R(3) - ts1
+!dd3(1,2) = 3.d0*ts2*R(1)*R(2)
+!dd3(1,3) = 3.d0*ts2*R(1)*R(3)
+!dd3(2,3) = 3.d0*ts2*R(2)*R(3)
+!dd3(2,1) = dd3(1,2); dd3(3,1) = dd3(1,3); dd3(3,2) = dd3(2,3)
 
-end subroutine get_dd3
+!end subroutine get_dd3
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-subroutine calc_dpcf(md_step, dpcf)
-implicit none
-integer, intent(in) :: md_step
-double precision, dimension(4), intent(out) :: dpcf
-integer :: itmp
+!subroutine calc_dpcf(md_step, dpcf)
+!implicit none
+!integer, intent(in) :: md_step
+!double precision, dimension(4), intent(out) :: dpcf
+!integer :: itmp
 
-if (md_step<4) then
-if (md_step==1) then
-dpcf(1:4) = (/1.d0, 0.d0, 0.d0, 0.d0/)
-   else if (md_step==2) then
-dpcf(1:4) = (/-1.d0, 2.d0, 0.d0, 0.d0/)
-   else if (md_step==3) then
-dpcf(1:4) = (/1.d0, -3.d0, 3.d0, 0.d0/)
-   endif
-else
-itmp = mod(md_step, 4)
-   if (itmp==0) then
-dpcf(1:4) = (/-1.d0, 4.d0, -6.d0, 4.d0/)
-   else if (itmp==1) then
-dpcf(1:4) = (/ 4.d0, -1.d0, 4.d0, -6.d0/)
-   else if (itmp==2) then
-dpcf(1:4) = (/-6.d0, 4.d0, -1.d0, 4.d0 /)
-   else if (itmp==3) then
-dpcf(1:4) = (/ 4.d0, -6.d0, 4.d0, -1.d0 /)
-   endif
-endif
-end subroutine calc_dpcf
+!if (md_step<4) then
+!if (md_step==1) then
+!dpcf(1:4) = (/1.d0, 0.d0, 0.d0, 0.d0/)
+!   else if (md_step==2) then
+!dpcf(1:4) = (/-1.d0, 2.d0, 0.d0, 0.d0/)
+!   else if (md_step==3) then
+!dpcf(1:4) = (/1.d0, -3.d0, 3.d0, 0.d0/)
+!   endif
+!else
+!itmp = mod(md_step, 4)
+!   if (itmp==0) then
+!dpcf(1:4) = (/-1.d0, 4.d0, -6.d0, 4.d0/)
+!   else if (itmp==1) then
+!dpcf(1:4) = (/ 4.d0, -1.d0, 4.d0, -6.d0/)
+!   else if (itmp==2) then
+!dpcf(1:4) = (/-6.d0, 4.d0, -1.d0, 4.d0 /)
+!   else if (itmp==3) then
+!dpcf(1:4) = (/ 4.d0, -6.d0, 4.d0, -1.d0 /)
+!   endif
+!endif
+!end subroutine calc_dpcf
