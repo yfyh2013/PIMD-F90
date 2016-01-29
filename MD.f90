@@ -1,0 +1,301 @@
+module MD
+ use dans_timer
+ contains
+ 
+ 
+!-----------------------------------------------------------------
+!--------   Standard full PIMD Velocity-Verlet integration ------
+!-----------------------------------------------------------------
+subroutine PIMD_VV
+ use system_mod
+ use consts
+ use main_stuff
+ use InputOutput
+ use NormalModes
+ use mpi
+ use force_calc
+ implicit none
+ 
+ if (pid .eq. 0) then
+	!Propagate NH chains 
+	if (BEADTHERMOSTAT) call bead_thermostat
+	
+	if (THERMOSTAT)  then 
+		call Nose_Hoover(s, uk, global_chain_length, vxi_global, tau, delt2, 3*Natoms*Nbeads, temp*Nbeads)
+		PPt = PPt*s
+	endif
+
+	!update momenta a half step w/ old forces
+	PPt = PPt - MASSCON*dRRt*delt2
+	
+	!Normal modes stuff
+	if (Nbeads .gt. 1) then
+		do i = 1, Nwaters
+			!Evolve ring a full step 
+			Call EvolveRing(RRt(:,3*i-2,:), PPt(:,3*i-2,:), Nbeads, massO)
+			Call EvolveRing(RRt(:,3*i-1,:), PPt(:,3*i-1,:), Nbeads, massH)
+			Call EvolveRing(RRt(:,3*i-0,:), PPt(:,3*i-0,:), Nbeads, massH)
+		enddo
+	else 
+		do i = 1,Nwaters
+			do k = 1,Nbeads
+				RRt(:,3*i-2,k) = RRt(:,3*i-2,k) + imassO*PPt(:,3*i-2,k)*delt
+				RRt(:,3*i-1,k) = RRt(:,3*i-1,k) + imassH*PPt(:,3*i-1,k)*delt
+				RRt(:,3*i-0,k) = RRt(:,3*i-0,k) + imassH*PPt(:,3*i-0,k)*delt
+			enddo
+		enddo			
+	endif
+
+	!calculate centroid positions
+	RRc = sum(RRt,3)/Nbeads
+
+	!calculate centroid momenta
+	PPc = sum(PPt,3)/Nbeads 
+
+	!check PBCs
+	call PBCs(RRt, RRc)
+
+ endif!if (pid .eq. 0) 
+
+ !call force routine 
+ call full_bead_forces
+
+ if (pid .eq. 0) then
+
+	!update kinetic energy 
+	call calc_uk 
+
+	!write stuff out if necessary 
+	call start_timer("WritingOut")
+	call write_out
+	call stop_timer("WritingOut")
+	
+	!update momenta a half step w/ new forces
+	PPt = PPt - MASSCON*dRRt*delt2
+
+	!Propagate NH chains 
+	if (BEADTHERMOSTAT) call bead_thermostat
+	
+	call calc_uk 
+
+	if (THERMOSTAT) then 
+		call Nose_Hoover(s, uk, global_chain_length, vxi_global, tau, delt2, 3*Natoms*Nbeads, temp*Nbeads)
+		PPt = PPt*s
+	endif
+	
+	if (BAROSTAT) call Pcouple
+	
+ endif!(pid .eq. 0) 
+
+end subroutine PIMD_VV
+
+
+
+!--------------------------------------------------------------------------------------------
+!------------- Contracted MD with intermolecular forces on monomer with multiple time step
+!-- This subroutine performs evaluates only the intramolecular (fast) forces on the beads and 
+!-- evaluates the intermolecular (slow) forces on the centroid. It also uses a multiple timestep method
+!-- (see Tuckerman, pg 118). The momentum and positions will be updated with the intramolecular forces
+!-- every intra_timesteps times. For instance if the 'outer timestep' (normal timestep) is .5 ps and intra_timesteps = 5
+!-- then the inner timestep is .1 ps
+!--------------------------------------------------------------------------------------------
+subroutine contracted_MD
+ use main_stuff
+ use NormalModes
+ use pot_mod 
+ use dans_timer
+ use system_mod
+ use consts
+ use InputOutput
+ use force_calc
+ Implicit None 
+ double precision :: e1, virialmon, virialcmon, Umonomers, chgH1, chgH2, tmp
+ double precision, dimension(3,Natoms,Nbeads)  ::  dRRfast
+ double precision, dimension(3,Natoms) :: dRRc
+ double precision, dimension(3,3)      :: dr1, r1
+ double precision, dimension(3)        :: roh1, roh2 
+ integer :: tintra, iM
+
+ tmp = 0.5d0*gammaM/(1.d0-gammaM)
+ if (t .eq. 1) dRRfast =0
+ Umonomers = 0 
+ virialmon = 0 
+ virialcmon = 0 
+
+ if (pid .eq. 0) then
+	!Propagate NH chains 
+	if (BEADTHERMOSTAT) call bead_thermostat
+	
+	if (THERMOSTAT)  then 
+		call Nose_Hoover(s, uk, global_chain_length, vxi_global, tau, delt2, 3*Natoms*Nbeads, temp*Nbeads)
+		PPt = PPt*s
+	endif
+
+	!update momenta a half step w/ old forces
+	PPt = PPt - MASSCON*dRRt*delt2
+
+	!calculate centroid positions
+	RRc = sum(RRt,3)/Nbeads
+		!calculate centroid momenta
+	PPc = sum(PPt,3)/Nbeads 
+	
+	!check PBCs
+	call PBCs(RRt, RRc)
+ 
+	call start_timer("MonomerPIMD")
+  
+	!---  intramolecular (fast) forces -------------------------------------------------
+    do tintra = 1, intra_timesteps
+
+		!update momenta with fast forces (delt2fast = deltfast/2)
+		PPt = PPt - MASSCON*dRRfast*delt2fast
+
+		!update positions with fast forces
+		if (Nbeads .gt. 1) then
+			do i = 1, Nwaters
+				Call EvolveRing(RRt(:,3*i-2,:), PPt(:,3*i-2,:), Nbeads, massO)
+				Call EvolveRing(RRt(:,3*i-1,:), PPt(:,3*i-1,:), Nbeads, massH)
+				Call EvolveRing(RRt(:,3*i-0,:), PPt(:,3*i-0,:), Nbeads, massH)
+			enddo
+		else 
+			do i = 1,Nwaters
+				do k = 1,Nbeads
+					RRt(:,3*i-2,k) = RRt(:,3*i-2,k) + imassO*PPt(:,3*i-2,k)*deltfast
+					RRt(:,3*i-1,k) = RRt(:,3*i-1,k) + imassH*PPt(:,3*i-1,k)*deltfast
+					RRt(:,3*i-0,k) = RRt(:,3*i-0,k) + imassH*PPt(:,3*i-0,k)*deltfast
+				enddo
+			enddo			
+		endif	  
+
+		!update fast forces (intramolecular forces)
+		!masternode calcuates the intramolecular forces, puts them in dRRfast
+		Umonomers = 0 
+		virialmon = 0 
+		virialcmon = 0 
+
+		do j = 1, Nbeads
+			do iw = 1, Nwaters
+				iO=3*iw-2; iH1 = 3*iw-1; iH2=3*iw-0
+
+				r1(1:3, 1:3) = RRt(1:3, (/iO, iH1, iH2/), j)
+
+				call pot_nasa(r1, dr1, e1, box, boxi)  
+
+				dRRfast(1:3, (/iO, iH1, iH2/), j) = dr1
+
+				!if last timestep in loop update monomer energy
+				!and calculate dipole moments using dip. mom. surface 
+				if (tintra .eq. intra_timesteps) then
+					Umonomers = Umonomers + e1
+				endif
+			enddo
+		enddo
+	
+		!update momenta with fast forces
+		PPt = PPt - MASSCON*dRRfast*delt2fast
+
+	enddo!tintra  = 1.. 
+	!---  end intramolecular (fast) forces ----------------------------------------------
+
+	!calculate centroid positions
+	RRc = sum(RRt,3)/Nbeads
+
+	!calculate centroid momenta
+	PPc = sum(PPt,3)/Nbeads
+ 
+	!check PBCs
+	call PBCs(RRt, RRc)
+ 
+	call stop_timer("MonomerPIMD")
+ 
+	!intermolecular force calculation
+	call potential(RRc, RRc, Upot, dRRc, virt, virialc, dip_momI, dip_momE, chg, t, BAROSTAT, sys_label)
+
+	!update dRRt
+	do j = 1, Nbeads
+		dRRt(:,:,j) = dRRc
+	enddo
+
+	!calculate virial
+	do j = 1, Nbeads
+		do iw = 1, Nwaters
+			iO=3*iw-2; iH1 = 3*iw-1; iH2=3*iw-0
+
+			!do centroid virial first
+			roh1 = RRc(1:3, iH1) - RRc(1:3, iO)
+			roh1 = roh1 - box*anint(roh1*boxi) !PBC
+			roh2 = RRc(1:3, iH2) - RRc(1:3, iO)
+			roh2 = roh2 - box*anint(roh2*boxi) !PBC
+
+			virialcmon = virialcmon + dot_product(roh1, dr1(:,2)) 
+			virialcmon = virialcmon + dot_product(roh2, dr1(:,3)) 
+
+			!do normal virial
+			roh1 = RRt(1:3, iH1, j) - RRt(1:3, iO, j)
+			roh1 = roh1 - box*anint(roh1*boxi) !PBC
+			roh2 = RRt(1:3, iH2, j) - RRt(1:3, iO, j)
+			roh2 = roh2 - box*anint(roh2*boxi) !PBC
+
+			virialmon = virialmon + dot_product(roh1, dr1(:,2))
+			virialmon = virialmon + dot_product(roh2, dr1(:,3)) 
+		enddo
+	enddo
+
+	!calculate dipole moments 
+	if (pot_model .eq. 6) then
+ 
+		call calc_monomer_dip_moments(dip_momIt, RRt)
+ 
+		call dip_ttm(RRc, dip_momI, dip_momE, chg, t)
+ 
+	else if ((pot_model .eq. 3) .or. (pot_model .eq. 4)) then
+		call calc_monomer_dip_moments(dip_momIt, RRt)
+		!add polarization dipoles calculated from intermolecular force calc 
+		do j = 1, Nbeads
+			dip_momIt(:,:,j) = dip_momIt(:,:,j) + dip_momE
+			dip_momEt(:,:,j) = dip_momE
+		enddo 
+	endif
+   
+	!update Upot, virial and virialc
+	Upot    = Upot*Nbeads + Umonomers !potential energy for the ENTIRE system (all images)
+	virial  = virialmon + virt(1,1) + virt(2,2) + virt(3,3) !virial for the ENTIRE system (all images)
+	virialc = virialcmon/Nbeads + virialc
+	
+	
+	!update kinetic energy 
+	call calc_uk 
+
+	!write stuff out if necessary 
+	call start_timer("WritingOut")
+	call write_out
+	call stop_timer("WritingOut")
+	
+	!update momenta a half step w/ slow forces
+	PPt = PPt - MASSCON*dRRt*delt2
+
+	!Propagate NH chains 
+	if (BEADTHERMOSTAT) call bead_thermostat
+	
+	call calc_uk 
+
+	if (THERMOSTAT) then 
+		call Nose_Hoover(s, uk, global_chain_length, vxi_global, tau, delt2, 3*Natoms*Nbeads, temp*Nbeads)
+		PPt = PPt*s
+	endif
+	
+	if (BAROSTAT) call Pcouple
+
+endif!(pid .eq. 0) 
+
+end subroutine contracted_MD
+
+
+
+
+
+
+
+
+end module MD
+

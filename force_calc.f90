@@ -1,24 +1,16 @@
 module force_calc
+ use dans_timer
  contains
  
-
-!--------------------------------------------------------------------------------------------
-!---------------------------------- Default MPI force calculation --------------------------
-!--------------------------------------------------------------------------------------------
+!--------------------------------------------------------------------------------------
+!---------------------------Full PIMD MPI force calculation --------------------------
+!--------------------------------------------------------------------------------------
 subroutine full_bead_forces
  use main_stuff 
- use lun_management
  use math, only:str
  Implicit None 
-! integer :: lun_clean
 
  do bat = 0, Nbatches - 1 !batch index
-
-	!if ((pot_model .eq. 6).and.(mod(t,2000).eq.0).and.(t.gt.0)) then 
-	!	call io_open(lun_clean,trim(sys_label)//trim(str(pid))//".out",REPLACE=.true.) !clean out .out files
-	!	write(lun_clean) " "
-	!	call io_close(lun_clean)
-	!endif 
 
     !we want to send a (3 x Natoms) array to each processor 
     if (pid .eq. 0) then
@@ -95,167 +87,65 @@ endif
 
 end subroutine full_bead_forces
 
-!--------------------------------------------------------------------------------------------
-!------------- Contracted force calculation with intermolecular forces on monomer ----------
-!-- This subroutine performs evaluates only the intramolecular (fast) forces on the beads and 
-!-- evaluates the intermolecular (slow) forces on the centroid. It also uses a multiple timestep method
-!-- (see Tuckerman, pg 118). The momentum and positions will be updated with the intramolecular forces
-!-- every intra_timesteps times. For instance if the 'outer timestep' (normal timestep) is .5 ps and intra_timesteps = 5
-!-- then the inner timestep is .1 ps
-!--------------------------------------------------------------------------------------------
-subroutine contracted_forces
- use main_stuff
- use NormalModes
- use pot_mod 
+
+!---------------------------------------------------------------------
+!-----------------Call correct potential ----------------------------
+!---------------------------------------------------------------------
+subroutine potential(RR, RRc, Upot, dRR, virt, virialc, dip_momI, Edip_mom, chg, t, BAROSTAT, sys_lab)
+ use consts
+ use system_mod
+ use pot_mod
+ use fsiesta
  use dans_timer
- Implicit None 
- double precision :: e1, virialmon, virialcmon, Umonomers, chgH1, chgH2, tmp
- double precision, dimension(3,Natoms,Nbeads)  ::  dRRfast
- double precision, dimension(3,Natoms) :: dRRc
- double precision, dimension(3,3)      :: dr1, r1
- double precision, dimension(3)        :: roh1, roh2 
- integer :: tintra, iM
-
- tmp = 0.5d0*gammaM/(1.d0-gammaM)
- 
- if (t .eq. 1) dRRfast =0
-
-if (pid .eq. 0) then
-  call start_timer("MonomerPIMD")
-
-  Umonomers = 0 
-  virialmon = 0 
-  virialcmon = 0 
-	   
-   !---  intramolecular (fast) forces -------------------------------------------------
-  do tintra = 1, intra_timesteps
-
-	!update momenta with fast forces (delt2fast = deltfast/2)
-	PPt = PPt - MASSCON*dRRfast*delt2fast
-
-	!update positions with fast forces
-	if (Nbeads .gt. 1) then
-		do i = 1, Nwaters
-			Call EvolveRing(RRt(:,3*i-2,:), PPt(:,3*i-2,:), Nbeads, massO)
-			Call EvolveRing(RRt(:,3*i-1,:), PPt(:,3*i-1,:), Nbeads, massH)
-			Call EvolveRing(RRt(:,3*i-0,:), PPt(:,3*i-0,:), Nbeads, massH)
-		enddo
-	else 
-		do i = 1,Nwaters
-			do k = 1,Nbeads
-				RRt(:,3*i-2,k) = RRt(:,3*i-2,k) + imassO*PPt(:,3*i-2,k)*deltfast
-				RRt(:,3*i-1,k) = RRt(:,3*i-1,k) + imassH*PPt(:,3*i-1,k)*deltfast
-				RRt(:,3*i-0,k) = RRt(:,3*i-0,k) + imassH*PPt(:,3*i-0,k)*deltfast
-			enddo
-		enddo			
-	endif	  
-
-	!update fast forces (intramolecular forces)
-	!masternode calcuates the intramolecular forces, puts them in dRRfast
-	Umonomers = 0 
-	virialmon = 0 
-	virialcmon = 0 
-
-	do j = 1, Nbeads
-		do iw = 1, Nwaters
-			iO=3*iw-2; iH1 = 3*iw-1; iH2=3*iw-0
-
-	   		r1(1:3, 1:3) = RRt(1:3, (/iO, iH1, iH2/), j)
-
-		  	call pot_nasa(r1, dr1, e1, box, boxi)  
-
-			dRRfast(1:3, (/iO, iH1, iH2/), j) = dr1
-
-			!if last timestep in loop update monomer energy
-			!and calculate dipole moments using dip. mom. surface 
-			if (tintra .eq. intra_timesteps) then
-				Umonomers = Umonomers + e1
-			endif
-		enddo
-	enddo
-	
-    !update momenta with fast forces
-    PPt = PPt - MASSCON*dRRfast*delt2fast
-
- enddo !tintra  = 1.. 
-
- !calculate centroid positions
- RRc = sum(RRt,3)/Nbeads
-
- !calculate centroid momenta
- PPc = sum(PPt,3)/Nbeads
- 
- !check PBCs
- call PBCs(RRt, RRc)
- 
- call stop_timer("MonomerPIMD")
- 
- !intermolecular force calculation
- call potential(RRc, RRc, Upot, dRRc, virt, virialc, dip_momI, dip_momE, chg, t, BAROSTAT, sys_label)
-
- !update dRRt
- do j = 1, Nbeads
-	dRRt(:,:,j) = dRRc
- enddo
-
- !calculate virial
- do j = 1, Nbeads
-	do iw = 1, Nwaters
-		iO=3*iw-2; iH1 = 3*iw-1; iH2=3*iw-0
-
-		!do centroid virial first
-		roh1 = RRc(1:3, iH1) - RRc(1:3, iO)
-		roh1 = roh1 - box*anint(roh1*boxi) !PBC
-		roh2 = RRc(1:3, iH2) - RRc(1:3, iO)
-		roh2 = roh2 - box*anint(roh2*boxi) !PBC
-
-		virialcmon = virialcmon + dot_product(roh1, dr1(:,2)) 
-		virialcmon = virialcmon + dot_product(roh2, dr1(:,3)) 
-
-		!do normal virial
-		roh1 = RRt(1:3, iH1, j) - RRt(1:3, iO, j)
-       	roh1 = roh1 - box*anint(roh1*boxi) !PBC
-		roh2 = RRt(1:3, iH2, j) - RRt(1:3, iO, j)
-       	roh2 = roh2 - box*anint(roh2*boxi) !PBC
-
-		virialmon = virialmon + dot_product(roh1, dr1(:,2))
-		virialmon = virialmon + dot_product(roh2, dr1(:,3)) 
-	enddo
- enddo
-
- 
- !calculate dipole moments 
- if (pot_model .eq. 6) then
- 
- 	call calc_monomer_dip_moments(dip_momIt, RRt)
- 
- 	call dip_ttm(RRc, dip_momI, dip_momE, chg, t)
- 
- else if ((pot_model .eq. 3) .or. (pot_model .eq. 4)) then
-	call calc_monomer_dip_moments(dip_momIt, RRt)
-	!add polarization dipoles calculated from intermolecular force calc 
-	do j = 1, Nbeads
-		dip_momIt(:,:,j) = dip_momIt(:,:,j) + dip_momE
-		dip_momEt(:,:,j) = dip_momE
-	 enddo 
- endif
- 
- 
+ implicit none
+ double precision, dimension(3, Natoms), intent(in) :: RR, RRc
+ double precision, intent(out) :: Upot, virialc
+ double precision, dimension(3, Natoms), intent(out) :: dRR
+ double precision, dimension(3, 3), intent(out) :: virt
+ double precision, dimension(Natoms), intent(out)  :: chg
+ double precision, dimension(3, NWaters), intent(out)  ::  dip_momI, Edip_mom
+ character(len=*), intent(in) :: sys_lab
+ double precision, dimension(3) :: dip_mom
+ integer, intent(in) :: t
+ logical, intent(in) :: BAROSTAT
+ double precision, dimension(3,3) :: siesta_box
    
- !update Upot, virial and virialc
- Upot    = Upot*Nbeads + Umonomers !potential energy for the ENTIRE system (all images)
- virial  = virialmon + virt(1,1) + virt(2,2) + virt(3,3) !virial for the ENTIRE system (all images)
- virialc = virialcmon/Nbeads + virialc
+ siesta_box = 0.0
+ siesta_box(1,1) = box(1)
+ siesta_box(2,2) = box(2)
+ siesta_box(3,3) = box(3) 
 
-endif !(pid .eq. 0) then
- 
+ !All the stuff that depends on volume needs to be rescaled if using the barostat
+ if (BAROSTAT) p4V = FOURPI/volume
 
-end subroutine contracted_forces
+ !scale VdW long range correction due to box size change and add correction
+ !multiplying by a correction factor is slightly more efficient than recalculating the entire Uvdw_lrc term each timestep
+ if (BAROSTAT) Uvdw_lrc = Uvdw_lrc0*(volume_init/volume)
 
+ !If the volume is changing than the Ewald k-vectors have to be reset every timestep
+ !if (BAROSTAT) call ewald_set(.false.)
 
+if (pot_model==2 .or. pot_model==3) then
+    call pot_ttm(RR, RRc, Upot, dRR, virt, virialc, dip_momI, Edip_mom, chg,t)
+    !write(*,*) "foces (ev/Ang): ", -1.0*dRR/EVTOKCALPERMOLE
 
+ else if (pot_model==4 .or. pot_model==5) then
+     call pot_spc(RR, Upot, dRR, virt, dip_momI, chg)
+ else if (pot_model==6) then 
 
+	call start_timer("SIESTA")
+    call siesta_forces( trim(sys_lab), Natoms, RR, cell=siesta_box, energy=Upot, fa=dRR)
+    call stop_timer("SIESTA")
+    
+    !write(*,*) "energy (eV):    ", Upot
+    !write(*,*) "foces (ev/Ang): ", -1.0*dRR
+    
+    Upot = Upot*EVTOKCALPERMOLE
+    dRR = -1d0*dRR*EVTOKCALPERMOLE    
 
+ endif
+
+end subroutine potential
 
 
 
@@ -329,63 +219,12 @@ end subroutine calc_monomer_dip_moments
 
 
 
-!---------------------------------------------------------------------
-!-----------------Call correct potential ----------------------------
-!---------------------------------------------------------------------
-subroutine potential(RR, RRc, Upot, dRR, virt, virialc, dip_momI, Edip_mom, chg, t, BAROSTAT, sys_lab)
- use consts
- use system_mod
- use pot_mod
- use fsiesta
- use dans_timer
- implicit none
- double precision, dimension(3, Natoms), intent(in) :: RR, RRc
- double precision, intent(out) :: Upot, virialc
- double precision, dimension(3, Natoms), intent(out) :: dRR
- double precision, dimension(3, 3), intent(out) :: virt
- double precision, dimension(Natoms), intent(out)  :: chg
- double precision, dimension(3, NWaters), intent(out)  ::  dip_momI, Edip_mom
- character(len=*), intent(in) :: sys_lab
- double precision, dimension(3) :: dip_mom
- integer, intent(in) :: t
- logical, intent(in) :: BAROSTAT
- double precision, dimension(3,3) :: siesta_box
-   
- siesta_box = 0.0
- siesta_box(1,1) = box(1)
- siesta_box(2,2) = box(2)
- siesta_box(3,3) = box(3) 
 
- !All the stuff that depends on volume needs to be rescaled if using the barostat
- if (BAROSTAT) p4V = FOURPI/volume
 
- !scale VdW long range correction due to box size change and add correction
- !multiplying by a correction factor is slightly more efficient than recalculating the entire Uvdw_lrc term each timestep
- if (BAROSTAT) Uvdw_lrc = Uvdw_lrc0*(volume_init/volume)
 
- !If the volume is changing than the Ewald k-vectors have to be reset every timestep
- !if (BAROSTAT) call ewald_set(.false.)
 
-if (pot_model==2 .or. pot_model==3) then
-    call pot_ttm(RR, RRc, Upot, dRR, virt, virialc, dip_momI, Edip_mom, chg,t)
-    !write(*,*) "foces (ev/Ang): ", -1.0*dRR/EVTOKCALPERMOLE
 
- else if (pot_model==4 .or. pot_model==5) then
-     call pot_spc(RR, Upot, dRR, virt, dip_momI, chg)
- else if (pot_model==6) then 
 
-	call start_timer("SIESTA")
-    call siesta_forces( trim(sys_lab), Natoms, RR, cell=siesta_box, energy=Upot, fa=dRR)
-    call stop_timer("SIESTA")
-    
-    !write(*,*) "energy (eV):    ", Upot
-    !write(*,*) "foces (ev/Ang): ", -1.0*dRR
-    
-    Upot = Upot*EVTOKCALPERMOLE
-    dRR = -1d0*dRR*EVTOKCALPERMOLE    
 
- endif
-
-end subroutine potential
 
 end module force_calc
