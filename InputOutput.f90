@@ -214,7 +214,7 @@ subroutine init_potential_all_nodes
   
 	call system("export GFORTRAN_UNBUFFERED_ALL=y")
 
-    if (CONTRACTION .eqv. .false.) then
+    if ( PIMD_type .eq. "full") then
         call sleep(pid) !stagger the system calls from different MPI processes a bit - important fix
 	
 		!setup Nnodes SIESTA proccesses sharing num_SIESTA_nodes
@@ -245,7 +245,7 @@ subroutine init_potential_all_nodes
 		endif
 	
 	else
-		write(*,*) "You specified contraction = ", CONTRACTION, " and Nnodes = ", Nnodes
+		write(*,*) "You specified running with ", PIMD_type, " and Nnodes = ", Nnodes
 		write(*,*) "This configuration is not supported. With contractiom PIMD must be on a single node. "
 		stop
 	endif
@@ -916,8 +916,7 @@ subroutine print_basic_run_info
  write(lunTP_out,'(a50, i6)') "Num Molecules = ", Nwaters
  write(lunTP_out,'(a50, f10.3,a3)') "timestep = ", delt*1000, " fs"
  write(lunTP_out,'(a50, f8.4,a21,f8.4)') "mass of hydrogen = ", massH, "  mass of oxygen = ", massO
- if (CONTRACTION) write(lunTP_out,'(a50,a)') "ring polymer contraction to centroid = ", "yes"
- if (.not. CONTRACTION) write(lunTP_out,'(a50,a)') "ring polymer contraction to centroid = ", "no"
+ write(lunTP_out,'(a50,a)') "type of  ", trim(PIMD_type)
  if (THERMOSTAT) write(lunTP_out,'(a50, a )')  " type of global thermostat = ", "Nose-Hoover"
  if (.not. THERMOSTAT) write(lunTP_out,'(a50, a )')  " type of global thermostat = ", "none"
  if (.not. THERMOSTAT) write(lunTP_out,'(a50, a3)') "global thermostat tau = ", "n/a"
