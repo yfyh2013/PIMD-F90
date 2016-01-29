@@ -149,9 +149,6 @@ end subroutine potential
 
 
 
-
-
-
 !---------------------------------------------------------------------
 !- Calculate dipole moments using the TIP4P/2005 charges and m-site 
 !- for the coordinates obtained from a SIESTA calculation 

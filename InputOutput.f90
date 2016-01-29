@@ -73,7 +73,7 @@ subroutine read_input_file
  read(lun,*) 
  read(lun,*)
  read(lun,*)setNMfreq
- read(lun,*)CONTRACTION
+ read(lun,*)PIMD_type
  read(lun,*)intra_timesteps
  read(lun,*)massO
  read(lun,*)massH
@@ -87,6 +87,22 @@ subroutine read_input_file
  SIMPLE_ENERGY_ESTIMATOR = .true. !setting this to true will output the simple energy to temp/press file
  CALCIRSPECTRA = .false. !store dipole moments and calculate IR spectra at end of run
  CALCDOS = .true. 
+
+ select case (trim(PIMD_type))
+	case("full")
+		MONOMERPIMD = .false.
+		CONTRACTION = .false.
+	case("contracted")
+		MONOMERPIMD = .false.
+		CONTRACTION = .true. 
+	case("monomerPIMD")
+		MONOMERPIMD = .true.
+		CONTRACTION = .false.
+	case default 
+		write(*,*) "InputOutput: ERROR: invalid PIMD type. Must be 'full', 'contracted', or 'monomerPIMD'"
+ end select	
+
+	 
 end subroutine read_input_file 
 
 

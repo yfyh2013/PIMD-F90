@@ -53,7 +53,7 @@ program PIMD
 	if (CONTRACTION) then
 		call contracted_MD
 	else if (MONOMERPIMD) then 
-		
+		call monomer_PIMD
 	else
 		call PIMD_VV
 	endif

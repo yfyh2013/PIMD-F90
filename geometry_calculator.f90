@@ -51,8 +51,8 @@ subroutine calc_geometry(RR, RRt)
 	d_OH1 = dsqrt( sum(ROH1**2) ) 
 	d_OH2 = dsqrt( sum(ROH2**2) )  
 
-	if (d_OH1 .gt. dOHmax) write (*,*) "WARNING dOH > ", dOHmax, " = ", d_OH1
-	if (d_OH2 .gt. dOHmax) write (*,*) "WARNING dOH > ", dOHmax, " = ", d_OH2
+	if (d_OH1 .gt. dOHmax) write (*,*) "SEVERE WARNING centroid dOH > ", dOHmax, " = ", d_OH1
+	if (d_OH2 .gt. dOHmax) write (*,*) "SEVERE WARNING centroid dOH > ", dOHmax, " = ", d_OH2
 	if (d_OH1 .gt. max_OH) max_OH = d_OH1
 	if (d_OH2 .gt. max_OH) max_OH = d_OH1
 	call binit(dOHhist, d_OH1)

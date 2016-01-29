@@ -89,7 +89,7 @@ do iw=1, Nwaters
    iO=fO+iw-1; iH1=iO+Nwaters; iH2=iO+2*Nwaters; iM=iO+3*Nwaters
    r1(1:3, 1:3) = R(1:3, (/iO, ih1, ih2/) )
 
-   if (CONTRACTION .eqv. .false.) then
+   if ((CONTRACTION .eqv. .false.).and.(MONOMERPIMD .eqv. .false.))  then
    	call pot_nasa(r1, dr1, e1, box, boxi) !include box size & inverse box for speed
 	Umon = Umon + e1
 	dR(1:3, (/iO, ih1, ih2/)) = dr1
@@ -106,7 +106,7 @@ do iw=1, Nwaters
    chg(3*iw-2:3*iw) = q3
 
 
-   if (CONTRACTION .eqv. .false.) then
+   if ((CONTRACTION .eqv. .false.).and.(MONOMERPIMD .eqv. .false.))  then
    	!add term to virial
   	 roh1 = r1(:,2) - r1(:,1)
    	 roh1 = roh1 - box*anint(roh1*boxi) !PBC
@@ -129,7 +129,7 @@ do iw=1, Nwaters
  	 virialc = virialc + dot_product(roh1, dr1(:,2)) 
   	 virialc = virialc + dot_product(roh2, dr1(:,3)) 
 	 !virialc = virialc + dot_product(rhh,  dr1(:,3)) 
-   endif ! (CONTRACTION .eqv. .false.) then
+   endif ! ((CONTRACTION .eqv. .false.).and.(MONOMERPIMD .eqv. .false.))  then
 
    charge(iO) = 0.d0
    charge(iH1) = q3(2) + tmp*(q3(2)+q3(3))

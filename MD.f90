@@ -1,19 +1,22 @@
 module MD
  use dans_timer
+ use NormalModes, only: EvolveRing
+ use pot_mod 
+ use dans_timer
+ use system_mod
+ use consts
+ use InputOutput
+ use force_calc
+ use main_stuff
+
  contains
  
- 
+
 !-----------------------------------------------------------------
 !--------   Standard full PIMD Velocity-Verlet integration ------
 !-----------------------------------------------------------------
 subroutine PIMD_VV
- use system_mod
- use consts
- use main_stuff
- use InputOutput
- use NormalModes
  use mpi
- use force_calc
  implicit none
  
  if (pid .eq. 0) then
@@ -90,6 +93,154 @@ subroutine PIMD_VV
 end subroutine PIMD_VV
 
 
+!-----------------------------------------------------------------
+!--------   Monomer PIMD ----------------------------------------
+!-----------------------------------------------------------------
+subroutine monomer_PIMD
+ use system_mod
+ use consts
+ use main_stuff
+ use InputOutput
+ use NormalModes
+ use mpi
+ use force_calc
+ implicit none
+ double precision :: e1, virialmon, virialcmon, Umonomers 
+ double precision, dimension(3,Natoms,Nbeads)  ::  dRRmon
+ double precision, dimension(3,Natoms) :: dRRc
+ double precision, dimension(3,3)      :: dr1, r1 
+ double precision, dimension(3)        :: roh1, roh2 
+  
+ if (t .eq. 1) dRRmon = 0
+ Umonomers = 0 
+ virialmon = 0 
+ virialcmon = 0 
+  
+ if (pid .eq. 0) then
+	!Propagate NH chains 
+	if (BEADTHERMOSTAT) call bead_thermostat
+	
+	if (THERMOSTAT)  then 
+		call Nose_Hoover(s, uk, global_chain_length, vxi_global, tau, delt2, 3*Natoms*Nbeads, temp*Nbeads)
+		PPt = PPt*s
+	endif
+
+	!update momenta a half step w/ old forces
+	PPt = PPt - MASSCON*dRRt*delt2
+	
+	!Normal modes stuff
+	if (Nbeads .gt. 1) then
+		do i = 1, Nwaters
+			!Evolve ring a full step 
+			Call EvolveRing(RRt(:,3*i-2,:), PPt(:,3*i-2,:), Nbeads, massO)
+			Call EvolveRing(RRt(:,3*i-1,:), PPt(:,3*i-1,:), Nbeads, massH)
+			Call EvolveRing(RRt(:,3*i-0,:), PPt(:,3*i-0,:), Nbeads, massH)
+		enddo
+	else 
+		do i = 1,Nwaters
+			do k = 1,Nbeads
+				RRt(:,3*i-2,k) = RRt(:,3*i-2,k) + imassO*PPt(:,3*i-2,k)*delt
+				RRt(:,3*i-1,k) = RRt(:,3*i-1,k) + imassH*PPt(:,3*i-1,k)*delt
+				RRt(:,3*i-0,k) = RRt(:,3*i-0,k) + imassH*PPt(:,3*i-0,k)*delt
+			enddo
+		enddo			
+	endif
+
+	!calculate centroid positions
+	RRc = sum(RRt,3)/Nbeads
+
+	!calculate centroid momenta
+	PPc = sum(PPt,3)/Nbeads 
+
+	!check PBCs
+	call PBCs(RRt, RRc)
+
+	!intermolecular force calculation
+	call potential(RRc, RRc, Upot, dRRc, virt, virialc, dip_momI, dip_momE, chg, t, BAROSTAT, sys_label)
+
+	!intramolecular force calculation 
+	do j = 1, Nbeads
+		do iw = 1, Nwaters
+			iO=3*iw-2; iH1 = 3*iw-1; iH2=3*iw-0
+
+			r1(1:3, 1:3) = RRt(1:3, (/iO, iH1, iH2/), j)
+
+			call pot_nasa(r1, dr1, e1, box, boxi)  
+
+			dRRmon(1:3, (/iO, iH1, iH2/), j) = dr1
+
+			Umonomers = Umonomers + e1
+			!monomer centroid virial
+			roh1 = RRc(1:3, iH1) - RRc(1:3, iO)
+			roh1 = roh1 - box*anint(roh1*boxi) !PBC
+			roh2 = RRc(1:3, iH2) - RRc(1:3, iO)
+			roh2 = roh2 - box*anint(roh2*boxi) !PBC
+			virialcmon = virialcmon + dot_product(roh1, dr1(:,2)) 
+			virialcmon = virialcmon + dot_product(roh2, dr1(:,3)) 
+			!monomer normal virial
+			roh1 = RRt(1:3, iH1, j) - RRt(1:3, iO, j)
+			roh1 = roh1 - box*anint(roh1*boxi) !PBC
+			roh2 = RRt(1:3, iH2, j) - RRt(1:3, iO, j)
+			roh2 = roh2 - box*anint(roh2*boxi) !PBC
+			virialmon = virialmon + dot_product(roh1, dr1(:,2))
+			virialmon = virialmon + dot_product(roh2, dr1(:,3)) 
+
+ 		enddo
+	enddo
+	
+	!update dRRt
+	do j = 1, Nbeads
+		dRRt(:,:,j) = dRRc + dRRmon(:,:,j)
+	enddo
+	
+	!update Upot
+    Upot = Upot*Nbeads + Umonomers !potential energy for the ENTIRE system (all images)
+	virial  = virialmon + virt(1,1) + virt(2,2) + virt(3,3) !virial for the ENTIRE system (all images)
+	virialc = virialcmon/Nbeads + virialc
+	
+	!calculate dipole moments 
+	if (pot_model .eq. 6) then
+ 
+		call calc_monomer_dip_moments(dip_momIt, RRt)
+ 
+		call dip_ttm(RRc, dip_momI, dip_momE, chg, t)
+ 
+	else if ((pot_model .eq. 3) .or. (pot_model .eq. 4)) then
+		call calc_monomer_dip_moments(dip_momIt, RRt)
+		!add polarization dipoles calculated from intermolecular force calc 
+		do j = 1, Nbeads
+			dip_momIt(:,:,j) = dip_momIt(:,:,j) + dip_momE
+			dip_momEt(:,:,j) = dip_momE
+		enddo 
+	endif
+
+	!update kinetic energy 
+	call calc_uk 
+
+	!write stuff out if necessary 
+	call start_timer("WritingOut")
+	call write_out
+	call stop_timer("WritingOut")
+	
+	!update momenta a half step w/ new forces
+	PPt = PPt - MASSCON*dRRt*delt2
+
+	!Propagate NH chains 
+	if (BEADTHERMOSTAT) call bead_thermostat
+	
+	call calc_uk 
+
+	if (THERMOSTAT) then 
+		call Nose_Hoover(s, uk, global_chain_length, vxi_global, tau, delt2, 3*Natoms*Nbeads, temp*Nbeads)
+		PPt = PPt*s
+	endif
+	
+	if (BAROSTAT) call Pcouple
+	
+ endif!(pid .eq. 0) 
+ 
+end subroutine monomer_PIMD
+
 
 !--------------------------------------------------------------------------------------------
 !------------- Contracted MD with intermolecular forces on monomer with multiple time step
@@ -109,14 +260,13 @@ subroutine contracted_MD
  use InputOutput
  use force_calc
  Implicit None 
- double precision :: e1, virialmon, virialcmon, Umonomers, chgH1, chgH2, tmp
+ double precision :: e1, virialmon, virialcmon, Umonomers
  double precision, dimension(3,Natoms,Nbeads)  ::  dRRfast
  double precision, dimension(3,Natoms) :: dRRc
  double precision, dimension(3,3)      :: dr1, r1
  double precision, dimension(3)        :: roh1, roh2 
  integer :: tintra, iM
 
- tmp = 0.5d0*gammaM/(1.d0-gammaM)
  if (t .eq. 1) dRRfast =0
  Umonomers = 0 
  virialmon = 0 
@@ -187,6 +337,20 @@ subroutine contracted_MD
 				!and calculate dipole moments using dip. mom. surface 
 				if (tintra .eq. intra_timesteps) then
 					Umonomers = Umonomers + e1
+					!monomer centroid virial first
+					roh1 = RRc(1:3, iH1) - RRc(1:3, iO)
+					roh1 = roh1 - box*anint(roh1*boxi) !PBC
+					roh2 = RRc(1:3, iH2) - RRc(1:3, iO)
+					roh2 = roh2 - box*anint(roh2*boxi) !PBC
+					virialcmon = virialcmon + dot_product(roh1, dr1(:,2)) 
+					virialcmon = virialcmon + dot_product(roh2, dr1(:,3)) 
+					!monomer normal virial
+					roh1 = RRt(1:3, iH1, j) - RRt(1:3, iO, j)
+					roh1 = roh1 - box*anint(roh1*boxi) !PBC
+					roh2 = RRt(1:3, iH2, j) - RRt(1:3, iO, j)
+					roh2 = roh2 - box*anint(roh2*boxi) !PBC
+					virialmon = virialmon + dot_product(roh1, dr1(:,2))
+					virialmon = virialmon + dot_product(roh2, dr1(:,3)) 
 				endif
 			enddo
 		enddo
@@ -216,36 +380,11 @@ subroutine contracted_MD
 		dRRt(:,:,j) = dRRc
 	enddo
 
-	!calculate virial
-	do j = 1, Nbeads
-		do iw = 1, Nwaters
-			iO=3*iw-2; iH1 = 3*iw-1; iH2=3*iw-0
-
-			!do centroid virial first
-			roh1 = RRc(1:3, iH1) - RRc(1:3, iO)
-			roh1 = roh1 - box*anint(roh1*boxi) !PBC
-			roh2 = RRc(1:3, iH2) - RRc(1:3, iO)
-			roh2 = roh2 - box*anint(roh2*boxi) !PBC
-
-			virialcmon = virialcmon + dot_product(roh1, dr1(:,2)) 
-			virialcmon = virialcmon + dot_product(roh2, dr1(:,3)) 
-
-			!do normal virial
-			roh1 = RRt(1:3, iH1, j) - RRt(1:3, iO, j)
-			roh1 = roh1 - box*anint(roh1*boxi) !PBC
-			roh2 = RRt(1:3, iH2, j) - RRt(1:3, iO, j)
-			roh2 = roh2 - box*anint(roh2*boxi) !PBC
-
-			virialmon = virialmon + dot_product(roh1, dr1(:,2))
-			virialmon = virialmon + dot_product(roh2, dr1(:,3)) 
-		enddo
-	enddo
-
 	!calculate dipole moments 
 	if (pot_model .eq. 6) then
  
 		call calc_monomer_dip_moments(dip_momIt, RRt)
- 
+		
 		call dip_ttm(RRc, dip_momI, dip_momE, chg, t)
  
 	else if ((pot_model .eq. 3) .or. (pot_model .eq. 4)) then
@@ -261,8 +400,6 @@ subroutine contracted_MD
 	Upot    = Upot*Nbeads + Umonomers !potential energy for the ENTIRE system (all images)
 	virial  = virialmon + virt(1,1) + virt(2,2) + virt(3,3) !virial for the ENTIRE system (all images)
 	virialc = virialcmon/Nbeads + virialc
-	
-	
 	!update kinetic energy 
 	call calc_uk 
 

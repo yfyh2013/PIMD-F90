@@ -36,7 +36,7 @@ integer :: num_timesteps, t, t_freq, tp_freq, td_freq, ti_freq, m, clock, eq_tim
 logical :: dip_out, coord_out, TD_out, vel_out, TP_out, Edip_out 
 logical :: BAROSTAT, PEQUIL, BOXSIZEOUT, THERMOSTAT, GENVEL, INPCONFIGURATION, IMAGEDIPOLESOUT
 logical :: DIELECTRICOUT, WRITECHECKPOINTS, OUTPUTIMAGES, SIMPLE_ENERGY_ESTIMATOR
-logical :: CALCIRSPECTRA, CALCDIFFUSION, CALCDOS, RESTART, MONOMERPIMD
+logical :: CALCIRSPECTRA, CALCDIFFUSION, CALCDOS, RESTART
 logical ::  BEADTHERMOSTAT, CENTROIDTHERMOSTAT, CALC_RADIUS_GYRATION, CHARGESOUT, EXISTS, CALCGEOMETRY
 
 !logical i/o units
@@ -74,7 +74,7 @@ double precision :: seconds
 !variables for multiple timestep / contraction
 integer :: intra_timesteps, num_SIESTA_nodes
 double precision :: deltfast, delt2fast  
-character(len=200) :: siesta_name
+character(len=200) :: siesta_name, PIMD_type
 
  contains
 

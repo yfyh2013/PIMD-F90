@@ -17,7 +17,7 @@ module system_mod
    integer :: predict_step
    double precision :: const_ts1, const_ts2, const_ts3
 
-   logical :: CONTRACTION 
+   logical :: CONTRACTION, MONOMERPIMD
    character(len=200) :: sys_label 
 
 end module system_mod
