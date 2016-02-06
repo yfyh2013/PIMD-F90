@@ -209,8 +209,15 @@ subroutine init_potential_all_nodes
  character(len=100) :: sys_label_i
  character(len=300) :: pipe_name
  integer :: nodes_per_process
+ 
   
+
  if (pot_model .eq. 6) then
+ 
+	pot_model = 3
+	call init_pot
+	!polar_eps = 1d-10
+	pot_model = 6
   
 	call system("export GFORTRAN_UNBUFFERED_ALL=y")
 
@@ -682,7 +689,7 @@ subroutine write_out
 		!endif 
 	endif 
 	
-	write(lunTP_out,'(1x,f6.2)',advance='no') sum_dip_mag/tr/Nwaters !avg dipole moment
+	write(lunTP_out,'(1x,f8.4)',advance='no') sum_dip_mag/tr/Nwaters !avg dipole moment
 
 	!feature to output the current density (for debugging the barostat) 
 	!write(lunTP_out,'(1x,f10.6)',advance='no') Nwaters*(massO+2*massH)*amu2grams/(box(1)*box(2)*box(3)*(a2m*100)**3)

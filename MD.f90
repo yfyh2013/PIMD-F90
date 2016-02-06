@@ -198,21 +198,16 @@ subroutine monomer_PIMD
 	virial  = virialmon + virt(1,1) + virt(2,2) + virt(3,3) !virial for the ENTIRE system (all images)
 	virialc = virialcmon/Nbeads + virialc
 	
-	!calculate dipole moments 
-	if (pot_model .eq. 6) then
- 
-		call calc_monomer_dip_moments(dip_momIt, RRt)
- 
-		call dip_ttm(RRc, dip_momI, dip_momE, chg, t)
- 
-	else if ((pot_model .eq. 3) .or. (pot_model .eq. 4)) then
-		call calc_monomer_dip_moments(dip_momIt, RRt)
-		!add polarization dipoles calculated from intermolecular force calc 
-		do j = 1, Nbeads
-			dip_momIt(:,:,j) = dip_momIt(:,:,j) + dip_momE
-			dip_momEt(:,:,j) = dip_momE
-		enddo 
-	endif
+    call calc_monomer_dip_moments(dip_momIt, RRt)
+	
+	!calculate electronic polarization dipoles using TTM method 
+	if (pot_model .eq. 6) call dip_ttm(RRc, dip_momI, dip_momE, chg, t)
+
+	!add electronic polarization dipoles to monomer dipoles
+	do j = 1, Nbeads
+		dip_momIt(:,:,j) = dip_momIt(:,:,j) + dip_momE
+		dip_momEt(:,:,j) = dip_momE
+	enddo 
 
 	!update kinetic energy 
 	call calc_uk 
@@ -380,22 +375,19 @@ subroutine contracted_MD
 		dRRt(:,:,j) = dRRc
 	enddo
 
-	!calculate dipole moments 
-	if (pot_model .eq. 6) then
- 
-		call calc_monomer_dip_moments(dip_momIt, RRt)
-		
-		call dip_ttm(RRc, dip_momI, dip_momE, chg, t)
- 
-	else if ((pot_model .eq. 3) .or. (pot_model .eq. 4)) then
-		call calc_monomer_dip_moments(dip_momIt, RRt)
-		!add polarization dipoles calculated from intermolecular force calc 
-		do j = 1, Nbeads
-			dip_momIt(:,:,j) = dip_momIt(:,:,j) + dip_momE
-			dip_momEt(:,:,j) = dip_momE
-		enddo 
-	endif
-   
+	call calc_monomer_dip_moments(dip_momIt, RRt)
+	
+!	!calculate electronic polarization dipoles using TTM method 
+	if (pot_model .eq. 6) call dip_ttm(RRc, dip_momE, chg, t)
+
+    write(*,*) dip_momE
+
+  !add electronic polarization dipoles to monomer dipoles
+	do j = 1, Nbeads
+		dip_momIt(:,:,j) = dip_momIt(:,:,j) + dip_momE
+		dip_momEt(:,:,j) = dip_momE
+	enddo 
+	
 	!update Upot, virial and virialc
 	Upot    = Upot*Nbeads + Umonomers !potential energy for the ENTIRE system (all images)
 	virial  = virialmon + virt(1,1) + virt(2,2) + virt(3,3) !virial for the ENTIRE system (all images)

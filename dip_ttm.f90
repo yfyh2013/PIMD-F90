@@ -1,67 +1,45 @@
-!----------------------------------------------------
-! Dipole moments from TTM3F
-! scaled down version of pot_ttm.f90 that only calculates dipole moments
-!----------------------------------------------------
-subroutine dip_ttm(RR, dip_momI, dip_momE, chg, t)
+!Periodic boundary conditions added by D. Elton 2013
+!"centroid virial" (virialc) calculation added by D. Elton 2014. Used in pressure estimator. 
+subroutine dip_ttm(RR, Edip_mom, t)
 use consts
 use system_mod
 use pot_mod
 use neigh_mod
 implicit none
-double precision, dimension(3, Natoms), intent(in) :: RR 
- double precision, dimension(3, NWaters), intent(out) :: dip_momI, dip_momE
-double precision, dimension(Natoms), intent(out) :: chg
+double precision, dimension(3, Natoms), intent(in) :: RR
+double precision, dimension(3, NWaters), intent(out) :: Edip_mom
+double precision, dimension(Natoms)  :: chg
 integer :: itmp, i, is, j, js, iw, jw, iO, ih1, ih2, iOa, iH1a, iH2a, iM, jO, jH1, jH2, jM
 integer :: iat, jat, isp, jsp, jsp0, i3, j3, ii, jj, kk, ix, iy
 double precision :: ts0, ts1, ts2, ts3, ts1DD, ts2DD, ts3DD, pol, qi, qj, Ureck, e1
 double precision :: tmp, R2i, R4i, R6i, R8i, uij, dRsq, dRij, qdqd_sq, ksq, polfacI
 double precision :: dri, drsqi, expon, er, dd, ch1, ch2, ch3, sr1, sr2, sr3, exp1, a_pol12, drijsq
+!double precision :: Umon, Uvdw, Uelec, Uind, Uind_init
 double precision :: Uind_init
 double precision, dimension(3) :: qdqd,q3, Ri,Rij, dij,di,dj, roh1,roh2,rhh, Rij0,rh1m,rh2m,rmO, Rcij
 double precision, dimension(3, 3) :: r1, dr1, vij, dd3, arr33, dgrad
-double precision, dimension(3,3,3) :: dq3 
+double precision, dimension(3,3,3) :: dq3, TSabc
 double precision, dimension(4) :: dpcf
-double precision :: factor, deltadip, stath 
+double precision :: factor, deltadip, stath!, coeff2
 integer :: iter
+double precision, dimension(3), save :: pr_box
+integer , save :: pr_Natoms
+double precision, dimension(5) :: tmp_arr5
 integer, intent(in) :: t
 logical :: EWALD = .true.
 type(t_neigh) :: neigh 
-double precision :: polfacO, polfacH, polfacM
-
-
-!initial allocations if necessay (copied from pot_mod)
-if (.not. allocated(dip)) then 
-   Nwaters = Natoms/3
-   NatomsM = 4*Nwaters
-   fO=1;   lO=Nwaters
-   fH=Nwaters+1; lH=3*Nwaters
-   fM=3*Nwaters+1; lM=4*Nwaters
-   fO3=3*fO-2; lO3=3*lO
-   fH3=3*fH-2; lH3=3*lH
-   fM3=3*fM-2; lM3=3*lM
-   fdI = 4; ldI=4
-	polfac(1:4)=(/ polfacO**(1.d0/6.d0), polfacH**(1.d0/6.d0), polfacH**(1.d0/6.d0), polfacM**(1.d0/6.d0) /)
-   polfac(1:4)=1.d0/polfac(1:4)**3
  
-	allocate(neigh_list(2, Nwaters*Nwaters/2))
-	allocate(R(3, NatomsM))
-	allocate(charge(NatomsM))
-	allocate(Efq(3,NatomsM))
- 
-   allocate(Efd(3,NatomsM))
-   allocate(dip(3,fd:ld))
-   allocate(dipt(fd:ld, 3))
-   allocate(olddip(3,fd:ld))
-   allocate(tx_dip(3,fd:ld, 4))  
-   tx_dip = 0 
-endif
-
-
+vir_rec = 0.d0 !?
+Umon = 0.d0; Uvdw = 0.d0; Uelec = 0.d0
+phi= 0.d0
+Efq = 0.d0
 dip = 0.d0
 olddip = 0.d0
+dR = 0.d0
 
 
 !converts OHHOHH... to OOOO...HHHH...HHHH...MMMM
+ 
 do iw=1, Nwaters
    iOa=3*iw-2; iH1a=3*iw-1; iH2a=3*iw
    iO=fO+iw-1; iH1=iO+Nwaters; iH2=iO+2*Nwaters; iM=iO+3*Nwaters
@@ -75,15 +53,30 @@ do iw=1, Nwaters
    roh2 = roh2 - box*anint(roh2*boxi)!PBC
 
    R(1:3, iM) = 0.5d0*gammaM*( roh1(:) + roh2(:) ) + R(:,iO)
+
+ 
+
+ 
 enddo
+
 
 
 tmp = 0.5d0*gammaM/(1.d0-gammaM)
 charge = 0.d0
+grdq = 0.d0
+dR = 0.d0
 do iw=1, Nwaters
    iO=fO+iw-1; iH1=iO+Nwaters; iH2=iO+2*Nwaters; iM=iO+3*Nwaters
    r1(1:3, 1:3) = R(1:3, (/iO, ih1, ih2/) )
 
+   if ((CONTRACTION .eqv. .false.).and.(MONOMERPIMD .eqv. .false.))  then
+   	call pot_nasa(r1, dr1, e1, box, boxi) !include box size & inverse box for speed
+	Umon = Umon + e1
+	dR(1:3, (/iO, ih1, ih2/)) = dr1
+   else 
+	dr1 = 0
+	Umon = 0 
+   endif
 
    call dms_nasa(r1, q3, dq3,box,boxi)
 
@@ -92,16 +85,129 @@ do iw=1, Nwaters
 
    chg(3*iw-2:3*iw) = q3
 
+
+ 
+
    charge(iO) = 0.d0
    charge(iH1) = q3(2) + tmp*(q3(2)+q3(3))
    charge(iH2) = q3(3) + tmp*(q3(2)+q3(3))
    charge(iM ) = q3(1) / (1.d0-gammaM)
- 
+   ! write(*,*) charge(iM )
+   !write(*,*) charge(iH1) + charge(iH2)
+   grdq(iw,1,1,:)= dq3(1,1,:) + tmp*(dq3(1,1,:)+dq3(1,2,:))
+   grdq(iw,2,1,:)= dq3(2,1,:) + tmp*(dq3(2,1,:)+dq3(2,2,:))
+   grdq(iw,3,1,:)= dq3(3,1,:) + tmp*(dq3(3,1,:)+dq3(3,2,:))
+
+   grdq(iw,1,2,:)= dq3(1,2,:) + tmp*(dq3(1,1,:)+dq3(1,2,:))
+   grdq(iw,2,2,:)= dq3(2,2,:) + tmp*(dq3(2,1,:)+dq3(2,2,:))
+   grdq(iw,3,2,:)= dq3(3,2,:) + tmp*(dq3(3,1,:)+dq3(3,2,:))
+
+   grdq(iw,1,3,:)= dq3(1,3,:)-2.d0*tmp*(dq3(1,1,:)+dq3(1,2,:))
+   grdq(iw,2,3,:)= dq3(2,3,:)-2.d0*tmp*(dq3(2,1,:)+dq3(2,2,:))
+   grdq(iw,3,3,:)= dq3(3,3,:)-2.d0*tmp*(dq3(3,1,:)+dq3(3,2,:))
 enddo
  
 
+	
+
+!-----------------------------------------------------------------------------
+!* Calculate the pairwise additive VDW and Electrostatic (Real) Interactions
+!-----------------------------------------------------------------------------
+do iw=1, Nwaters
+   iO = iw
+   call find_neigh(iO, R, Neigh)
+   
+   do j=1, neigh % N
+      jO = neigh % j(j)
+      Rij = neigh % Rij(1:3, j)
+      dRsq = neigh % R2(j)
+      !....O-O (vdw)
+      dRij = dsqrt ( dRsq )
+      R2i = 1.d0/dRsq; R4i=R2i*R2i; R6i=R2i*R2i*R2i; R8i=R6i*R2i
+      tmp = vdwD*dexp(-vdwE*dRij)
+      uij = R6i*((vdwA*R6i + vdwB*R4i) + vdwC) + tmp !Original statement works for TTM2.1F and TTM3F
+      !uij = R6i*vdwC + tmp !slightly faster statement, only works with TTM3F where A = 0 and B = 0
+
+      !dij = -(R8i*6.d0*vdwC + tmp*vdwE/dRij)*Rij !Original statement works for TTM2.1F and TTM3F
+      !!!GROMACS style Shifted cutoff
+      dij = -(R8i*6.d0*vdwC + tmp*vdwE/dRij + shiftA*(dRij - rc1)**2 + shiftB*(dRij - rc1)**3 )*Rij
+
+      Uvdw = Uvdw + uij
+ 
+      !........ electrostatics
+      Rij0 = Rij - R(1:3, iO) + R(1:3, jO)   !shift in O_i - O-j position due to PBCs
+
+      do isp=1, 4
+         iat = iw + (isp-1)*Nwaters
+         Ri = R(1:3, iat) + Rij0
+
+         qi = charge(iat)
+         polfacI = aCCaCD*polfac(isp)
+         jsp0 = 1
+         if (isp==1) jsp0 = 2
+         do jsp=jsp0, 4
+            jat = jO + (jsp-1)*Nwaters
+            qj = charge(jat)
+            Rij = Ri - R(1:3, jat) !PBCs implemented through Rij0 here 
+	    Rij = Rij - box*anint(Rij*boxi) !PBC
+
+            dRsq = Rij(1)*Rij(1) + Rij(2)*Rij(2) + Rij(3)*Rij(3)
+            call PBCsmear01(dRsq, polfacI*polfac(jsp), aewald, ts0, ts1)
+            phi(iat) = phi(iat) + ts0*qj
+            phi(jat) = phi(jat) + ts0*qi
+            Efq(1:3,iat) = Efq(1:3,iat) + ts1*qj*Rij
+            Efq(1:3,jat) = Efq(1:3,jat) - ts1*qi*Rij
+            dij = -ts1*qi*qj*Rij
+
+ 
+
+         enddo ! do jsp=1,4
+      enddo ! do isp=1,4
+   enddo
+enddo
 
 
+
+!... self energy
+do iat=fH, lM
+   phi(iat) = phi(iat) - aewald*TSP*charge(iat)
+enddo
+do iw=1, Nwaters
+   do isp=1, 3
+      iat=iw + (isp-1)*Nwaters
+      do jsp=isp+1, 4
+         jat=iw + (jsp-1)*Nwaters
+         Rij=R(:,iat)-R(:,jat)
+	 Rij = Rij - box*anint(Rij*boxi) !PBC
+	 dRsq = Rij(1)*Rij(1) + Rij(2)*Rij(2) + Rij(3)*Rij(3)
+         call self1(dRsq, aewald, ts0, ts1)
+         phi(iat)=phi(iat)+ts0*charge(jat)
+         phi(jat)=phi(jat)+ts0*charge(iat)
+
+         Efq(1:3,iat) = Efq(1:3,iat) + ts1*charge(jat)*Rij
+         Efq(1:3,jat) = Efq(1:3,jat) - ts1*charge(iat)*Rij
+         dij = -ts1*charge(iat)*charge(jat)*Rij
+
+ 
+      enddo
+   enddo
+enddo
+
+
+
+
+!...................................................................
+!............... Reciprocal space ...............................
+!...................................................................
+if (EWALD) then 
+call ewald_std_qq
+
+!...
+Uelec = 0.5d0 * sum(charge(fH:lM)*phi(fH:lM))
+do iat=fH, lM
+   dR(1:3, iat) = dR(1:3, iat) - charge(iat) * Efq(1:3,iat)
+enddo
+endif !(EWALD) then 
 !........................................................................................!
 !.......... Initial guess of induced dipoles ............................................!
 !........................................................................................!
@@ -219,80 +325,33 @@ itmp = mod(predict_step, 4)+1
 if (guess_initdip) tx_dip(1:3, fd:ld, itmp) = dip(1:3, fd:ld)
 
 
+
 if (print_dipiters) write(*,'(a,f14.8,2x,a,f14.8,2x,a,i3)') &
     &"Uind(init)=",Uind_init,"Uind(fin)=",Uind,"#of iterations = ",iter
 
-    
-   
-!calculate final dipole moments
+
 do iw=1, Nwaters
-   iO=fO+iw-1; iH1=iO+Nwaters; iH2=iO+2*Nwaters; iM=iO+3*Nwaters
+  ! iO=fO+iw-1; iH1=iO+Nwaters; iH2=iO+2*Nwaters; iM=iO+3*Nwaters
    !Rewritten to include PBCs
-   rh1m=R(:,iH1)-R(:,iM)
-   rh1m = rh1m - box*anint(rh1m*boxi) !PBC
+   !rh1m=R(:,iH1)-R(:,iM)
+   !rh1m = rh1m - box*anint(rh1m*boxi) !PBC
 
-   rh2m=R(:,iH2)-R(:,iM)
-   rh2m = rh2m - box*anint(rh2m*boxi) !PBC
+   !rh2m=R(:,iH2)-R(:,iM)
+   !rh2m = rh2m - box*anint(rh2m*boxi) !PBC
 
-   rmO =R(:,iM) - R(:,iO)
-   rmO = rmO - box*anint(rmO*boxi) !PBC
+   !rmO =R(:,iM) - R(:,iO)
+   !rmO = rmO - box*anint(rmO*boxi) !PBC
    
-   dip_momI(1:3, iw) = charge(iH1)*rh1m + charge(iH2)*rh2m
+  ! dip_momI(1:3, iw) = charge(iH1)*rh1m + charge(iH2)*rh2m
  
    !dip_momI(1:3, iw) = charge(iH1)*rh1m + charge(iH2)*rh2m + ( charge(iH1) + charge(iM) + charge(iH2) )*R(:,iM)
    !dip_momI(1:3, iw) = charge(iH1)*R(1:3, iH1) + charge(iH2)*R(1:3, iH2) + charge(iM)*R(1:3, iM)
 
    do isp=fdI, ldI
        iat= iw + (isp-1)*Nwaters
-       dip_momI(1:3, iw) = dip(1:3, iat) + dip_momI(1:3, iw)
-       dip_momE(1:3, iw) = dip(1:3, iat) !sum of polarization dipole(s) for each atom in molecule
+      ! dip_momI(1:3, iw) = dip(1:3, iat) + dip_momI(1:3, iw)
+       Edip_mom(1:3, iw) = dip(1:3, iat) !sum of polarization dipole(s) for each atom in molecule
    enddo
 enddo
+ 
 end subroutine dip_ttm
-
-
-
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!subroutine get_dd3(R, ts1, ts2, dd3)
-!implicit none
-!double precision, dimension(3) :: R
-!double precision :: ts1, ts2
-!double precision, dimension(3,3) :: dd3
-
-!dd3(1,1) = 3.d0*ts2*R(1)*R(1) - ts1
-!dd3(2,2) = 3.d0*ts2*R(2)*R(2) - ts1
-!dd3(3,3) = 3.d0*ts2*R(3)*R(3) - ts1
-!dd3(1,2) = 3.d0*ts2*R(1)*R(2)
-!dd3(1,3) = 3.d0*ts2*R(1)*R(3)
-!dd3(2,3) = 3.d0*ts2*R(2)*R(3)
-!dd3(2,1) = dd3(1,2); dd3(3,1) = dd3(1,3); dd3(3,2) = dd3(2,3)
-
-!end subroutine get_dd3
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-!subroutine calc_dpcf(md_step, dpcf)
-!implicit none
-!integer, intent(in) :: md_step
-!double precision, dimension(4), intent(out) :: dpcf
-!integer :: itmp
-
-!if (md_step<4) then
-!if (md_step==1) then
-!dpcf(1:4) = (/1.d0, 0.d0, 0.d0, 0.d0/)
-!   else if (md_step==2) then
-!dpcf(1:4) = (/-1.d0, 2.d0, 0.d0, 0.d0/)
-!   else if (md_step==3) then
-!dpcf(1:4) = (/1.d0, -3.d0, 3.d0, 0.d0/)
-!   endif
-!else
-!itmp = mod(md_step, 4)
-!   if (itmp==0) then
-!dpcf(1:4) = (/-1.d0, 4.d0, -6.d0, 4.d0/)
-!   else if (itmp==1) then
-!dpcf(1:4) = (/ 4.d0, -1.d0, 4.d0, -6.d0/)
-!   else if (itmp==2) then
-!dpcf(1:4) = (/-6.d0, 4.d0, -1.d0, 4.d0 /)
-!   else if (itmp==3) then
-!dpcf(1:4) = (/ 4.d0, -6.d0, 4.d0, -1.d0 /)
-!   endif
-!endif
-!end subroutine calc_dpcf
