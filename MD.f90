@@ -380,7 +380,7 @@ subroutine contracted_MD
 !	!calculate electronic polarization dipoles using TTM method 
 	if (pot_model .eq. 6) call dip_ttm(RRc, dip_momE, chg, t)
 
-    write(*,*) dip_momE
+    !write(*,*) dip_momE
 
   !add electronic polarization dipoles to monomer dipoles
 	do j = 1, Nbeads

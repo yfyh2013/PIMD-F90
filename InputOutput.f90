@@ -87,6 +87,7 @@ subroutine read_input_file
  SIMPLE_ENERGY_ESTIMATOR = .true. !setting this to true will output the simple energy to temp/press file
  CALCIRSPECTRA = .false. !store dipole moments and calculate IR spectra at end of run
  CALCDOS = .true. 
+ ENERGYOUT = .true.
 
  select case (trim(PIMD_type))
 	case("full")
@@ -501,6 +502,7 @@ subroutine open_files
  if (BOXSIZEOUT)     call io_open(lunBOXSIZEOUT,'out_'//TRIM(fsave)//'_box.dat',APPEND=RESTART)
  if (CHARGESOUT)     call io_open(lunCHARGESOUT,'out_'//TRIM(fsave)//'_chgs.dat',APPEND=RESTART)
  if(IMAGEDIPOLESOUT) call io_open(lunIMAGEDIPOLESOUT,'out_'//TRIM(fsave)//'_images_dip.dat',APPEND=RESTART)
+ if (ENERGYOUT)      call io_open(lunENERGYOUT,'out_'//TRIM(fsave)//'_energy.dat',APPEND=RESTART)
 
 end subroutine open_files
 
@@ -547,7 +549,7 @@ subroutine write_out
 	if (CALCGEOMETRY) call reset_geometry
  endif 
 
-  !write columns header
+ !---- write columns header ------------------------------------------------------------------ 
  if ((t .eq. 1) .or. (t .eq. eq_timesteps + 1)) then 
 	write(lunTP_out,'(a)',advance='no') " time (ps) "
 	!write(lunTP_out,'(a)',advance='no') "  temp (K) "
@@ -604,18 +606,15 @@ subroutine write_out
  sum_RMSenergy     = sum_RMSenergy + (tot_energy - sum_tot_energy/tr)**2
  sum_pot_en_per_mol = sum_pot_en_per_mol + sum(Upott)/Nwaters/Nbeads
 
- !!debug options
- !write(*,*) "Upot   " , Upot
- !write(*,*) "virial " , virial
- !write(*,*) "virialc" , virialc
+ !!debugging view
+ !write(*,*) "Upot   "  , Upot
+ !write(*,*) "virial "  , virial
+ !write(*,*) "virialc"  , virialc
  !write(*,*) "simple P" , simple_sys_press
  !write(*,*) "virial P" , sys_press
  !write(*,*) "simple E" , simple_energy
  !write(*,*) "virial E" , tot_energy
 
- !caculate dipole moments only if necessary 
- !if ( (DIELECTRICOUT .and. (mod(t,10).eq.0) )  .or. ( (t .gt. eq_timesteps) .and. ( (TD_out) .or. ( dip_out.and.(mod(t,t_freq).eq.0) ) ) )  then 
- 
  !first, convert dipoles in all images into Debye
  dip_momIt = dip_momIt*DEBYE/CHARGECON   
  dip_momEt = dip_momEt*DEBYE/CHARGECON   
@@ -635,7 +634,6 @@ subroutine write_out
 	sum_dip_mag = sum_dip_mag + dsqrt(dot_product(dip_momI(:,iw), dip_momI(:, iw))) 
  enddo
 
- 
  !update quantities for dielectric constant 
  !it really isn't necessary to do this every timestep, so we do it every 10 steps
  if (DIELECTRICOUT .and. ( mod(t,10) .eq. 0 )  ) then 
@@ -706,66 +704,76 @@ subroutine write_out
  !-------------------------------------------------------------
  if (t .gt. eq_timesteps) then
  
-    if (CALCIRSPECTRA) dip_mom_all_times(:, tr) = real(dip_mom(:))
+	if (CALCIRSPECTRA) dip_mom_all_times(:, tr) = real(dip_mom(:))
+    
     if (CALCDOS) then
-    	!calculate centroid momenta
+        !calculate hydrogen centroid momenta
 		PPc = sum(PPt,3)/Nbeads 
 		do i = 1, Nwaters
 			Hvelocities(:, tr, 2*i-0) = real(PPc(:, 3*i-1)*imassH)
 			Hvelocities(:, tr, 2*i-1) = real(PPc(:, 3*i-2)*imassH)
 		enddo
-	endif
+    endif!(CALCDOS)
 
     if (CALCDIFFUSION) then
-		call start_timer("calc_diffusion")
+        call start_timer("calc_diffusion")
 		call calc_diff_RMSD(RRc, num_timesteps) 
 		call stop_timer("calc_diffusion")
-	endif
+    endif
     
-	if (mod(t,t_freq)  == 0 ) then 
+    
+    
+    if (mod(t,t_freq)  == 0 ) then 
 		!coordinate output
 		if (coord_out) then
-		     call save_XYZ(luncoord_out, RRc, Upot, read_method, t, delt) 
+			call save_XYZ(luncoord_out, RRc, Upot, read_method, t, delt) 
 #ifdef FC_HAVE_FLUSH
-		     call flush(luncoord_out) 
+			call flush(luncoord_out) 
 #endif
-		     endif
+		endif
+	
 		!velocity output
-	  	if (vel_out) then
-	   	     call save_XYZ(lunVEL_OUT, PPc, Upot, read_method, t, delt) 
-	   	endif
+		if (vel_out) then
+			call save_XYZ(lunVEL_OUT, PPc, Upot, read_method, t, delt) 
+		endif
+
 		!dipoles output
-	   	if (dip_out) then
-		     do iw=1,Nwaters
-			 write(lundip_out,'(4(1x,f12.4))') dip_momI(:,iw) , & 
-				 dsqrt(dot_product(dip_momI(:,iw), dip_momI(:, iw))) 
- 		     enddo
+		if (dip_out) then
+			do iw=1,Nwaters
+				write(lundip_out,'(4(1x,f12.4))') dip_momI(:,iw) , & 
+				dsqrt(dot_product(dip_momI(:,iw), dip_momI(:, iw))) 
+            enddo
 #ifdef FC_HAVE_FLUSH
- 		     call flush(lundip_out)
+			call flush(lundip_out)
 #endif
-	   	endif
+		endif!(dip_out)
+	
 		!electronic dipoles output
 		if (Edip_out) then
-		     do iw=1,Nwaters
- 			do j = 1, 3
-				dip_momE(j,iw) = sum(dip_momEt(j,iw,:))/Nbeads
+			do iw=1,Nwaters
+				do j = 1, 3
+                    dip_momE(j,iw) = sum(dip_momEt(j,iw,:))/Nbeads
+                enddo
+             write(lunEdip_out,'(4(1x,f12.4))') dip_momE(:,iw) , & 
+					dsqrt(dot_product(dip_momE(:,iw), dip_momE(:, iw))) 
 			enddo
-			 write(lunEdip_out,'(4(1x,f12.4))') dip_momE(:,iw) , & 
-				 dsqrt(dot_product(dip_momE(:,iw), dip_momE(:, iw))) 
- 		     enddo
 #ifdef FC_HAVE_FLUSH
 			call flush(lunEdip_out)
 #endif
-			endif 
+		endif!(Edip_out) 
+	
 		!charges out
-                if (CHARGESOUT) then
+		if (CHARGESOUT) then
 			do iw = 1, 3*Nwaters
 				write(lunCHARGESOUT,*) chg(iw)*0.20819434d0*DEBYE/CHARGECON 
- 		        enddo
-		endif
-	endif
+			enddo
+		endif!(CHARGESOUT)
+	
+	endif!mod(t,t_out)==0
+	
 	!images output
 	if (mod(t,ti_freq)  == 0) then
+		
 		if (OUTPUTIMAGES) then  
 			do i = 1, Nbeads
 				call save_XYZ(lunOUTPUTIMAGES, RRt(:,:,i), Upot, read_method, t, delt) 
@@ -773,16 +781,18 @@ subroutine write_out
 #ifdef FC_HAVE_FLUSH
 			flush(lunOUTPUTIMAGES)
 #endif
-			endif 
+		endif 
+		
 		if (IMAGEDIPOLESOUT) then 
 			do i = 1, Nbeads
 				do iw = 1,Nwaters
-			 		write(lunIMAGEDIPOLESOUT,'(4(1x,f12.4))') dip_momIt(:,iw,i), & 
-				 		dsqrt(dot_product(dip_momIt(:,iw,i), dip_momIt(:,iw,i))) 
+					write(lunIMAGEDIPOLESOUT,'(4(1x,f12.4))') dip_momIt(:,iw,i), & 
+				 	dsqrt(dot_product(dip_momIt(:,iw,i), dip_momIt(:,iw,i))) 
 				enddo
 			enddo
 		endif
 	endif
+	
 	!total dipole moment output 
 	if (mod(t,td_freq)  == 0 .and. TD_out ) then 
 		write(lunTD_out,'(3f12.4)') dip_mom
@@ -791,7 +801,7 @@ subroutine write_out
 #endif
   	endif
      
-   if (mod(t,2000) .eq. 0) then 
+	if (mod(t,2000) .eq. 0) then 
 		if (WRITECHECKPOINTS) then 
 			call io_open(lun,'out_'//TRIM(fsave)//'_checkpoint_image.img',REPLACE=.true.)
 			call save_checkpoint(lun, RRt, PPt, Upot, t,delt) 
@@ -802,10 +812,14 @@ subroutine write_out
 		endif 
     endif
     
+    !energy output to file
+    if ( (mod(t,10) .eq. 0) .and. (ENERGYOUT) ) then 
+		write(lunENERGYOUT,'(1f16.4)') tot_energy
+	endif
+    
+ endif!t .gt. eq_timesteps
 
-  endif !t .gt. eq_timesteps
-
-!box size output stuff 
+!box size output  
 if (BAROSTAT) then 
 	!for accuracy, box size computed at every timestep
     sum_box  = sum_box + box
@@ -906,6 +920,7 @@ subroutine print_run
  if (BOXSIZEOUT)   call io_close(lunBOXSIZEOUT)
  if (TP_out)       call io_close(lunTP_out)
  if (CHARGESOUT)   call io_close(lunCHARGESOUT)
+ if (ENERGYOUT)    call io_close(lunENERGYOUT)
 
 end subroutine print_run
 
@@ -923,7 +938,7 @@ subroutine print_basic_run_info
  write(lunTP_out,'(a50, i6)') "Num Molecules = ", Nwaters
  write(lunTP_out,'(a50, f10.3,a3)') "timestep = ", delt*1000, " fs"
  write(lunTP_out,'(a50, f8.4,a21,f8.4)') "mass of hydrogen = ", massH, "  mass of oxygen = ", massO
- write(lunTP_out,'(a50,a)') "type of  ", trim(PIMD_type)
+ write(lunTP_out,'(a50,a)') "type of run = ", trim(PIMD_type)
  if (THERMOSTAT) write(lunTP_out,'(a50, a )')  " type of global thermostat = ", "Nose-Hoover"
  if (.not. THERMOSTAT) write(lunTP_out,'(a50, a )')  " type of global thermostat = ", "none"
  if (.not. THERMOSTAT) write(lunTP_out,'(a50, a3)') "global thermostat tau = ", "n/a"
