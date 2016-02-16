@@ -1,4 +1,6 @@
-FILES=four1 pxf fsiesta_pipes system_mod lun_management geometry_calculator diffusion_calculator dans_timer consts math spectral_properties Nose_Hoover NormalModes pot_mod  Langevin main_stuff estimators find_neigh nasa_mod nasa ewald pot_spc pot_ttm potential smear dip_ttm  InputOutput  force_calc MD PIMD
+TTM=pot_ttm
+
+FILES=four1 pxf fsiesta_pipes system_mod lun_management geometry_calculator diffusion_calculator dans_timer consts math spectral_properties Nose_Hoover NormalModes $(TTM)/pot_mod Langevin main_stuff estimators $(TTM)/find_neigh $(TTM)/nasa_mod $(TTM)/nasa $(TTM)/ewald $(TTM)/pot_spc $(TTM)/pot_ttm $(TTM)/potential $(TTM)/smear dip_ttm  InputOutput  force_calc MD PIMD
 
 OBJS=$(addsuffix .o, $(FILES))
 
@@ -46,7 +48,7 @@ MPI.o:
 	$(FC) $(FFLAGS) -c MPI.f90 -o MPI.o
 
 clean: 
-	rm -rf *.o *.mod 
+	rm -rf *.o *.mod $(TTM)/*.o $(TTM)/*.mod 
 	
 pristine: 
-	rm -rf *.o *.mod INPUT_TMP* *.log *.xml *.x 
+	rm -rf *.o *.mod $(TTM)/*.o $(TTM)/*.mod INPUT_TMP* *.log *.xml *.x 

@@ -176,18 +176,12 @@ subroutine write_out_geometry(iun, Nbeads)
 
 endsubroutine write_out_geometry
 
-
-subroutine write_out_histogram(iun)
-
-
- do i = 1, NUM_BINS
-	write(iun,'(3f12.6)',advance='no') MIN_BIN + delta*i
- enddo
- write(iun,'a') " "
+!subroutine write_out_histogram(iun)
+! do i = 1, NUM_BINS
+!	write(iun,'(3f12.6)',advance='no') MIN_BIN + delta*i
+! enddo
+! write(iun,'a') " "
  
- 
-end subroutine write_out_histogram
-
 !-------------------------------------------------------------
 !-- reset geometry calculation ------------------------------
 !-------------------------------------------------------------
