@@ -554,47 +554,45 @@ subroutine write_out
 
  !---- write columns header ------------------------------------------------------------------ 
  if ((t .eq. 1) .or. (t .eq. eq_timesteps + 1)) then 
-	write(lunTP_out,'(a)',advance='no') " time (ps) "
-	!write(lunTP_out,'(a)',advance='no') "  temp (K) "
-	!write(lunTP_out,'(a)',advance='no') "  press.(bar)  "
-	write(lunTP_out,'(a)',advance='no') " avg temp " 
-	write(lunTP_out,'(a)',advance='no') "avgP(vir) "
-	if (SIMPLE_ENERGY_ESTIMATOR) write(lunTP_out,'(a)',advance='no') "avgP(simp)"
-
-	!write(lunTP_out,'(a)',advance='no') "  Tot E  "
-	write(lunTP_out,'(a)',advance='no') " avgTotE(vir) " 
-	!if (SIMPLE_ENERGY_ESTIMATOR) write(lunTP_out,'(a)',advance='no')  " Tot E (simple) " 
-	if (SIMPLE_ENERGY_ESTIMATOR) write(lunTP_out,'(a)',advance='no')   " avgTotE(simp)"
-
-	write(lunTP_out,'(a)',advance='no') "avgPotE/mol  "
-	
-	if (CALC_RADIUS_GYRATION)    write(lunTP_out,'(a,a)',advance='no') " r_O  ", "r_H "
-	if (DIELECTRICOUT)           write(lunTP_out,'(a)',advance='no') "  eps(0)  "
+	write(lunTP_out,'(a)',advance='no') "|time (ps)"
+	write(lunTP_out,'(a)',advance='no') "|temp (K)"
+	!write(lunTP_out,'(a)',advance='no') "|press.(bar)|"
+	!write(lunTP_out,'(a)',advance='no') "|AvgTemp|" 
+	!write(lunTP_out,'(a)',advance='no') "|avgP(vir)"
+	!write(lunTP_out,'(a)',advance='no') "|P(simp)"
+	write(lunTP_out,'(a)',advance='no') "|avgP(simp)"
+	!write(lunTP_out,'(a)',advance='no') "|Tot E(vir)"
+	!write(lunTP_out,'(a)',advance='no') "|avgTotE(vir)" 
+	write(lunTP_out,'(a)',advance='no') "|Tot E (simple)" 
+	write(lunTP_out,'(a)',advance='no') "|avgTotE(simp)"
+	write(lunTP_out,'(a)',advance='no') "|avgPotE/mol"
+!	if (CALC_RADIUS_GYRATION)    write(lunTP_out,'(a,a)',advance='no') "|r_O", "|r_H "
+	if (CALC_RADIUS_GYRATION)    write(lunTP_out,'(a,a)',advance='no') "|avg r_O", "|avg r_H "
+	if (DIELECTRICOUT)           write(lunTP_out,'(a)',advance='no') "|eps(0)"
+    write(lunTP_out,'(a)',advance="no") "|avgDipMom(D)"
 	!write(lunTP_out,'(a)',advance=no") " density kg/m^3 "
-	write(lunTP_out,'(a)',advance='no') "[ energies in kcal/mol ]"
+	write(lunTP_out,'(a)',advance='no') "|[ energies in kcal/mol ]"
 	write(lunTP_out,'(a)',advance='yes') "" 
  endif
- 
- 
+  
  tr = tr + 1
 
  sys_temp = TEMPFACTOR*uk/(Natoms*Nbeads*Nbeads)
 
 ! call calc_uk_centroid
 ! write(lunTP_out,*) "centroid temp =", TEMPFACTOR*uk/(Natoms)
- !uk = 0 
- !do j = 1, Nbeads
+!uk = 0 
+!do j = 1, Nbeads
 !	do i = 1,Nwaters
 !		uk = uk + imassO*sum( PPt(:,3*i-2,j)**2 ) 
 !		uk = uk + imassH*sum( PPt(:,3*i-1,j)**2 ) 
 !		uk = uk + imassH*sum( PPt(:,3*i-0,j)**2 ) 
 !	enddo
- !enddo	
- !uk = .5d0*uk 
+!enddo	
+!uk = .5d0*uk 
 ! write(lunTP_out,*) "naive bead temp =", TEMPFACTOR*uk/(Natoms)
-
- !- pressure / total energy calculation : old classical case -
- !sys_press =  PRESSCON*(1/(3*volume))*( 2*uk -	 MASSCON*( virt(1,1)+virt(2,2)+virt(3,3) )  )
+!!- pressure / total energy calculation : old classical case -
+!sys_press =  PRESSCON*(1/(3*volume))*( 2*uk -	 MASSCON*( virt(1,1)+virt(2,2)+virt(3,3) )  )
 
  call quantum_virial_estimators(RRt, virial, virialc, tot_energy, sys_press, sys_temp, Upot)
  call simple_quantum_estimators(RRt, virial, simple_energy, simple_sys_press, sys_temp, Upot) 
@@ -607,7 +605,7 @@ subroutine write_out
  sum_temp          = sum_temp + sys_temp
  sum_tot_energy2   = sum_tot_energy2 + tot_energy**2
  sum_RMSenergy     = sum_RMSenergy + (tot_energy - sum_tot_energy/tr)**2
- sum_pot_en_per_mol = sum_pot_en_per_mol + sum(Upott)/Nwaters/Nbeads
+ sum_pot_en_per_mol = sum_pot_en_per_mol + sum(Upott)/dble(Nwaters)/dble(Nbeads)
 
  !!debugging view
  !write(*,*) "Upot   "  , Upot
@@ -656,24 +654,18 @@ subroutine write_out
  !print out temperature, pressure, average press, energies & dielectric constant
  !-------------------------------------------------------------
   if (mod(t,tp_freq) == 0) then
-	write(lunTP_out,'(1f10.4)',advance='no') tr*delt + init_time
-	!write(lunTP_out,'(1f10.2)',advance='no') sys_temp
-	write(lunTP_out,'(1f10.2)',advance='no') sum_temp/tr
+	write(lunTP_out,'(1f10.3)',advance='no')  tr*delt + init_time
+	write(lunTP_out,'(1f10.2)',advance='no')  sys_temp
 	!write(lunTP_out,'(1f10.2)',advance='no') sys_press
-	write(lunTP_out,'(1f11.2)',advance='no') sum_press/tr
-	if (SIMPLE_ENERGY_ESTIMATOR) then 
-		!write(lunTP_out,'(f10.2)',advance='no') simple_sys_press 
-		write(lunTP_out,'(1f11.2)',advance='no') sum_simple_press/tr
-	endif
-	
-	!write(lunTP_out,'(2f10.2)',advance='no') Upot, tot_energy
-	write(lunTP_out,'(1f10.2)',advance='no') sum_tot_energy/tr
-  	if (SIMPLE_ENERGY_ESTIMATOR) then 
-	 !write(lunTP_out,'(f10.2)',advance='no') simple_energy
-	 write(lunTP_out,'(f10.2)',advance='no') sum_simple_energy/tr
-	endif
-	
-	write(lunTP_out,'(f10.2)',advance='no') sum_pot_en_per_mol/tr
+	!write(lunTP_out,'(1f10.2)',advance='no') sum_temp/tr
+	!write(lunTP_out,'(1f11.2)',advance='no') sum_press/tr
+    !write(lunTP_out,'(1f10.2)',advance='no') simple_sys_press 
+	write(lunTP_out,'(1f10.2)',advance='no')  sum_simple_press/tr
+	!write(lunTP_out,'(2f10.2)',advance='no') tot_energy
+	!write(lunTP_out,'(1f10.2)',advance='no') sum_tot_energy/tr
+    write(lunTP_out,'(1f12.3)',advance='no')  simple_energy
+	write(lunTP_out,'(1f12.3)',advance='no')  sum_simple_energy/tr
+	write(lunTP_out,'(f12.3)',advance='no') sum_pot_en_per_mol/tr
 
 	if (CALC_RADIUS_GYRATION) then
 		!write(lunTP_out,'(1x,f6.4,1x,f6.4)',advance='no')  radiusO, radiusH
@@ -692,7 +684,7 @@ subroutine write_out
 	
 	write(lunTP_out,'(1x,f8.4)',advance='no') sum_dip_mag/tr/Nwaters !avg dipole moment
 
-	!feature to output the current density (for debugging the barostat) 
+	!! feature to output the current density (for debugging the barostat) 
 	!write(lunTP_out,'(1x,f10.6)',advance='no') Nwaters*(massO+2*massH)*amu2grams/(box(1)*box(2)*box(3)*(a2m*100)**3)
 
 	!advance to next line

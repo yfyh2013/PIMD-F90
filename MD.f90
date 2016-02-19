@@ -104,14 +104,14 @@ subroutine monomer_PIMD
  use mpi
  use force_calc
  implicit none
- double precision :: e1, virialmon, virialcmon, Umonomers 
+ double precision :: e1, virialmon, virialcmon 
  double precision, dimension(3,Natoms,Nbeads)  ::  dRRmon
  double precision, dimension(3,Natoms) :: dRRc
  double precision, dimension(3,3)      :: dr1, r1 
  double precision, dimension(3)        :: roh1, roh2 
   
  if (t .eq. 1) dRRmon = 0
- Umonomers = 0 
+ Upott  = 0 
  virialmon = 0 
  virialcmon = 0 
   
@@ -156,8 +156,10 @@ subroutine monomer_PIMD
 
 	!intermolecular force calculation
 	call potential(RRc, RRc, Upot, dRRc, virt, virialc, dip_momI, dip_momE, chg, t, BAROSTAT, sys_label)
+	
+    Upott(:) = Upot  !potential energy for the ENTIRE system (all images)
 
-	!intramolecular force calculation 
+    !intramolecular force calculation 
 	do j = 1, Nbeads
 		do iw = 1, Nwaters
 			iO=3*iw-2; iH1 = 3*iw-1; iH2=3*iw-0
@@ -168,7 +170,8 @@ subroutine monomer_PIMD
 
 			dRRmon(1:3, (/iO, iH1, iH2/), j) = dr1
 
-			Umonomers = Umonomers + e1
+			Upott(j) = Upott(j) + e1
+			
 			!monomer centroid virial
 			roh1 = RRc(1:3, iH1) - RRc(1:3, iO)
 			roh1 = roh1 - box*anint(roh1*boxi) !PBC
@@ -193,7 +196,7 @@ subroutine monomer_PIMD
 	enddo
 	
 	!update Upot
-    Upot = Upot*Nbeads + Umonomers !potential energy for the ENTIRE system (all images)
+    Upot    = sum(Upott)    	!potential energy for the ENTIRE system
 	virial  = virialmon + virt(1,1) + virt(2,2) + virt(3,3) !virial for the ENTIRE system (all images)
 	virialc = virialcmon/Nbeads + virialc
 	
@@ -254,7 +257,7 @@ subroutine contracted_MD
  use InputOutput
  use force_calc
  Implicit None 
- double precision :: e1, virialmon, virialcmon, Umonomers
+ double precision :: e1, virialmon, virialcmon
  double precision, dimension(3,Natoms,Nbeads)  ::  dRRfast
  double precision, dimension(3,Natoms) :: dRRc
  double precision, dimension(3,3)      :: dr1, r1
@@ -262,7 +265,7 @@ subroutine contracted_MD
  integer :: tintra, iM
 
  if (t .eq. 1) dRRfast =0
- Umonomers = 0 
+ Upott  = 0 
  virialmon = 0 
  virialcmon = 0 
 
@@ -313,7 +316,6 @@ subroutine contracted_MD
 
 		!update fast forces (intramolecular forces)
 		!masternode calcuates the intramolecular forces, puts them in dRRfast
-		Umonomers = 0 
 		virialmon = 0 
 		virialcmon = 0 
 
@@ -330,7 +332,7 @@ subroutine contracted_MD
 				!if last timestep in loop update monomer energy
 				!and calculate dipole moments using dip. mom. surface 
 				if (tintra .eq. intra_timesteps) then
-					Umonomers = Umonomers + e1
+					Upott(j) = Upott(j) + e1 
 					!monomer centroid virial first
 					roh1 = RRc(1:3, iH1) - RRc(1:3, iO)
 					roh1 = roh1 - box*anint(roh1*boxi) !PBC
@@ -369,6 +371,8 @@ subroutine contracted_MD
 	!intermolecular force calculation
 	call potential(RRc, RRc, Upot, dRRc, virt, virialc, dip_momI, dip_momE, chg, t, BAROSTAT, sys_label)
 
+    Upott(:) = Upott(:) + Upot  !potential energy for the ENTIRE system (all images)
+	
 	!update dRRt
 	do j = 1, Nbeads
 		dRRt(:,:,j) = dRRc
@@ -388,7 +392,7 @@ subroutine contracted_MD
 	enddo 
 	
 	!update Upot, virial and virialc
-	Upot    = Upot*Nbeads + Umonomers !potential energy for the ENTIRE system (all images)
+    Upot    = sum(Upott)    	!potential energy for the ENTIRE system
 	virial  = virialmon + virt(1,1) + virt(2,2) + virt(3,3) !virial for the ENTIRE system (all images)
 	virialc = virialcmon/Nbeads + virialc
 	!update kinetic energy 
