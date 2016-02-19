@@ -74,14 +74,30 @@ EndSubroutine io_open
 !Close a unit 
 !---------------------------------------------------
 subroutine io_close(lun)
-      integer, intent(in) :: lun
-      close(lun)
-      if ((lun .ge. min_lun) .and. (lun .le. max_lun)) then 
-		lun_is_free(lun) = .true.
-	  else
-		write(*,*) "WARNING program closed a lun that was never created in lun management" 
-	  endif
+ integer, intent(in) :: lun
+ 
+ close(lun)
+ if ((lun .ge. min_lun) .and. (lun .le. max_lun)) then 
+	lun_is_free(lun) = .true.
+  else
+	write(*,*) "WARNING program closed a lun that was never created in lun management." 
+  endif
+
 end subroutine io_close
+
+!---------------------------------------------------
+!Close all open units
+!---------------------------------------------------
+subroutine io_close_all()
+ integer :: i
+
+ do i = min_lun,max_lun
+	if (lun_is_free(i) .eqv. .true.) then 
+		close(i) 
+	endif
+ enddo
+
+end subroutine io_close_all
 
 
 !---------------------------------------------------

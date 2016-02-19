@@ -36,11 +36,11 @@ integer :: num_timesteps, t, t_freq, tp_freq, td_freq, ti_freq, m, clock, eq_tim
 logical :: dip_out, coord_out, TD_out, vel_out, TP_out, Edip_out 
 logical :: BAROSTAT, PEQUIL, BOXSIZEOUT, THERMOSTAT, GENVEL, INPCONFIGURATION, IMAGEDIPOLESOUT
 logical :: DIELECTRICOUT, WRITECHECKPOINTS, OUTPUTIMAGES, SIMPLE_ENERGY_ESTIMATOR
-logical :: CALCIRSPECTRA, CALCDIFFUSION, CALCDOS, RESTART, ENERGYOUT
+logical :: CALCIRSPECTRA, CALCDIFFUSION, CALCDOS, RESTART, ENERGYOUT, HISTOUT
 logical ::  BEADTHERMOSTAT, CENTROIDTHERMOSTAT, CALC_RADIUS_GYRATION, CHARGESOUT, EXISTS, CALCGEOMETRY
 
 !logical i/o units
-integer :: lun, lunXYZ, lunBOXSIZEOUT, lunIMAGES, lunDIELECTRIC, lunCHARGES
+integer :: lun, lunXYZ, lunBOXSIZEOUT, lunIMAGES, lunDIELECTRIC, lunCHARGES, lunHISTOUT
 integer :: lundip_out, luncoord_out, lunCHARGESOUT, lunvel_out,  lunTP_out
 integer :: lunEdip_out, lunIMAGEDIPOLESOUT, lunTD_out, lunOUTPUTIMAGES, lunENERGYOUT
 

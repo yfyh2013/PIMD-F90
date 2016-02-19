@@ -88,6 +88,7 @@ subroutine read_input_file
  CALCIRSPECTRA = .false. !store dipole moments and calculate IR spectra at end of run
  CALCDOS = .true. 
  ENERGYOUT = .true.
+ HISTOUT = .true. 
 
  select case (trim(PIMD_type))
 	case("full")
@@ -503,6 +504,8 @@ subroutine open_files
  if (CHARGESOUT)     call io_open(lunCHARGESOUT,'out_'//TRIM(fsave)//'_chgs.dat',APPEND=RESTART)
  if(IMAGEDIPOLESOUT) call io_open(lunIMAGEDIPOLESOUT,'out_'//TRIM(fsave)//'_images_dip.dat',APPEND=RESTART)
  if (ENERGYOUT)      call io_open(lunENERGYOUT,'out_'//TRIM(fsave)//'_energy.dat',APPEND=RESTART)
+ if (HISTOUT)        call io_open(lunHISTOUT,'out_'//TRIM(fsave)//'_histograms.dat',APPEND=RESTART)
+
 
 end subroutine open_files
 
@@ -807,8 +810,9 @@ subroutine write_out
 			call save_checkpoint(lun, RRt, PPt, Upot, t,delt) 
 			call io_close(lun)
 		endif
-		if (CALCGEOMETRY) then 
-			call write_out_geometry(lunTP_out,Nbeads)
+		if (CALCGEOMETRY .and. HISTOUT) then 
+			!call write_out_geometry(lunTP_out,Nbeads)
+			call write_out_histogram(lunHISTOUT, Nbeads)
 		endif 
     endif
     
@@ -910,18 +914,7 @@ subroutine print_run
 	call save_checkpoint(lun, RRt, PPt, Upot, t, delt) 
 	call io_close(lun)
  endif
-
- if (coord_out)	   call io_close(luncoord_out)
- if (vel_out)      call io_close(lunVEL_OUT)
- if (OUTPUTIMAGES) call io_close(lunOUTPUTIMAGES)
- if  (dip_out)     call io_close(lundip_out)
- if  (Edip_out)    call io_close(lunEdip_out)
- if (TD_out)       call io_close(lunTD_out)
- if (BOXSIZEOUT)   call io_close(lunBOXSIZEOUT)
- if (TP_out)       call io_close(lunTP_out)
- if (CHARGESOUT)   call io_close(lunCHARGESOUT)
- if (ENERGYOUT)    call io_close(lunENERGYOUT)
-
+ 
 end subroutine print_run
 
 !----------------------------------------------------------------------------------
@@ -1123,9 +1116,9 @@ subroutine load_checkpoint(iun)
 end subroutine load_checkpoint
 
 
-!-----------------------------------------------------------------------------------------
-!--------------Shutdown program --------------clear-------------------------------------------
-!-----------------------------------------------------------------------------------------
+!----------------------------------------------------------------------
+!--------------Shutdown program --------------------------------------
+!----------------------------------------------------------------------
 subroutine shutdown 
  use system_mod
  use fsiesta
@@ -1133,8 +1126,10 @@ subroutine shutdown
  if (pid .eq. 0)  then
 	call print_run
  endif
-
+ 
  if (pot_model == 6) call siesta_quit('all')
+
+ call io_close_all() !close ALL open file units 
  
  call MPI_Barrier(MPI_COMM_WORLD, ierr)
  call MPI_Finalize(ierr)

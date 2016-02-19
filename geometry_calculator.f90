@@ -9,7 +9,8 @@ module geometry_calculator
 implicit none
 integer, parameter          :: NUM_BINS = 80
 double precision, parameter :: MIN_BIN  = .6  !Ang
-double precision, parameter :: MAX_BIN  = 1.6 !Ang 
+double precision, parameter :: MAX_BIN  = 1.6 !Ang
+double precision, parameter :: delta = (MAX_BIN-MIN_BIN)/NUM_BINS !Ang
 double precision, save :: sum_HH=0,   sum_OH=0,  sum_HOH=0    !centroid-centroid distances
 double precision, save :: sum_HH2=0,  sum_OH2=0, sum_HOH2=0   !centroid-centroid distances squared
 double precision, save :: bsum_HH=0,  bsum_OH=0,  bsum_HOH=0  !bead-bead distances
@@ -127,7 +128,6 @@ subroutine write_out_geometry(iun, Nbeads)
  double precision :: avg_OH2, avg_HH2, avg_HOH2, RMS_OH, RMS_HH, RMS_HOH
  double precision :: bavg_OH, bavg_HH, bavg_HOH
  double precision :: bavg_OH2,bavg_HH2,bavg_HOH2, bRMS_OH, bRMS_HH, bRMS_HOH
- double precision :: delta
  integer :: i
  
  bnum_total = num_total*Nbeads
@@ -155,33 +155,38 @@ subroutine write_out_geometry(iun, Nbeads)
  bRMS_OH  = dsqrt(bavg_OH2  - bavg_OH**2) 
  bRMS_HOH = dsqrt(bavg_HOH2 - bavg_HOH**2) 
 
-
- 
  write(iun,'(a)')         "#---------- h2o geometry report -------------------------"
  write(iun,'(a)')  "                                 centroid-centroid                | bead - bead  (Ang,deg) " 
  write(iun,'(a40,f12.3,a4,2f12.3,a4,f12.3)') "average HH distance : ", avg_HH, " +/-", RMS_HH, bavg_HH, " +/-", bRMS_HH  
  write(iun,'(a40,f12.3,a4,2f12.3,a4,f12.3)') "average OH distance : ", avg_OH, " +/-", RMS_OH, bavg_OH, " +/-", bRMS_OH  
  write(iun,'(a40,f12.3,a4,2f12.3,a4,f12.3)') "  average HOH angle : ", avg_HOH, " +/-", RMS_HOH, bavg_HOH, " +/-", bRMS_HOH  
  write(iun,'(a40,f12.3,a11,f12.3)')           " max OH distance    : ", max_OH, " max bead OH = ", bmax_OH
+ write(iun,'(a)')         "#---------- final histograms -------------------------"
+ call write_out_histogram(iun, Nbeads)
  
- delta = (MAX_BIN-MIN_BIN)/NUM_BINS
- write(iun,'(a40,f12.6,a3)') "histogram bin size = ", delta, " Ang"
+endsubroutine write_out_geometry
+
+
+!-------------------------------------------------------------
+!-- write out histogram to seperate file --------------------
+!-------------------------------------------------------------
+subroutine write_out_histogram(iun, Nbeads)
+ implicit none
+ integer, intent(in) :: iun, Nbeads
+ integer :: i 
+
+! write(iun,'(a40,f12.6,a3)') "histogram bin size = ", delta, " Ang"
  write(iun,'(a80)') "dOH histograms (centroid-centroid , bead-bead)"
  do i = 1, NUM_BINS
-	write(iun,'(3f12.6)') MIN_BIN + delta*i, dOHhist(i)/(2*num_total), bdOHhist(i)/(2*bnum_total)
+	write(iun,'(3f12.6)') MIN_BIN + delta*i, dOHhist(i)/(2*num_total), bdOHhist(i)/(2*num_total*Nbeads)
  enddo
+	
 #ifdef FC_HAVE_FLUSH
  call flush(iun) 
 #endif
 
-endsubroutine write_out_geometry
+end subroutine write_out_histogram
 
-!subroutine write_out_histogram(iun)
-! do i = 1, NUM_BINS
-!	write(iun,'(3f12.6)',advance='no') MIN_BIN + delta*i
-! enddo
-! write(iun,'a') " "
- 
 !-------------------------------------------------------------
 !-- reset geometry calculation ------------------------------
 !-------------------------------------------------------------
@@ -203,10 +208,8 @@ subroutine binit(hist,thing_to_bin)
  implicit none 
  double precision, dimension(:), intent(inout) :: hist
  double precision, intent(in) :: thing_to_bin
- double precision :: lever, delta, remain
+ double precision :: lever, remain
  integer :: bin
-
- delta = (MAX_BIN-MIN_BIN)/NUM_BINS 
   
  if ((thing_to_bin .gt. MIN_BIN) .and. (thing_to_bin .lt. MAX_BIN)) then
 
