@@ -131,9 +131,9 @@ subroutine monomer_PIMD
 	if (Nbeads .gt. 1) then
 		do i = 1, Nwaters
 			!Evolve ring a full step 
-			Call EvolveRing(RRt(:,3*i-2,:), PPt(:,3*i-2,:), Nbeads, massO)
-			Call EvolveRing(RRt(:,3*i-1,:), PPt(:,3*i-1,:), Nbeads, massH)
-			Call EvolveRing(RRt(:,3*i-0,:), PPt(:,3*i-0,:), Nbeads, massH)
+			call EvolveRing(RRt(:,3*i-2,:), PPt(:,3*i-2,:), Nbeads, massO)
+			call EvolveRing(RRt(:,3*i-1,:), PPt(:,3*i-1,:), Nbeads, massH)
+			call EvolveRing(RRt(:,3*i-0,:), PPt(:,3*i-0,:), Nbeads, massH)
 		enddo
 	else 
 		do i = 1,Nwaters
@@ -164,12 +164,18 @@ subroutine monomer_PIMD
 		do iw = 1, Nwaters
 			iO=3*iw-2; iH1 = 3*iw-1; iH2=3*iw-0
 
+			
+			!PS potential energy surface calculation
 			r1(1:3, 1:3) = RRt(1:3, (/iO, iH1, iH2/), j)
-
-			call pot_nasa(r1, dr1, e1, box, boxi)  
-
+			
+			if (SIESTA_MON_CALC) then 
+				call siesta_monomer(r1, dr1, e1)
+			else
+				call pot_nasa(r1, dr1, e1, box, boxi)  
+			endif
+	
 			dRRmon(1:3, (/iO, iH1, iH2/), j) = dr1
-
+			
 			Upott(j) = Upott(j) + e1
 			
 			!monomer centroid virial
@@ -179,6 +185,7 @@ subroutine monomer_PIMD
 			roh2 = roh2 - box*anint(roh2*boxi) !PBC
 			virialcmon = virialcmon + dot_product(roh1, dr1(:,2)) 
 			virialcmon = virialcmon + dot_product(roh2, dr1(:,3)) 
+			
 			!monomer normal virial
 			roh1 = RRt(1:3, iH1, j) - RRt(1:3, iO, j)
 			roh1 = roh1 - box*anint(roh1*boxi) !PBC

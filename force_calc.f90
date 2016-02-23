@@ -108,7 +108,6 @@ subroutine potential(RR, RRc, Upot, dRR, virt, virialc, dip_momI, Edip_mom, chg,
  double precision, dimension(3) :: dip_mom
  integer, intent(in) :: t
  logical, intent(in) :: BAROSTAT
- double precision, dimension(3,3) :: siesta_box
    
  siesta_box = 0.0
  siesta_box(1,1) = box(1)
@@ -147,6 +146,33 @@ if (pot_model==2 .or. pot_model==3) then
 
 end subroutine potential
 
+
+!---------------------------------------------------------------------
+!-----------------SIESTA monomer calculation ----------------------------
+!---------------------------------------------------------------------
+subroutine siesta_monomer(r1, dr1, e1)
+ use fsiesta
+ use system_mod
+ use dans_timer
+ use consts
+ implicit none 
+ double precision, dimension(3, 3), intent(in) :: r1
+ double precision, dimension(3, 3), intent(out) :: dr1
+ double precision, intent(out) :: e1
+  
+ siesta_box = 0.0
+ siesta_box(1,1) = box(1)
+ siesta_box(2,2) = box(2)
+ siesta_box(3,3) = box(3)
+  
+ call start_timer("SIESTAmonomer")
+ call siesta_forces( "monomer", Natoms, r1, cell=siesta_box, energy=e1, fa=dr1)
+ call stop_timer("SIESTAmonomer")
+
+ e1 = e1*EVTOKCALPERMOLE
+ dr1 = -1d0*dr1*EVTOKCALPERMOLE    
+  
+end subroutine siesta_monomer
 
 
 !---------------------------------------------------------------------
@@ -213,15 +239,6 @@ subroutine calc_monomer_dip_moments(dip_momIt, RRt)
  enddo
   
 end subroutine calc_monomer_dip_moments
-
-
-
-
-
-
-
-
-
 
 
 end module force_calc

@@ -89,15 +89,16 @@ subroutine read_input_file
  CALCDOS = .true. 
  ENERGYOUT = .true.
  HISTOUT = .true. 
+ SIESTA_MON_CALC = .true.
 
  select case (trim(PIMD_type))
-	case("full")
+	case("full", "fullPIMD")
 		MONOMERPIMD = .false.
 		CONTRACTION = .false.
-	case("contracted")
+	case("contracted", "conPIMD")
 		MONOMERPIMD = .false.
 		CONTRACTION = .true. 
-	case("monomerPIMD")
+	case("monomerPIMD", "monPIMD")
 		MONOMERPIMD = .true.
 		CONTRACTION = .false.
 	case default 
@@ -200,7 +201,7 @@ end subroutine read_and_initialize_all_nodes
 
 
 !----------------------------------------------------------------------------------
-!---------- Initialize potential-related variables ---------------------------- 
+! Initialize potential-related variables ----------------------------------------- 
 ! note: call siesta_units( "ang", 'kcal/mol' ) doesn't work- Siesta cant do kcal/mol
 !----------------------------------------------------------------------------------
 subroutine init_potential_all_nodes
@@ -212,7 +213,21 @@ subroutine init_potential_all_nodes
  character(len=300) :: pipe_name
  integer :: nodes_per_process
  
-  
+ if ((SIESTA_MON_CALC) .and. (PIMD_type .eq. "full")) then
+	write(*,*) "ERROR : SIESTA_MON_CALC does not work with full PIMD" 
+	stop
+ endif 
+ 
+ if (SIESTA_MON_CALC) then 
+	if (num_SIESTA_nodes .eq. 1) then  
+		call siesta_launch( trim(siesta_name), "monomer") !launch serial SIESTA process
+	elseif (num_SIESTA_nodes .gt. 1) then  
+		call siesta_launch(trim(siesta_name), "monomer", nnodes=num_SIESTA_nodes ) !launch parallel SIESTA process  
+	else
+		write(*,*) "InputOuput: ERROR: invalid number of SIESTA nodes!!"
+		stop
+	endif 
+ endif 
 
  if (pot_model .eq. 6) then
  
@@ -224,7 +239,7 @@ subroutine init_potential_all_nodes
 	call system("export GFORTRAN_UNBUFFERED_ALL=y")
 
     if ( PIMD_type .eq. "full") then
-        call sleep(pid) !stagger the system calls from different MPI processes a bit - important fix
+        call sleep(pid) !stagger the system calls from different MPI processes a bit - important to do this! 
 	
 		!setup Nnodes SIESTA proccesses sharing num_SIESTA_nodes
 		nodes_per_process = floor(real(num_SIESTA_nodes)/real(Nnodes)) 

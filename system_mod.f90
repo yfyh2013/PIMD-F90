@@ -6,7 +6,9 @@ module system_mod
 
    integer :: pot_model !  =2 for ttm21f and =3 for ttm3f
 
-   double precision, dimension(3) :: box, boxi
+   double precision, dimension(3)   :: box, boxi
+   double precision, dimension(3,3) :: siesta_box
+
    double precision :: Umon, Uvdw, Uelec, Uind, Uvdw_lrc0, Uvdw_lrc
 
    double precision :: Rc, rc1, Rc2, volume, volume_init, eps_ewald
