@@ -32,16 +32,16 @@ double precision ::  isotherm_compress
 integer, dimension(:), allocatable :: seed
  character(len=125) :: dip_file
  character(len=11)  :: bead_thermostat_type
-integer :: num_timesteps, t, t_freq, tp_freq, td_freq, ti_freq, m, clock, eq_timesteps, ttt, tr 
-logical :: dip_out, coord_out, TD_out, vel_out, TP_out, Edip_out 
+integer :: run_timesteps, t, t_freq, tp_freq, td_freq, ti_freq, m, clock, eq_timesteps, ttt, tr 
+logical :: dip_out, coord_out, TD_out, momenta_out, TP_out, Edip_out 
 logical :: BAROSTAT, PEQUIL, BOXSIZEOUT, THERMOSTAT, GENVEL, INPCONFIGURATION, IMAGEDIPOLESOUT
-logical :: DIELECTRICOUT, WRITECHECKPOINTS, OUTPUTIMAGES, SIMPLE_ENERGY_ESTIMATOR
+logical :: DIELECTRICOUT, WRITECHECKPOINTS, OUTPUTIMAGES 
 logical :: CALCIRSPECTRA, CALCDIFFUSION, CALCDOS, RESTART, ENERGYOUT, HISTOUT, SIESTA_MON_CALC
 logical ::  BEADTHERMOSTAT, CENTROIDTHERMOSTAT, CALC_RADIUS_GYRATION, CHARGESOUT, EXISTS, CALCGEOMETRY
 
 !logical i/o units
 integer :: lun, lunXYZ, lunBOXSIZEOUT, lunIMAGES, lunDIELECTRIC, lunCHARGES, lunHISTOUT
-integer :: lundip_out, luncoord_out, lunCHARGESOUT, lunvel_out,  lunTP_out
+integer :: lundip_out, luncoord_out, lunCHARGESOUT, lunmomenta_out,  lunTP_out
 integer :: lunEdip_out, lunIMAGEDIPOLESOUT, lunTD_out, lunOUTPUTIMAGES, lunENERGYOUT
 
 !N-H variables

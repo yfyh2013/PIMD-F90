@@ -17,6 +17,7 @@ double precision, save :: bsum_HH=0,  bsum_OH=0,  bsum_HOH=0  !bead-bead distanc
 double precision, save :: bsum_HH2=0, bsum_OH2=0, bsum_HOH2=0 !bead-bead distances squared
 double precision, save :: max_OH=0, bmax_OH=0
 integer, save :: num_total=0
+integer, save :: num_warn=0
 double precision, dimension(NUM_BINS),save :: dOHhist=0, bdOHhist=0
 
  contains 
@@ -33,7 +34,7 @@ subroutine calc_geometry(RR, RRt)
  double precision :: d_HH, d_OH1, d_OH2, d_HOH
  integer ::  ih1, ih2, io, i, j
  double precision, parameter :: dOHmax = 1.5d0
-
+ 
  do i = 1, Nwaters
 	ih1 = 3*i
 	ih2 = 3*i-1
@@ -52,8 +53,14 @@ subroutine calc_geometry(RR, RRt)
 	d_OH1 = dsqrt( sum(ROH1**2) ) 
 	d_OH2 = dsqrt( sum(ROH2**2) )  
 
-	if (d_OH1 .gt. dOHmax) write (*,*) "SEVERE WARNING centroid dOH > ", dOHmax, " = ", d_OH1
-	if (d_OH2 .gt. dOHmax) write (*,*) "SEVERE WARNING centroid dOH > ", dOHmax, " = ", d_OH2
+	if (d_OH1 .gt. dOHmax) then 
+		if (num_warn .lt. 1000) write (*,*) "SEVERE WARNING centroid dOH > ", dOHmax, " = ", d_OH1
+		num_warn = num_warn + 1
+	endif
+	if (d_OH2 .gt. dOHmax) then 
+		if (num_warn .lt. 1000) write (*,*) "SEVERE WARNING centroid dOH > ", dOHmax, " = ", d_OH2
+		num_warn = num_warn + 1
+	endif
 	if (d_OH1 .gt. max_OH) max_OH = d_OH1
 	if (d_OH2 .gt. max_OH) max_OH = d_OH1
 	call binit(dOHhist, d_OH1)
@@ -92,8 +99,15 @@ subroutine calc_geometry(RR, RRt)
 		d_OH2 = dsqrt( sum(ROH2**2) )  
 		d_HOH = dacos( (d_OH1**2 + d_OH2**2 - d_HH**2)/(2.0*d_OH1*d_OH2) )
 		
-		if (d_OH1 .gt. dOHmax) write (*,*) "WARNING bead dOH > ", dOHmax, " = ", d_OH1
-		if (d_OH2 .gt. dOHmax) write (*,*) "WARNING bead dOH > ", dOHmax, " = ", d_OH2
+		if (d_OH1 .gt. dOHmax) then 
+		if (num_warn .lt. 1000) write (*,*) "WARNING bead centroid dOH > ", dOHmax, " = ", d_OH1
+			num_warn = num_warn + 1
+		endif
+		if (d_OH2 .gt. dOHmax) then 
+			if (num_warn .lt. 1000) write (*,*) "WARNING bead centroid dOH > ", dOHmax, " = ", d_OH2
+			num_warn = num_warn + 1
+		endif
+		
 		if (d_OH1 .gt. bmax_OH) bmax_OH = d_OH1
 		if (d_OH2 .gt. bmax_OH) bmax_OH = d_OH2
 		call binit(bdOHhist, d_OH1)
@@ -110,6 +124,8 @@ subroutine calc_geometry(RR, RRt)
 
 	enddo 
  enddo
+ 
+ if (num_warn .eq. 1000) write (*,*) "Max warnings reached : supressing further warnings"
  
  num_total = num_total + Nwaters
 

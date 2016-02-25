@@ -48,7 +48,7 @@ program PIMD
  !----------- MD Part of the program ---------------------------------------------
  call start_timer("MD")
  
- do t = 1, num_timesteps + eq_timesteps
+ do t = 1, run_timesteps + eq_timesteps
 	
 	if (CONTRACTION) then
 		call contracted_MD
@@ -58,7 +58,7 @@ program PIMD
 		call PIMD_VV
 	endif
 	
- enddo!t = 1, num_timesteps + eq_timesteps
+ enddo!t = 1, run_timesteps + eq_timesteps
  
  call stop_timer("MD")
 

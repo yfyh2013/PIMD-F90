@@ -29,12 +29,12 @@ subroutine read_input_file
  read(lun,*)fsave
  read(lun,*)Nbeads
  read(lun,*)eq_timesteps
- read(lun,*)num_timesteps
+ read(lun,*)run_timesteps
  read(lun,*)delt
  read(lun,*) 
  read(lun,*)
  read(lun,*)coord_out
- read(lun,*)vel_out
+ read(lun,*)momenta_out
  read(lun,*)dip_out
  read(lun,*)Edip_out
  read(lun,*)TD_out
@@ -84,7 +84,6 @@ subroutine read_input_file
  CALCGEOMETRY = .true. !computes averge geometry of h2o molecules and outputs at end
  CALCDIFFUSION = .true. !computes diffusion constant of oxygen atoms
  read_method = 1 !read_method(=0,1) (0 for OOOO....HHHHH and 1 for OHHOHHOHH...)
- SIMPLE_ENERGY_ESTIMATOR = .true. !setting this to true will output the simple energy to temp/press file
  CALCIRSPECTRA = .false. !store dipole moments and calculate IR spectra at end of run
  CALCDOS = .true. 
  ENERGYOUT = .true.
@@ -416,8 +415,8 @@ endif
 	allocate(Virialt(Nbeads))
 	allocate(virialct(Nbeads))
 	allocate(PPc(3, Natoms))
-    if (CALCIRSPECTRA) allocate(dip_mom_all_times(3, num_timesteps))
-    if (CALCDOS)  	   allocate(Hvelocities(3, num_timesteps, 2*Nwaters))
+    if (CALCIRSPECTRA) allocate(dip_mom_all_times(3, run_timesteps))
+    if (CALCDOS)  	   allocate(Hvelocities(3, run_timesteps, 2*Nwaters))
 
 	dRRt = 0 
 
@@ -510,7 +509,7 @@ subroutine open_files
  endif 
 
  if (coord_out)      call io_open(luncoord_out,'out_'//TRIM(fsave)//'_coord.xyz',APPEND=RESTART)
- if (vel_out)        call io_open(lunVEL_OUT,'out_'//TRIM(fsave)//'_momenta.dat',APPEND=RESTART)
+ if (momenta_out)        call io_open(lunmomenta_out,'out_'//TRIM(fsave)//'_momenta.dat',APPEND=RESTART)
  if (OUTPUTIMAGES)   call io_open(lunOUTPUTIMAGES,'out_'//TRIM(fsave)//'_images_coord.xyz',APPEND=RESTART)
  if (dip_out)        call io_open(lundip_out,'out_'//TRIM(fsave)//'_dip.dat',APPEND=RESTART)
  if (TD_out)         call io_open(lunTD_out,'out_'//TRIM(fsave)//'_tot_dip.dat',APPEND=RESTART)
@@ -691,7 +690,7 @@ subroutine write_out
 	if (DIELECTRICOUT) then 
 		dielectric_constant = diel_prefac*(  sum_dip2/ttt - sum( (sum_dip/ttt)**2 )  )/volume/(sum_temp/tr)
 		write(lunTP_out,'(1x,f6.2)',advance='no') dielectric_constant
-		!if (mod(t,num_timesteps/1000) .eq. 0) then
+		!if (mod(t,run_timesteps/1000) .eq. 0) then
 		!	dielectric_running(dielectric_index) = dielectric_constant
 		!	dielectric_index = dielectric_index + 1
 		!endif 
@@ -727,7 +726,7 @@ subroutine write_out
 
     if (CALCDIFFUSION) then
         call start_timer("calc_diffusion")
-		call calc_diff_RMSD(RRc, num_timesteps) 
+		call calc_diff_RMSD(RRc, run_timesteps) 
 		call stop_timer("calc_diffusion")
     endif
     
@@ -743,8 +742,8 @@ subroutine write_out
 		endif
 	
 		!velocity output
-		if (vel_out) then
-			call save_XYZ(lunVEL_OUT, PPc, Upot, read_method, t, delt) 
+		if (momenta_out) then
+			call save_XYZ(lunmomenta_out, PPc, Upot, read_method, t, delt) 
 		endif
 
 		!dipoles output
@@ -857,8 +856,8 @@ subroutine print_run
  call print_timing_report(lunTP_out)
 
  call get_time("Total time", seconds) 
- write(lunTP_out,'(a50, f10.2)') "ps/hour = ", (  (num_timesteps + eq_timesteps)*delt/seconds  )*3600
- write(lunTP_out,'(a50, f10.2)') "ps/day = ",  (  (num_timesteps + eq_timesteps)*delt/seconds  )*3600*24
+ write(lunTP_out,'(a50, f10.2)') "ps/hour = ", (  (run_timesteps + eq_timesteps)*delt/seconds  )*3600
+ write(lunTP_out,'(a50, f10.2)') "ps/day = ",  (  (run_timesteps + eq_timesteps)*delt/seconds  )*3600*24
  
  write(lunTP_out,*) "#------- thermodynamics: -------------------------------"
  avg_temp =  sum_temp/tr
@@ -866,8 +865,8 @@ subroutine print_run
  write(lunTP_out,'(a50, 3f10.2)') "Average temperature during run (K) = ", avg_temp/Nbeads
  write(lunTP_out,'(a50, 3f10.2)') "Average pressure during run (bar) = ", sum_press/tr
  write(lunTP_out,'(a50, 3f10.2)') "Average total energy during run (kcal/mole) = ", sum_tot_energy/tr
- write(lunTP_out,'(a50, 3f10.2)') "Estimated energy drift (kcal/mole/ps) = ",(tot_energy - init_energy)/(num_timesteps*delt)
- write(lunTP_out,'(a50, 3f10.2)') "Temp drift (K/ps) = ", (avg_temp - init_temp)/(num_timesteps*delt)
+ write(lunTP_out,'(a50, 3f10.2)') "Estimated energy drift (kcal/mole/ps) = ",(tot_energy - init_energy)/(run_timesteps*delt)
+ write(lunTP_out,'(a50, 3f10.2)') "Temp drift (K/ps) = ", (avg_temp - init_temp)/(run_timesteps*delt)
  write(lunTP_out,'(a50, 3f10.2)') "RMS energy fluctuation  (kcal/mol) = ", dsqrt( sum_tot_energy2/tr - (sum_tot_energy/tr)**2 )
  
  specific_heat = dsqrt(  sum_tot_energy2/tr - (sum_tot_energy/tr)**2  ) /( kb*avg_temp )
@@ -901,7 +900,7 @@ subroutine print_run
  if (DIELECTRICOUT) then 
     write(lunTP_out,'(a50 )')         "#---------- dielectric constant data  ---------------"
 	write(lunTP_out,'(a50, f10.2)') " dielectric constant ", dielectric_constant
-	if (num_timesteps .gt. 1000) then 
+	if (run_timesteps .gt. 1000) then 
 		dielectric_error = sum( (dielectric_running(500:1000) - dielectric_constant)**2 ) /500
 	  	write(lunTP_out,'(a50, f16.2)') "estimated error = +/-", dielectric_error
 	endif	
@@ -912,8 +911,8 @@ subroutine print_run
 	write(lunTP_out,'(a50, i5)') " points used to compute dielectric constant: ", ttt
  endif
 
- if (CALCIRSPECTRA .and. (num_timesteps .gt. 10)) call calc_infrared_spectrum(dip_mom_all_times,box,delt,fsave,avg_temp/Nbeads)
- if (CALCDOS .and. (num_timesteps .gt. 10))       call calc_DOS(Hvelocities,box,delt,fsave,avg_temp/Nbeads)
+ if (CALCIRSPECTRA .and. (run_timesteps .gt. 10)) call calc_infrared_spectrum(dip_mom_all_times,box,delt,fsave,avg_temp/Nbeads)
+ if (CALCDOS .and. (run_timesteps .gt. 10))       call calc_DOS(Hvelocities,box,delt,fsave,avg_temp/Nbeads)
 
  
  if (WRITECHECKPOINTS) then 
