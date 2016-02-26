@@ -1,17 +1,36 @@
-program PIMD
 !----------------------------------------------------------------------------------
-!----------------- PIMD / RPMD program -------------------------------------------
+!----------------- PIMD / RPMD F90 program ---------------------------------------
 !----------------------------------------------------------------------------------
 !Changelog: 
-!TTM3F code edited and expanded by Dan Elton 2/13
-!Added PIMD parallelization 12/13
-!Switched from velocity to momentum variables 3/14
-!Addition of SIESTA 10/15
+! TTM3F code edited and expanded by Dan Elton 2/13
+! Added PIMD parallelization 12/13
+! Switched from velocity to momentum variables 3/14
+! Addition of SIESTA force calculation 10/15
+! new variable format input file 2/16
 !
 !To run the program use the following : 
-! serial   : ./main.x inputfilename
-! parallel :  mpirun -np _ ./main.x inputfilename
-!----------------------------------------------------------------------------------
+! serial   : ./PIMD.x inputfilename > error_output_file
+! parallel :  mpirun -np _ ./PIMD.x inputfilename > error_output_file
+!
+!-------------------------------------------------------------------------------------
+! Copyright (c) 2016 Daniel C. Elton 
+!
+! This software is licensed under The MIT License (MIT)
+! Permission is hereby granted, free of charge, to any person obtaining a copy of this 
+! software and associated documentation files (the "Software"), to deal in the Software
+! without restriction, including without limitation the rights to use, copy, modify, merge,
+! publish, distribute, sublicense, and/or sell copies of the Software, and to permit 
+! persons to whom the Software is furnished to do so, subject to the following conditions:
+!
+! The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+!
+! THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING
+! BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND 
+! NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, 
+! DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+! OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+!-------------------------------------------------------------------------------------
+program PIMD
  use system_mod
  use consts
  use main_stuff

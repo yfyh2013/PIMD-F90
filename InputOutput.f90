@@ -1,3 +1,21 @@
+!-----------------------------------------------------------------------------------
+! Copyright (c) 2015-2016 Daniel C. Elton 
+!
+! This software is licensed under The MIT License (MIT)
+! Permission is hereby granted, free of charge, to any person obtaining a copy of this 
+! software and associated documentation files (the "Software"), to deal in the Software
+! without restriction, including without limitation the rights to use, copy, modify, merge,
+! publish, distribute, sublicense, and/or sell copies of the Software, and to permit 
+! persons to whom the Software is furnished to do so, subject to the following conditions:
+!
+! The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+!
+! THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING
+! BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND 
+! NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, 
+! DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+! OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+!-------------------------------------------------------------------------------------
 module InputOutput
  use consts
  use main_stuff
@@ -10,6 +28,7 @@ Implicit none
 !---------------- Read input file ------------------------------------------------
 !----------------------------------------------------------------------------------
 subroutine read_input_file 
+ use input_file_reader
  implicit none
  
  call getarg(1, finp)
@@ -22,79 +41,13 @@ subroutine read_input_file
  call io_assign(lun) 
  open(lun, file=finp, status='old')
 
- read(lun,*) 
- read(lun,*)
- read(lun,*)
- read(lun,*)fconfig
- read(lun,*)fsave
- read(lun,*)Nbeads
- read(lun,*)eq_timesteps
- read(lun,*)run_timesteps
- read(lun,*)delt
- read(lun,*) 
- read(lun,*)
- read(lun,*)coord_out
- read(lun,*)momenta_out
- read(lun,*)dip_out
- read(lun,*)Edip_out
- read(lun,*)TD_out
- read(lun,*)OUTPUTIMAGES
- read(lun,*)IMAGEDIPOLESOUT
- read(lun,*)BOXSIZEOUT
- read(lun,*)TP_out
- read(lun,*)CALC_RADIUS_GYRATION
- read(lun,*)DIELECTRICOUT
- read(lun,*)CHARGESOUT
- read(lun,*)WRITECHECKPOINTS
- read(lun,*)td_freq
- read(lun,*)tp_freq
- read(lun,*)ti_freq
- read(lun,*)t_freq
- read(lun,*) 
- read(lun,*)
- read(lun,*)pot_model 
- read(lun,*)siesta_name, sys_label, num_SIESTA_nodes
- read(lun,*)Rc, rc1, eps_ewald
- read(lun,*)polar_maxiter, polar_sor, polar_eps, guess_initdip, print_dipiters
- read(lun,*)GENVEL
- read(lun,*)THERMOSTAT
- read(lun,*)BEADTHERMOSTAT
- read(lun,*)CENTROIDTHERMOSTAT
- read(lun,*)bead_thermostat_type
- read(lun,*)tau
- read(lun,*)tau_centroid
- read(lun,*)global_chain_length
- read(lun,*)bead_chain_length
- read(lun,*)temp
- read(lun,*)BAROSTAT
- read(lun,*)tau_P
- read(lun,*)press 
- read(lun,*)PEQUIL
- read(lun,*) 
- read(lun,*)
- read(lun,*)setNMfreq
- read(lun,*)PIMD_type
- read(lun,*)intra_timesteps
- read(lun,*)massO
- read(lun,*)massH
- read(lun,*)RESTART
- call io_close(lun)  
-
- !other hardcoded options: 
- CALCGEOMETRY = .true. !computes averge geometry of h2o molecules and outputs at end
- CALCDIFFUSION = .true. !computes diffusion constant of oxygen atoms
- read_method = 1 !read_method(=0,1) (0 for OOOO....HHHHH and 1 for OHHOHHOHH...)
- CALCIRSPECTRA = .false. !store dipole moments and calculate IR spectra at end of run
- CALCDOS = .true. 
- ENERGYOUT = .true.
- HISTOUT = .true. 
- SIESTA_MON_CALC = .true.
+ call read_inputfile()
 
  select case (trim(PIMD_type))
 	case("full", "fullPIMD")
 		MONOMERPIMD = .false.
 		CONTRACTION = .false.
-	case("contracted", "conPIMD")
+	case("contracted", "conPIMD", "contractedPIMD")
 		MONOMERPIMD = .false.
 		CONTRACTION = .true. 
 	case("monomerPIMD", "monPIMD")
@@ -301,21 +254,21 @@ endif
 if ((CENTROIDTHERMOSTAT .or. BEADTHERMOSTAT) .and. (Nbeads .eq. 1)) then
 	write(lunTP_out,*) "InputOutput: WARNING: Bead/centroid thermostating does not make much sense with 1 bead."
 	write(lunTP_out,*) "InputOutput: WARNING: The dynamics will be unphysical since every atomic DOF will be thermostated. "
-	!write(lunTP_out,*) "InputOutput: WARNING: --- The bead thermostat is being turned off ----"
-	!if (CENTROIDTHERMOSTAT) CENTROIDTHERMOSTAT = .false.
-	!if (BEADTHERMOSTAT) BEADTHERMOSTAT = .false.
+	write(lunTP_out,*) "InputOutput: WARNING: --- The bead thermostat is being turned off !! ----"
+	if (CENTROIDTHERMOSTAT) CENTROIDTHERMOSTAT = .false.
+	if (BEADTHERMOSTAT) BEADTHERMOSTAT = .false.
 endif
 
 if (BEADTHERMOSTAT .and. .not. (THERMOSTAT)) then
 	write(lunTP_out,*) "WARNING: running bead thermostating without a global thermostat is not recommended."
-	write(*,*) "You may observe abnormally large temperature fluctuations in the system."
+	write(lunTP_out,*) "You may observe abnormally large temperature fluctuations in the system."
 endif
 
 if (CENTROIDTHERMOSTAT.and. .not. (BEADTHERMOSTAT)) then
 	write(lunTP_out,*) "WARNING: You are thermostating the centroid but not thermostating the other modes."
-	write(*,*) "There is not really any good reason for doing this. Consider a different scheme." 
+	write(lunTP_out,*) "There is not really any good reason for doing this. Consider a different scheme." 
+	stop 
 endif
-
 
 if ( Rc .gt. minval(box)/2 ) then
 	write(lunTP_out,*) 'ERROR: cutoff radius is greater than half the smallest box dimension (', minval(box), ')'
@@ -510,7 +463,7 @@ subroutine open_files
 
  if (coord_out)      call io_open(luncoord_out,'out_'//TRIM(fsave)//'_coord.xyz',APPEND=RESTART)
  if (momenta_out)        call io_open(lunmomenta_out,'out_'//TRIM(fsave)//'_momenta.dat',APPEND=RESTART)
- if (OUTPUTIMAGES)   call io_open(lunOUTPUTIMAGES,'out_'//TRIM(fsave)//'_images_coord.xyz',APPEND=RESTART)
+ if (images_out)   call io_open(lunimages_out,'out_'//TRIM(fsave)//'_images_coord.xyz',APPEND=RESTART)
  if (dip_out)        call io_open(lundip_out,'out_'//TRIM(fsave)//'_dip.dat',APPEND=RESTART)
  if (TD_out)         call io_open(lunTD_out,'out_'//TRIM(fsave)//'_tot_dip.dat',APPEND=RESTART)
  if  (Edip_out)      call io_open(lunEdip_out,'out_'//TRIM(fsave)//'_Edip.dat',APPEND=RESTART)
@@ -783,12 +736,12 @@ subroutine write_out
 	!images output
 	if (mod(t,ti_freq)  == 0) then
 		
-		if (OUTPUTIMAGES) then  
+		if (images_out) then  
 			do i = 1, Nbeads
-				call save_XYZ(lunOUTPUTIMAGES, RRt(:,:,i), Upot, read_method, t, delt) 
+				call save_XYZ(lunimages_out, RRt(:,:,i), Upot, read_method, t, delt) 
 			enddo
 #ifdef FC_HAVE_FLUSH
-			flush(lunOUTPUTIMAGES)
+			flush(lunimages_out)
 #endif
 		endif 
 		
@@ -913,7 +866,6 @@ subroutine print_run
 
  if (CALCIRSPECTRA .and. (run_timesteps .gt. 10)) call calc_infrared_spectrum(dip_mom_all_times,box,delt,fsave,avg_temp/Nbeads)
  if (CALCDOS .and. (run_timesteps .gt. 10))       call calc_DOS(Hvelocities,box,delt,fsave,avg_temp/Nbeads)
-
  
  if (WRITECHECKPOINTS) then 
 	call io_open(lun,'out_'//TRIM(fsave)//'_finalchk.img')

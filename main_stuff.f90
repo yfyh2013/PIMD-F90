@@ -1,10 +1,28 @@
+!-------------------------------------------------------------------------------------
+! Copyright (c) 2016 Daniel C. Elton 
+!
+! This software is licensed under The MIT License (MIT)
+! Permission is hereby granted, free of charge, to any person obtaining a copy of this 
+! software and associated documentation files (the "Software"), to deal in the Software
+! without restriction, including without limitation the rights to use, copy, modify, merge,
+! publish, distribute, sublicense, and/or sell copies of the Software, and to permit 
+! persons to whom the Software is furnished to do so, subject to the following conditions:
+!
+! The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+!
+! THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING
+! BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND 
+! NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, 
+! DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+! OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+!-------------------------------------------------------------------------------------
 module main_stuff
 use consts
 use system_mod 
 use mpi
 Implicit none
 !----------------------------------------------------------------------------------
-!-------------- "global" variables used by PIMD.f90 and others -------------------
+!--"global" variables used by PIMD.f90 and others --------------------------------
 !----------------------------------------------------------------------------------
 !-old variables from TTMF code -----------------------------
 double precision, dimension(:,:), allocatable :: RR, dRR
@@ -15,9 +33,8 @@ double precision, dimension(:,:), allocatable :: dip_momI, dip_momE
 real, dimension(:,:), allocatable ::  dip_mom_all_times
 real, dimension(:,:,:), allocatable :: Hvelocities	
 integer :: i, iw, iat,  iO, ih1, ih2, narg, ia, read_method
-integer :: ix, iy, iz 
- character(len=2) :: ch2
- character(len=125) :: finp, fconfig, fsave 
+character(len=2) :: ch2
+character(len=250) :: finp, fconfig, fsave 
 !-new variables:--------------------------------------------
 double precision, dimension(:,:), allocatable :: VV, dRRold, dRRnew
 double precision, dimension(3) :: summom, sumvel, sum_dip, avg_box, avg_box2, sum_box, sum_box2
@@ -30,19 +47,19 @@ double precision, dimension(1000)  :: dielectric_running
 integer  :: dielectric_index = 1
 double precision ::  isotherm_compress
 integer, dimension(:), allocatable :: seed
- character(len=125) :: dip_file
- character(len=11)  :: bead_thermostat_type
+character(len=125) :: dip_file
+character(len=11)  :: bead_thermostat_type
 integer :: run_timesteps, t, t_freq, tp_freq, td_freq, ti_freq, m, clock, eq_timesteps, ttt, tr 
 logical :: dip_out, coord_out, TD_out, momenta_out, TP_out, Edip_out 
 logical :: BAROSTAT, PEQUIL, BOXSIZEOUT, THERMOSTAT, GENVEL, INPCONFIGURATION, IMAGEDIPOLESOUT
-logical :: DIELECTRICOUT, WRITECHECKPOINTS, OUTPUTIMAGES 
+logical :: DIELECTRICOUT, WRITECHECKPOINTS, images_out 
 logical :: CALCIRSPECTRA, CALCDIFFUSION, CALCDOS, RESTART, ENERGYOUT, HISTOUT, SIESTA_MON_CALC
 logical ::  BEADTHERMOSTAT, CENTROIDTHERMOSTAT, CALC_RADIUS_GYRATION, CHARGESOUT, EXISTS, CALCGEOMETRY
 
 !logical i/o units
 integer :: lun, lunXYZ, lunBOXSIZEOUT, lunIMAGES, lunDIELECTRIC, lunCHARGES, lunHISTOUT
 integer :: lundip_out, luncoord_out, lunCHARGESOUT, lunmomenta_out,  lunTP_out
-integer :: lunEdip_out, lunIMAGEDIPOLESOUT, lunTD_out, lunOUTPUTIMAGES, lunENERGYOUT
+integer :: lunEdip_out, lunIMAGEDIPOLESOUT, lunTD_out, lunimages_out, lunENERGYOUT
 
 !N-H variables
 double precision, save :: tau, tau_centroid, s, sbead
@@ -63,10 +80,10 @@ double precision, dimension(:,:), allocatable :: RRc, PPc
 double precision, dimension(:), allocatable :: Upott, Virialt, virialct
 double precision ::  Upot,  virial, virialc, omegan, kTN, iNbeads, setNMfreq
 double precision :: radiusH, radiusO, sum_radiusO, sum_radiusH
-integer :: Nnodes, pid, j, k, ierr, Nbatches, counti, bat
+integer :: Nnodes, pid, j, k, ierr=0, Nbatches, counti, bat
 integer :: status2(MPI_STATUS_SIZE)
 
-! time variable
+! time variables
 character(8)  :: date
 character(10) :: time
 double precision :: seconds 

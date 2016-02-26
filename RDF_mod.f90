@@ -1,4 +1,5 @@
 !-------------------------  m_RDF module --------------------------------------
+!--- UNDER CONSTRUCTION / NOT COMPLETE 
 !-- this is a self contained module for calculating RDFs during an MD run
 !-- it is designed to be callable by any MD program 
 !-- it currently contains subroutines for OO, HH, OH RDFs and average geometry 
@@ -17,8 +18,6 @@ real,parameter :: ang2m=1e-10
 character(120) :: fileheader
 
 real,dimension(:),allocatable :: gKr, gKr2, histOO, histOH, histHH,
-
-
 
  contains 
  

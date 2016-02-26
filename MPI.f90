@@ -1,6 +1,6 @@
 !----------------------------------------------------------------------------------------
-!This is a module of stub functions and variables which 
-!allow MPI calls to be executed even if the code is compiled with a serial (traditional) compiler
+! This is a module of stub functions and variables which 
+! allow MPI calls to be executed even if the code is compiled with a serial (traditional) compiler
 !
 ! MPI_Send and MPI_Recv may be called with various objects (arrays, scalars, etc) in the 'input' argument
 ! The code is written assuming that the 'input' argument is an array, but this may not be convient 
@@ -12,8 +12,24 @@
 ! Alternatively, this module may be removed and preprocessor declarations (ifdef mpi .. endif) may be placed around 
 ! around all MPI calls instead. 
 !
-! Copyright 2014-2015 Daniel C. Elton 
-!----------------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------------
+! Copyright (c) 2014-2015 Daniel C. Elton 
+!
+! This software is licensed under The MIT License (MIT)
+! Permission is hereby granted, free of charge, to any person obtaining a copy of this 
+! software and associated documentation files (the "Software"), to deal in the Software
+! without restriction, including without limitation the rights to use, copy, modify, merge,
+! publish, distribute, sublicense, and/or sell copies of the Software, and to permit 
+! persons to whom the Software is furnished to do so, subject to the following conditions:
+!
+! The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+!
+! THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING
+! BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND 
+! NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, 
+! DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+! OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+!-------------------------------------------------------------------------------------
 module mpi
 Integer, parameter :: MPI_STATUS_SIZE=1
 Integer, parameter :: MPI_COMM_WORLD=1

@@ -1,12 +1,27 @@
-!---------------------------------------------------------------
+!-----------------------------------------------------------------------------------
 ! Fortan-90 module for logical unit management 
-! By using logical unit management, we ensure logical units for reading/writing 
-! do not conflict with those used by other code that is interfaced with or called by this code
+! By using logical unit management, one ensures logical units for reading/writing 
+! do not conflict with those used by this code or interfaced code
 !
-! Based on code by Alberto Garcia and Richard Maine 
+! Inspiration for this comes from code by Alberto Garcia and Richard Maine 
+!-----------------------------------------------------------------------------------
+! Copyright (c) 2015 Daniel C. Elton 
 !
-! Copyright 2015 D. Elton 
-!---------------------------------------------------------------
+! This software is licensed under The MIT License (MIT)
+! Permission is hereby granted, free of charge, to any person obtaining a copy of this 
+! software and associated documentation files (the "Software"), to deal in the Software
+! without restriction, including without limitation the rights to use, copy, modify, merge,
+! publish, distribute, sublicense, and/or sell copies of the Software, and to permit 
+! persons to whom the Software is furnished to do so, subject to the following conditions:
+!
+! The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+!
+! THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING
+! BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND 
+! NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, 
+! DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+! OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+!-------------------------------------------------------------------------------------
 Module lun_management
  implicit none
  integer, save 	    :: stdout=6, stderr=0

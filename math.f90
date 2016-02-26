@@ -83,7 +83,7 @@ end subroutine calc_corr_function
 
 
 !------------------------------------------------------------------------
-!----------------  Compute DFT four1.f-------
+!----------------  Compute DFT four1.f ---------------------------------
 !------------------------------------------------------------------------ 
 subroutine calc_DFT(input, output, freqs, timestep, tread)
  Implicit none
@@ -111,7 +111,7 @@ subroutine calc_DFT(input, output, freqs, timestep, tread)
  output = dble(transformed(0:tread-1))/(2d0*trun) 
 
  do i = 0, tread-1
-	freqs(i+1) = dble(i)/(timestep*2d0*tread)
+	freqs(i+1) = dble(i)/(timestep*2d0*trun)
  enddo
 
 end subroutine calc_DFT

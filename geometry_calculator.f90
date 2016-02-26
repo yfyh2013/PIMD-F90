@@ -1,9 +1,24 @@
 !---------------------- calc geometry module --------------------------------------
 ! this is a self contained module for calculating the avg. geometry during a run
 ! it is designed to be callable by any MD program 
-! 
-! Copyright 2015 Daniel C. Elton
-!-----------------------------------------------------------------------------
+!-----------------------------------------------------------------------------------
+! Copyright (c) 2015-2016 Daniel C. Elton 
+!
+! This software is licensed under The MIT License (MIT)
+! Permission is hereby granted, free of charge, to any person obtaining a copy of this 
+! software and associated documentation files (the "Software"), to deal in the Software
+! without restriction, including without limitation the rights to use, copy, modify, merge,
+! publish, distribute, sublicense, and/or sell copies of the Software, and to permit 
+! persons to whom the Software is furnished to do so, subject to the following conditions:
+!
+! The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+!
+! THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING
+! BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND 
+! NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, 
+! DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+! OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+!-------------------------------------------------------------------------------------
 
 module geometry_calculator
 implicit none
@@ -18,6 +33,7 @@ double precision, save :: bsum_HH2=0, bsum_OH2=0, bsum_HOH2=0 !bead-bead distanc
 double precision, save :: max_OH=0, bmax_OH=0
 integer, save :: num_total=0
 integer, save :: num_warn=0
+integer, parameter :: MAX_NUM_WARNINGS=20
 double precision, dimension(NUM_BINS),save :: dOHhist=0, bdOHhist=0
 
  contains 
@@ -54,11 +70,11 @@ subroutine calc_geometry(RR, RRt)
 	d_OH2 = dsqrt( sum(ROH2**2) )  
 
 	if (d_OH1 .gt. dOHmax) then 
-		if (num_warn .lt. 1000) write (*,*) "SEVERE WARNING centroid dOH > ", dOHmax, " = ", d_OH1
+		if (num_warn .lt. MAX_NUM_WARNINGS) write (*,*) "SEVERE WARNING centroid dOH > ", dOHmax, " = ", d_OH1
 		num_warn = num_warn + 1
 	endif
 	if (d_OH2 .gt. dOHmax) then 
-		if (num_warn .lt. 1000) write (*,*) "SEVERE WARNING centroid dOH > ", dOHmax, " = ", d_OH2
+		if (num_warn .lt. MAX_NUM_WARNINGS) write (*,*) "SEVERE WARNING centroid dOH > ", dOHmax, " = ", d_OH2
 		num_warn = num_warn + 1
 	endif
 	if (d_OH1 .gt. max_OH) max_OH = d_OH1
@@ -100,11 +116,11 @@ subroutine calc_geometry(RR, RRt)
 		d_HOH = dacos( (d_OH1**2 + d_OH2**2 - d_HH**2)/(2.0*d_OH1*d_OH2) )
 		
 		if (d_OH1 .gt. dOHmax) then 
-		if (num_warn .lt. 1000) write (*,*) "WARNING bead centroid dOH > ", dOHmax, " = ", d_OH1
+		if (num_warn .lt. MAX_NUM_WARNINGS) write (*,*) "WARNING bead centroid dOH > ", dOHmax, " = ", d_OH1
 			num_warn = num_warn + 1
 		endif
 		if (d_OH2 .gt. dOHmax) then 
-			if (num_warn .lt. 1000) write (*,*) "WARNING bead centroid dOH > ", dOHmax, " = ", d_OH2
+			if (num_warn .lt. MAX_NUM_WARNINGS) write (*,*) "WARNING bead centroid dOH > ", dOHmax, " = ", d_OH2
 			num_warn = num_warn + 1
 		endif
 		
@@ -125,7 +141,7 @@ subroutine calc_geometry(RR, RRt)
 	enddo 
  enddo
  
- if (num_warn .eq. 1000) write (*,*) "Max warnings reached : supressing further warnings"
+ if (num_warn .eq. MAX_NUM_WARNINGS) write (*,*) "Max dOH warnings reached : supressing further warnings."
  
  num_total = num_total + Nwaters
 
@@ -177,11 +193,10 @@ subroutine write_out_geometry(iun, Nbeads)
  write(iun,'(a40,f12.3,a4,2f12.3,a4,f12.3)') "average OH distance : ", avg_OH, " +/-", RMS_OH, bavg_OH, " +/-", bRMS_OH  
  write(iun,'(a40,f12.3,a4,2f12.3,a4,f12.3)') "  average HOH angle : ", avg_HOH, " +/-", RMS_HOH, bavg_HOH, " +/-", bRMS_HOH  
  write(iun,'(a40,f12.3,a11,f12.3)')           " max OH distance    : ", max_OH, " max bead OH = ", bmax_OH
- write(iun,'(a)')         "#---------- final histograms -------------------------"
- call write_out_histogram(iun, Nbeads)
+ !write(iun,'(a)')         "#---------- final histograms -------------------------"
+ !call write_out_histogram(iun, Nbeads)
  
 endsubroutine write_out_geometry
-
 
 !-------------------------------------------------------------
 !-- write out histogram to seperate file --------------------
@@ -191,8 +206,8 @@ subroutine write_out_histogram(iun, Nbeads)
  integer, intent(in) :: iun, Nbeads
  integer :: i 
 
-! write(iun,'(a40,f12.6,a3)') "histogram bin size = ", delta, " Ang"
- write(iun,'(a80)') "dOH histograms (centroid-centroid , bead-bead)"
+!write(iun,'(a40,f12.6,a3)') "histogram bin size = ", delta, " Ang"
+ write(iun,'(a80)') "dist (Ang)    dOH histograms (centroid-centroid , bead-bead)"
  do i = 1, NUM_BINS
 	write(iun,'(3f12.6)') MIN_BIN + delta*i, dOHhist(i)/(2*num_total), bdOHhist(i)/(2*num_total*Nbeads)
  enddo
@@ -208,19 +223,17 @@ end subroutine write_out_histogram
 !-------------------------------------------------------------
 subroutine reset_geometry
  implicit none 
- sum_HH=0; sum_OH=0;  sum_HOH=0  
- sum_HH2=0; sum_OH2=0; sum_HOH2=0 
+ sum_HH=0;    sum_OH=0;   sum_HOH=0  
+ sum_HH2=0;   sum_OH2=0;  sum_HOH2=0 
  bsum_HH=0;   bsum_OH=0;  bsum_HOH=0  
- bsum_HH2=0; bsum_OH2=0; bsum_HOH2=0; num_total=0
- max_OH=0; bmax_OH=0
+ bsum_HH2=0;  bsum_OH2=0; bsum_HOH2=0; num_total=0
+ max_OH=0;    bmax_OH=0;  bdOHhist=0;  dOHhist=0 
 endsubroutine
-
-
 
 !-------------------------------------------------------------
 !-- histogram binning ---------------------------------------
 !-------------------------------------------------------------
-subroutine binit(hist,thing_to_bin)
+subroutine binit(hist, thing_to_bin)
  implicit none 
  double precision, dimension(:), intent(inout) :: hist
  double precision, intent(in) :: thing_to_bin
@@ -235,12 +248,12 @@ subroutine binit(hist,thing_to_bin)
 	if (bin .eq. 0) bin = 1
 	if (bin .gt. NUM_BINS) bin = NUM_BINS
 	
-	!!bining with splitting between two closest bins!!
+	!!--- bining with splitting between two closest bins ----
 	!lever = remain/delta
 	!hist(bin)  		        		 = hist(bin) 	+ 1 - lever
 	!hist(bin+int(sign(1.d0,lever)))  = hist(bin+1) + remain/delta
 
-	!normal bining 
+	!!--- normal bining 
 	hist(bin) = hist(bin) + 1
 	
  endif 

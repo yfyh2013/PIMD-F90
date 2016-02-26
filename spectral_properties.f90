@@ -1,10 +1,25 @@
 !---------------------- calc infrared spectrum --------------------------------
-! this is a module for calculating the infrared spectrum 
-! and the velocity-velocity autocorrelation function 
-! at the end of a run
+! this is a module for calculating the infrared spectrum and 
+! velocity-velocity autocorrelation function at the end of a run
 !
-! Copyright 2015 Daniel C. Elton
-!-----------------------------------------------------------------------------
+!-------------------------------------------------------------------------------------
+! Copyright (c) 2016 Daniel C. Elton 
+!
+! This software is licensed under The MIT License (MIT)
+! Permission is hereby granted, free of charge, to any person obtaining a copy of this 
+! software and associated documentation files (the "Software"), to deal in the Software
+! without restriction, including without limitation the rights to use, copy, modify, merge,
+! publish, distribute, sublicense, and/or sell copies of the Software, and to permit 
+! persons to whom the Software is furnished to do so, subject to the following conditions:
+!
+! The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+!
+! THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING
+! BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND 
+! NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, 
+! DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+! OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+!-------------------------------------------------------------------------------------
 module spectral_properties
  use consts
  implicit none
@@ -16,7 +31,7 @@ module spectral_properties
 !-------------------------------------------------------------
 !-- compute infrared spectrum and write out -----------------
 !-------------------------------------------------------------
-subroutine calc_infrared_spectrum1(dip_moms,box,timestep,fsave,temp)
+subroutine calc_infrared_spectrum(dip_moms, box, timestep, fsave, temp)
  use lun_management 
  implicit none
  real, dimension(:,:), intent(in) :: dip_moms 
@@ -24,7 +39,6 @@ subroutine calc_infrared_spectrum1(dip_moms,box,timestep,fsave,temp)
  double precision, intent(in) :: timestep          ! times step in PS
  double precision, intent(in) :: temp	           ! temp in Kelvin
  character(len=*), intent(in) :: fsave             !file label 
-
  integer :: trun, tcor, ix, i, t, n, tread, lun
  double precision :: omega, IR, magn, avgMag, MinFreqOut, vol, PointsAvailable
  complex, dimension(:), allocatable :: aux1,vcross,ACF
@@ -54,14 +68,11 @@ subroutine calc_infrared_spectrum1(dip_moms,box,timestep,fsave,temp)
     call four1(Vcross,n,1)
     ACF = ACF + Vcross
  enddo
-
- !norrmalization so ACF(1) = 1
- !ACF=ACF/real(ACF(1))
-
+ 
  ! Save the correlation function to file
  call io_open(lun, "out_"//trim(fsave)//"_dip_corr_function.dat")
  do i = 1, tread
- 	write(lun,*) i*timestep, real(ACF(i))/real(ACF(1))
+ 	write(lun,*) i*timestep, real(ACF(i))!/real(ACF(1))
  enddo	
  call io_close(lun)
 
@@ -91,36 +102,43 @@ subroutine calc_infrared_spectrum1(dip_moms,box,timestep,fsave,temp)
  !write(*,*) "points available = ", PointsAvailable
  !write(*,*) "Averaging over", NumAvgOver
 
- Do t = 0, NumPointsOut-1
+
+do t = 0, NumPointsOut-1
 
   avgMag = 0 
-  
-  !block averaging
-  avgMag = 0 
   do i = 1, NumAvgOver
-	omega=( t*NumAvgOver+i )/(timestep*ps2s*n) !get freq in 1/s (Hz)
-	avgMag = avgMag + omega*tanh(hbarSI*omega/(Kb*2.0d0*Temp))*real(aux1(t*NumAvgOver+i)) 
+	omega=( t*NumAvgOver+i )/(timestep*n*ps2s) !get freq in 1/s (Hz
+	
+	avgMag = avgMag + (omega**2)*real(aux1(t*NumAvgOver+i)) 
+	
+! 	!avgMag = avgMag + omega*tanh(hbar*omega/(Kb*2.0d0*Temp))*real(aux1(t*NumAvgOver+i)) 
+	!avgMag = avgMag + omega*(1d0 - dexp(-(hbar*omega/(Kb*Temp))))*real(aux1(t*NumAvgOver+i))
   enddo
   avgMag = avgMag/real(NumAvgOver)
 
+  
+  IR = (2d0*(3.14159d0)*(Debye2SI**2)*avgMag)/(3d0*vol*2.99d8*kb*Temp*eps0) 
+
   ! Use the prefactor with harmonic quantum correction (See Ramirez paper)
-  IR = (2d0*3.14159d0*(Debye2SI**2)*avgMag)/(3d0*vol*2.99d8*hbar) 
+  !IR = (2d0*(3.14159d0)*(Debye2SI**2)*avgMag)/(3d0*vol*2.99d8*hbar) 
+ 
+  !IR = 3.14159d0*(Debye2SI**2)*avgMag/(3d0*vol*hbar*2.99d8)
+  
+  IR = IR*ps2s ! convert units of dt from Fourier transform into seconds  
+  
+  IR = IR*.01 !convert 1/m to 1/cm
 
-  IR = IR/100 !convert from 1/m to 1/cm
+  IR = IR*2   !fudge factor -D. Elton ) 
 
-  IR = IR/2   !fudge factor (this is probably due to the fact that we have real data in, therefore a 2x redundancy when taking the FT. The FT part was not written by me and whoever wrote it clearly wasn't very careful about normalization. -D. Elton ) 
-
-  omega = floor((t+.5)*numAvgOver)/(timestep*ps2s*n) !get central freq in 1/s (Hz
+  omega=( floor((t+.5)*numAvgOver) )/(timestep*n*ps2s) !get central freq in 1/s (Hz
   omega = omega/Cspeed  	! convert frequency to cm-1
-  
-  if (.not. (IR .eq. IR)) IR = 0 !check for NaNs
-  
+
   write(lun,*)  omega, IR
- EndDo
+enddo
 
  call io_close(lun)
 
-EndSubroutine calc_infrared_spectrum1
+EndSubroutine calc_infrared_spectrum
 
 
 !-------------------------------------------------------------------------
@@ -198,9 +216,9 @@ EndSubroutine calc_DOS
 
 
 !-------------------------------------------------------------------------
-!- vel-vel ACF spectrum (aka "density of states") and write out 
+!- alternative infrared spectrum calculation 
 !-------------------------------------------------------------------------
-subroutine calc_infrared_spectrum(dip_moms, box, timestep, fsave, temp)
+subroutine calc_infrared_spectrum2(dip_moms, box, timestep, fsave, temp)
  use lun_management 
  use math
  implicit none
@@ -234,14 +252,6 @@ subroutine calc_infrared_spectrum(dip_moms, box, timestep, fsave, temp)
  enddo
  ACF = ACF/Nhyd/ACF(1)
  
- !! Save the correlation function to file--------------------
- !call io_open(lun, "out_"//trim(fsave)//"_vel_vel_corr_function.dat")
- !do i = 1, tread
- ! 	write(lun,*) i*timestep, real(ACF(i))
- !enddo	
- !call io_close(lun)
- !-----------------------------------------------------------
-
  call calc_DFT(ACF, DFT, allfreqs, timestep, size(ACF))   
 
  allfreqs = allfreqs/ps2s !convert to Hz
@@ -274,7 +284,7 @@ subroutine calc_infrared_spectrum(dip_moms, box, timestep, fsave, temp)
  call io_close(lun)
  !!----------------------------------------
 
-EndSubroutine calc_infrared_spectrum
+EndSubroutine calc_infrared_spectrum2
 
  
 EndModule spectral_properties
