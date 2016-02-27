@@ -57,6 +57,7 @@ subroutine read_input_file
 		write(*,*) "InputOutput: ERROR: invalid PIMD type. Must be 'full', 'contracted', or 'monomerPIMD'"
  end select	
  
+
 end subroutine read_input_file 
 
 
@@ -114,6 +115,15 @@ subroutine read_and_initialize_all_nodes
 	endif 
  endif 
 
+!Automatic adujustment of cutoff if necessary
+ if (Rc .eq. -1) then
+ 	write(lunTP_out,*) 'you did not specify a cuttoff, so I am settint it to Lmin/2 =', minval(box)/2.0
+	Rc = minval(box)/2.0
+ endif
+ if (Rc1 .eq. -1) then
+	Rc1 = 0.8*Rc
+ endif
+
 !These parameters are used later on  
 Rc2 = Rc * Rc
 Nwaters = Natoms/3
@@ -164,6 +174,8 @@ subroutine init_siesta
  character(len=300) :: pipe_name
  integer :: nodes_per_process
  
+ if (pid .eq. 1) then 
+ 
  if ((SIESTA_MON_CALC) .and. (PIMD_type .eq. "full")) then
 	write(*,*) "ERROR : SIESTA_MON_CALC does not work with full PIMD" 
 	stop
@@ -185,7 +197,8 @@ subroutine init_siesta
  pot_model = 6
 
  call system("export GFORTRAN_UNBUFFERED_ALL=y")
-
+ endif !pid .eq. 1
+ 
  if ( PIMD_type .eq. "full") then
 	call sleep(pid) !stagger the system calls from different MPI processes a bit - important to do this! 
 
@@ -265,13 +278,6 @@ if ( Rc .gt. minval(box)/2 ) then
 	write(*,*) 'suggest changing to', minval(box)/2.0
 	stop
 endif  
-if (Rc .eq. -1) then
- 	write(lunTP_out,*) 'you did not specify a cuttoff, so I am settint it to Lmin/2 =', minval(box)/2.0
-	Rc = minval(box)/2.0
-endif
-if (Rc1 .eq. -1) then
-	Rc1 = 0.8*Rc
-endif
 if (rc1 .lt. 0) then
  	write(*,*) "ERROR: start of shifted cutoff cannot be less than zero!!"
 	stop
