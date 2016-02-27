@@ -174,7 +174,7 @@ subroutine init_siesta
  character(len=300) :: pipe_name
  integer :: nodes_per_process
  
- if (pid .eq. 1) then 
+ if (pid .eq. 0) then 
  
  if ((SIESTA_MON_CALC) .and. (PIMD_type .eq. "full")) then
 	write(*,*) "ERROR : SIESTA_MON_CALC does not work with full PIMD" 
@@ -197,7 +197,7 @@ subroutine init_siesta
  pot_model = 6
 
  call system("export GFORTRAN_UNBUFFERED_ALL=y")
- endif !pid .eq. 1
+ endif !pid .eq. 0
  
  if ( PIMD_type .eq. "full") then
 	call sleep(pid) !stagger the system calls from different MPI processes a bit - important to do this! 
