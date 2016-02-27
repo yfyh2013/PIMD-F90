@@ -51,10 +51,14 @@ program PIMD
  call MPI_Comm_size(MPI_COMM_WORLD, Nnodes, ierr)
  call MPI_Comm_rank(MPI_COMM_WORLD, pid, ierr)
 
-!---------------- Initialize / allocate some variables -------------------------
+!---------------- Initializations ---------------------------------------------
  call read_and_initialize_all_nodes
- call init_potential_all_nodes
-
+ if (pot_model .eq. 6) then 
+	call init_siesta
+ else 
+	call init_pot
+ endif
+ 
 !------------------Master node stuff --------------------------------------------
  if (pid .eq. 0) then
 	call start_timer("Total time") 

@@ -91,7 +91,7 @@ double precision :: seconds
 !variables for multiple timestep / contraction
 integer :: intra_timesteps, num_SIESTA_nodes
 double precision :: deltfast, delt2fast  
-character(len=200) :: siesta_name, PIMD_type
+character(len=200) :: siesta_name, PIMD_type, mon_siesta_name
 
  contains
 

@@ -71,10 +71,10 @@ subroutine read_inputfile()
  siesta_name = 'siesta' !name of siesta executable 
  num_SIESTA_nodes = 1 !  # SIESTA processors 
  
- Rc = 7d0 		!realspace cutoff (Ang)
- rc1 = .75*Rc	!start of VdW force switch (Ang)
+ Rc = -1 		   !realspace cutoff (Ang)
+ rc1 = -1	       !start of VdW force switch (Ang)
  eps_ewald = 1.d-6 !eps for aewald
- 
+
  polar_maxiter = 15    !max polarization dipole iterations
  polar_sor     = 0.7   !TTM pol factor
  polar_eps     = 1.d-3 !accuracy to converge dipoles to 
@@ -318,6 +318,9 @@ subroutine read_inputfile()
 		
 		case('sys_label')
 		READ(buffer, * )  sys_label
+		
+		case('mon_siesta_name')
+		READ(buffer, * )  mon_siesta_name
 		
 		case('old_style','OLD_STYLE','OLD','old') 
 		    rewind(lun) 

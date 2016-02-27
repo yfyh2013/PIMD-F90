@@ -26,7 +26,7 @@ module diffusion_calculator
  implicit none
  double precision, dimension(:), allocatable, save :: aMS
  integer, save :: ntimes
- integer, parameter :: t_out = 10 !how often to save RMS (for plotting)
+ integer, parameter :: t_out = 20 !how often to save RMS (for plotting)
 
  contains 
  
@@ -80,7 +80,6 @@ subroutine calc_diff_RMSD(RRc, num_timesteps)
  
  t = t  + 1
 endsubroutine calc_diff_RMSD
-
 
 !-------------------------------------------------------------
 !-- write out diffusion stuff -------------------------------

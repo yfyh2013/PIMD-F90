@@ -56,8 +56,7 @@ subroutine read_input_file
 	case default 
 		write(*,*) "InputOutput: ERROR: invalid PIMD type. Must be 'full', 'contracted', or 'monomerPIMD'"
  end select	
-
-	 
+ 
 end subroutine read_input_file 
 
 
@@ -153,10 +152,10 @@ end subroutine read_and_initialize_all_nodes
 
 
 !----------------------------------------------------------------------------------
-! Initialize potential-related variables ----------------------------------------- 
+!-------------------------  Initialize SIESTA ------------------------------------
 ! note: call siesta_units( "ang", 'kcal/mol' ) doesn't work- Siesta cant do kcal/mol
 !----------------------------------------------------------------------------------
-subroutine init_potential_all_nodes
+subroutine init_siesta
  use fsiesta
  use math, only: str
  Implicit None
@@ -172,65 +171,56 @@ subroutine init_potential_all_nodes
  
  if (SIESTA_MON_CALC) then 
 	if (num_SIESTA_nodes .eq. 1) then  
-		call siesta_launch( trim(siesta_name), "monomer") !launch serial SIESTA process
+		call siesta_launch( trim(mon_siesta_name), "monomer") !launch serial SIESTA process
 	elseif (num_SIESTA_nodes .gt. 1) then  
-		call siesta_launch(trim(siesta_name), "monomer", nnodes=num_SIESTA_nodes ) !launch parallel SIESTA process  
+		call siesta_launch(trim(mon_siesta_name), "monomer", nnodes=num_SIESTA_nodes ) !launch parallel SIESTA process  
 	else
 		write(*,*) "InputOuput: ERROR: invalid number of SIESTA nodes!!"
 		stop
 	endif 
  endif 
 
- if (pot_model .eq. 6) then
- 
-	pot_model = 3
-	call init_pot
-	!polar_eps = 1d-10
-	pot_model = 6
-  
-	call system("export GFORTRAN_UNBUFFERED_ALL=y")
+ pot_model = 3
+ call init_pot !initialize ttm for dipoles calculations
+ pot_model = 6
 
-    if ( PIMD_type .eq. "full") then
-        call sleep(pid) !stagger the system calls from different MPI processes a bit - important to do this! 
-	
-		!setup Nnodes SIESTA proccesses sharing num_SIESTA_nodes
-		nodes_per_process = floor(real(num_SIESTA_nodes)/real(Nnodes)) 
-	
-		sys_label_i = trim(sys_label)//trim(str(pid))
-			
-		!make copies of .fdf
-		sys_command = "cp "//trim(sys_label)//".fdf "//trim(sys_label_i)//".fdf"
-		
-		call system(trim(sys_command))
-		
-		sys_command = "sed -i -- 's/"//trim(sys_label)//"/"//trim(sys_label_i)//"/g' "//trim(sys_label_i)//".fdf"
-		
-		call system(trim(sys_command))
-		
-		call siesta_launch(trim(siesta_name), trim(sys_label_i), nnodes=nodes_per_process ) !launch parallel SIESTA process  	
+ call system("export GFORTRAN_UNBUFFERED_ALL=y")
 
-	elseif (Nnodes .eq. 1) then 
+ if ( PIMD_type .eq. "full") then
+	call sleep(pid) !stagger the system calls from different MPI processes a bit - important to do this! 
+
+	!setup Nnodes SIESTA proccesses sharing num_SIESTA_nodes
+	nodes_per_process = floor(real(num_SIESTA_nodes)/real(Nnodes)) 
+
+	sys_label_i = trim(sys_label)//trim(str(pid))
+		
+	!make copies of .fdf
+	sys_command = "cp "//trim(sys_label)//".fdf "//trim(sys_label_i)//".fdf"
 	
-		if (num_SIESTA_nodes .eq. 1) then  
-			call siesta_launch( trim(siesta_name), trim(sys_label)) !launch serial SIESTA process
-		elseif (num_SIESTA_nodes .gt. 1) then  
-			call siesta_launch(trim(siesta_name), trim(sys_label), nnodes=num_SIESTA_nodes ) !launch parallel SIESTA process  
-		else
-			write(*,*) "InputOuput: ERROR: invalid number of SIESTA nodes!!"
-			stop
-		endif
+	call system(trim(sys_command))
 	
+	sys_command = "sed -i -- 's/"//trim(sys_label)//"/"//trim(sys_label_i)//"/g' "//trim(sys_label_i)//".fdf"
+	
+	call system(trim(sys_command))
+	
+	call siesta_launch(trim(siesta_name), trim(sys_label_i), nnodes=nodes_per_process ) !launch parallel SIESTA process  	
+
+ elseif (Nnodes .eq. 1) then 
+	if (num_SIESTA_nodes .eq. 1) then  
+		call siesta_launch( trim(siesta_name), trim(sys_label)) !launch serial SIESTA process
+	elseif (num_SIESTA_nodes .gt. 1) then  
+		call siesta_launch(trim(siesta_name), trim(sys_label), nnodes=num_SIESTA_nodes ) !launch parallel SIESTA process  
 	else
-		write(*,*) "You specified running with ", PIMD_type, " and Nnodes = ", Nnodes
-		write(*,*) "This configuration is not supported. With contractiom PIMD must be on a single node. "
+		write(*,*) "InputOuput: ERROR: invalid number of SIESTA nodes!!"
 		stop
 	endif
- 
  else
-	call init_pot
- endif 
+	write(*,*) "You specified running with ", PIMD_type, " and Nnodes = ", Nnodes
+	write(*,*) "This configuration is not supported. With contractiom PIMD must be on a single node. "
+	stop
+ endif
 
- end subroutine init_potential_all_nodes
+end subroutine init_siesta
 
 !----------------------------------------------------------------------------------
 !---------- Error handling  / master node allocations ---------------------------- 
@@ -271,11 +261,17 @@ if (CENTROIDTHERMOSTAT.and. .not. (BEADTHERMOSTAT)) then
 endif
 
 if ( Rc .gt. minval(box)/2 ) then
-	write(lunTP_out,*) 'ERROR: cutoff radius is greater than half the smallest box dimension (', minval(box), ')'
-	write(lunTP_out,*) 'suggest changing to', minval(box)/2.0
+	write(*,*) 'ERROR: cutoff radius is greater than half the smallest box dimension (', minval(box), ')'
+	write(*,*) 'suggest changing to', minval(box)/2.0
 	stop
 endif  
-
+if (Rc .eq. -1) then
+ 	write(lunTP_out,*) 'you did not specify a cuttoff, so I am settint it to Lmin/2 =', minval(box)/2.0
+	Rc = minval(box)/2.0
+endif
+if (Rc1 .eq. -1) then
+	Rc1 = 0.8*Rc
+endif
 if (rc1 .lt. 0) then
  	write(*,*) "ERROR: start of shifted cutoff cannot be less than zero!!"
 	stop
@@ -682,9 +678,7 @@ subroutine write_out
 		call calc_diff_RMSD(RRc, run_timesteps) 
 		call stop_timer("calc_diffusion")
     endif
-    
-    
-    
+   
     if (mod(t,t_freq)  == 0 ) then 
 		!coordinate output
 		if (coord_out) then
