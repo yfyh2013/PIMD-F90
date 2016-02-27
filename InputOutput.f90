@@ -185,7 +185,7 @@ subroutine init_siesta
 	if (num_SIESTA_nodes .eq. 1) then  
 		call siesta_launch( trim(mon_siesta_name), "monomer") !launch serial SIESTA process
 	elseif (num_SIESTA_nodes .gt. 1) then  
-		call siesta_launch(trim(mon_siesta_name), "monomer", nnodes=num_SIESTA_nodes ) !launch parallel SIESTA process  
+		call siesta_launch( trim(mon_siesta_name), "monomer", nnodes=num_SIESTA_nodes ) !launch parallel SIESTA process  
 	else
 		write(*,*) "InputOuput: ERROR: invalid number of SIESTA nodes!!"
 		stop

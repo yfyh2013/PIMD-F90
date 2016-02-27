@@ -116,6 +116,7 @@ subroutine read_inputfile()
  
  !Required for SIESTA runs
  sys_label    = '-1'    !SIESTA label of .fdf file
+ mon_siesta_name = '-1'
 
  !------------ read input file line by line --------------------
  do while (ierr .eq. 0)
@@ -123,8 +124,10 @@ subroutine read_inputfile()
 	read(lun, '(A)', iostat=ierr) line  !read line
 	line = adjustl(line) !remove leading spaces
  
-    !if (is_comment(line(1))) goto 1000 !check if line is commented
-
+    if (is_comment(ichar(line(1:1)))) goto 1000 !check if line is commented
+	
+	if (trim(line) .eq. '') goto 1000 !check if blank line
+	
 	!call make_lower(line) !make line lower case
 	
 	pos = scan(line, ' ')  !find position of first space
@@ -323,9 +326,12 @@ subroutine read_inputfile()
 		READ(buffer, * )  mon_siesta_name
 		
 		case('old_style','OLD_STYLE','OLD','old') 
-		    rewind(lun) 
-		    read(lun,*)
-			call read_old_style_input_file()
+		rewind(lun) 
+		read(lun,*)
+		call read_old_style_input_file()
+		
+	    case default	
+		write(*,'(a)') "ERROR: could not understand the following line: ", buffer
 
 	end select
  
@@ -344,6 +350,7 @@ subroutine read_inputfile()
  
  !Required for SIESTA runs
  if ( (pot_model .eq. 6) .and. (sys_label .eq. '-1')) call io_abort("sys_lable") !SIESTA label of .fdf file 
+ if ( (pot_model .eq. 6) .and. (SIESTA_MON_CALC) .and. (mon_siesta_name .eq. '-1')) call io_abort("mon_siesta_name") 
  
 end subroutine read_inputfile
 

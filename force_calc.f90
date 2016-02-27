@@ -184,7 +184,7 @@ subroutine siesta_monomer(r1, dr1, e1)
  siesta_box(3,3) = box(3)
   
  call start_timer("SIESTAmonomer")
- call siesta_forces( "monomer", Natoms, r1, cell=siesta_box, energy=e1, fa=dr1)
+ call siesta_forces( "monomer", 3, r1, cell=siesta_box, energy=e1, fa=dr1)
  call stop_timer("SIESTAmonomer")
 
  e1 = e1*EVTOKCALPERMOLE
