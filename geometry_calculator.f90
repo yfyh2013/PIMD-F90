@@ -209,7 +209,7 @@ subroutine write_out_histogram(iun, Nbeads)
 !write(iun,'(a40,f12.6,a3)') "histogram bin size = ", delta, " Ang"
  write(iun,'(a80)') "dist (Ang)    dOH histograms (centroid-centroid , bead-bead)"
  do i = 1, NUM_BINS
-	write(iun,'(3f12.6)') MIN_BIN + delta*i, dOHhist(i)/(2*num_total), bdOHhist(i)/(2*num_total*Nbeads)
+	write(iun,'(3f16.10)') MIN_BIN + delta*i, dOHhist(i)/(2*num_total), bdOHhist(i)/(2*num_total*Nbeads)
  enddo
 	
 #ifdef FC_HAVE_FLUSH

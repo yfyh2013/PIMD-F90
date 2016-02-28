@@ -166,7 +166,7 @@ end subroutine potential
 
 
 !---------------------------------------------------------------------
-!-----------------SIESTA monomer calculation ----------------------------
+!-----------------SIESTA monomer force calculation ------------------
 !---------------------------------------------------------------------
 subroutine siesta_monomer(r1, dr1, e1)
  use fsiesta
