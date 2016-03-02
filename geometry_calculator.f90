@@ -212,9 +212,7 @@ subroutine write_out_histogram(iun, Nbeads)
 	write(iun,'(3f16.10)') MIN_BIN + delta*i, dOHhist(i)/(2*num_total), bdOHhist(i)/(2*num_total*Nbeads)
  enddo
 	
-#ifdef FC_HAVE_FLUSH
  call flush(iun) 
-#endif
 
 end subroutine write_out_histogram
 

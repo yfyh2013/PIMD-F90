@@ -67,6 +67,7 @@ subroutine read_inputfile()
  tp_freq = 10 		   ! Temp/Press output frequency
  ti_freq = 2000		   ! all images output frequency 
  t_freq  = 10          ! Output frequency for everything else
+ checkpoint_freq = 2000! checkpoint output frequency
  
  siesta_name = 'siesta' !name of siesta executable 
  num_SIESTA_nodes = 1 !  # SIESTA processors 

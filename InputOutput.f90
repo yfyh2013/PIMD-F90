@@ -473,7 +473,7 @@ subroutine open_files
  if (CHARGESOUT)     call io_open(lunCHARGESOUT,'out_'//TRIM(fsave)//'_chgs.dat',APPEND=RESTART)
  if(IMAGEDIPOLESOUT) call io_open(lunIMAGEDIPOLESOUT,'out_'//TRIM(fsave)//'_images_dip.dat',APPEND=RESTART)
  if (ENERGYOUT)      call io_open(lunENERGYOUT,'out_'//TRIM(fsave)//'_energy.dat',APPEND=RESTART)
- if (HISTOUT)        call io_open(lunHISTOUT,'out_'//TRIM(fsave)//'_histograms.dat',APPEND=RESTART)
+ !if (HISTOUT)        call io_open(lunHISTOUT,'out_'//TRIM(fsave)//'_histogram.dat',APPEND=RESTART)
 
 
 end subroutine open_files
@@ -611,7 +611,7 @@ subroutine write_out
 	ttt = ttt + 1
  endif
  
- if (CALCGEOMETRY) then 
+ if (CALCGEOMETRY .or. HISTOUT) then 
 	call start_timer("calc_geometry")
 	call calc_geometry(RRc, RRt)
 	call stop_timer("calc_geometry")
@@ -658,9 +658,8 @@ subroutine write_out
 
 	!advance to next line
 	write(lunTP_out,'(a)') ""
-#ifdef FC_HAVE_FLUSH
-	call flush(lunTP_out) !flush I/O buffer	
-#endif
+	
+	call pflush(lunTP_out) !flush I/O buffer	
  endif 
 
  !-------------------------------------------------------------
@@ -689,9 +688,7 @@ subroutine write_out
 		!coordinate output
 		if (coord_out) then
 			call save_XYZ(luncoord_out, RRc, Upot, read_method, t, delt) 
-#ifdef FC_HAVE_FLUSH
-			call flush(luncoord_out) 
-#endif
+			call pflush(luncoord_out) 
 		endif
 	
 		!velocity output
@@ -705,9 +702,7 @@ subroutine write_out
 				write(lundip_out,'(4(1x,f12.4))') dip_momI(:,iw) , & 
 				dsqrt(dot_product(dip_momI(:,iw), dip_momI(:, iw))) 
             enddo
-#ifdef FC_HAVE_FLUSH
-			call flush(lundip_out)
-#endif
+			call pflush(lundip_out)
 		endif!(dip_out)
 	
 		!electronic dipoles output
@@ -719,9 +714,7 @@ subroutine write_out
              write(lunEdip_out,'(4(1x,f12.4))') dip_momE(:,iw) , & 
 					dsqrt(dot_product(dip_momE(:,iw), dip_momE(:, iw))) 
 			enddo
-#ifdef FC_HAVE_FLUSH
-			call flush(lunEdip_out)
-#endif
+			call pflush(lunEdip_out)
 		endif!(Edip_out) 
 	
 		!charges out
@@ -740,9 +733,7 @@ subroutine write_out
 			do i = 1, Nbeads
 				call save_XYZ(lunimages_out, RRt(:,:,i), Upot, read_method, t, delt) 
 			enddo
-#ifdef FC_HAVE_FLUSH
-			flush(lunimages_out)
-#endif
+			call pflush(lunimages_out)
 		endif 
 		
 		if (IMAGEDIPOLESOUT) then 
@@ -758,22 +749,21 @@ subroutine write_out
 	!total dipole moment output 
 	if (mod(t,td_freq)  == 0 .and. TD_out ) then 
 		write(lunTD_out,'(3f12.4)') dip_mom
-#ifdef FC_HAVE_FLUSH
-		flush(lunTD_out)
-#endif
+		call pflush(lunTD_out)
   	endif
      
-	if (mod(t,2000) .eq. 0) then 
-		if (WRITECHECKPOINTS) then 
-			call io_open(lun,'out_'//TRIM(fsave)//'_checkpoint_image.img',REPLACE=.true.)
-			call save_checkpoint(lun, RRt, PPt, Upot, t,delt) 
-			call io_close(lun)
-		endif
-		if (CALCGEOMETRY .and. HISTOUT) then 
-			!call write_out_geometry(lunTP_out,Nbeads)
-			call write_out_histogram(lunHISTOUT, Nbeads)
-		endif 
+	if ((mod(t,checkpoint_freq) .eq. 0).and.(WRITECHECKPOINTS)) then 
+		call io_open(lun,'out_'//TRIM(fsave)//'_checkpoint_image.img',REPLACE=.true.)
+		call save_checkpoint(lun, RRt, PPt, Upot, t,delt) 
+		call io_close(lun)
     endif
+    
+	if ((mod(t,500) .eq. 0).and.(HISTOUT)) then 
+		!call write_out_geometry(lunTP_out, Nbeads)]\
+		call io_open(lunHISTOUT,'out_'//TRIM(fsave)//'_histogram.dat',REPLACE=.true.)
+		call write_out_histogram(lunHISTOUT, Nbeads)
+		call io_close(lunHISTOUT)
+	endif 
     
     !energy output to file
     if ( (mod(t,10) .eq. 0) .and. (ENERGYOUT) ) then 
