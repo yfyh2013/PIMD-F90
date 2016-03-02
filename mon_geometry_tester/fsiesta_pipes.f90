@@ -132,18 +132,6 @@ subroutine siesta_launch(siesta_cmd, label, nnodes, mpi_comm, mpi_launcher )
   if (idx(label) /= 0) &
     print*, 'siesta_launch: ERROR: process for label ', trim(label), &
             ' already launched'
-  
-  !added by DC Elton- check if files already exist and delete if it does
-  pipe_name = trim(label)//".forces"
-  inquire(file=trim(pipe_name), exist=EXISTS) 
-  if (EXISTS .eqv. .true.) then 
-		call system("rm "//trim(pipe_name) )
-  endif
-  pipe_name = trim(label)//".coords"
-  inquire(file=trim(pipe_name), exist=EXISTS) 
-  if (EXISTS .eqv. .true.) then 
-		call system("rm "//trim(pipe_name))
-  endif
 
 ! Create pipes
   cpipe = trim(label)//'.coords'

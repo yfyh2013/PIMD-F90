@@ -35,7 +35,7 @@ subroutine read_input_file
  narg = command_argument_count()
  if (narg .eq. 0) then
 	write(*,*) "ERROR: no input file argument."
-	stop
+	call abort()
  endif 
 
  call io_assign(lun) 
@@ -80,7 +80,7 @@ subroutine read_and_initialize_all_nodes
 	INPCONFIGURATION = .false.
  else
 	write(*,*) "ERROR: could not determine input file format. File must be *.xyz or *.img"
-	stop
+	call abort()
  endif 
  
  if (INPCONFIGURATION) then
@@ -90,7 +90,7 @@ subroutine read_and_initialize_all_nodes
 	if (.not.(NbeadsIn .eq. Nbeads)) then 
 		write(*,*) "ERROR: the number of beads in configuration image not equal to that specifed in input file" 
 		write(*,*) " are you sure you have the right file?"
-		stop
+		call abort()
 	endif 
 
 	read(lunXYZ,'(f12.6,2x,f12.6,3(1x,f12.6))') init_time, box  
@@ -109,7 +109,7 @@ subroutine read_and_initialize_all_nodes
 			read(lunXYZ,*,IOSTAT=ierr) Natoms, box(1:3)
 			if (ierr .ne. 0) then 		
 				write(*,*) "ERROR: could not read box size from input file. The best I could come up with is box = ", box
-				stop
+				call abort()
 			endif 
 		endif
 	endif 
@@ -178,7 +178,7 @@ subroutine init_siesta
  
  if ((SIESTA_MON_CALC) .and. (PIMD_type .eq. "full")) then
 	write(*,*) "ERROR : SIESTA_MON_CALC does not work with full PIMD" 
-	stop
+	call abort()
  endif 
  
  if (SIESTA_MON_CALC) then 
@@ -188,7 +188,7 @@ subroutine init_siesta
 		call siesta_launch( trim(mon_siesta_name), "monomer", nnodes=num_SIESTA_nodes ) !launch parallel SIESTA process  
 	else
 		write(*,*) "InputOuput: ERROR: invalid number of SIESTA nodes!!"
-		stop
+		call abort()
 	endif 
  endif 
 
@@ -225,12 +225,12 @@ subroutine init_siesta
 		call siesta_launch(trim(siesta_name), trim(sys_label), nnodes=num_SIESTA_nodes ) !launch parallel SIESTA process  
 	else
 		write(*,*) "InputOuput: ERROR: invalid number of SIESTA nodes!!"
-		stop
+		call abort()
 	endif
  else
 	write(*,*) "You specified running with ", PIMD_type, " and Nnodes = ", Nnodes
 	write(*,*) "This configuration is not supported. With contractiom PIMD must be on a single node. "
-	stop
+	call abort()
  endif
 
 end subroutine init_siesta
@@ -251,7 +251,7 @@ if ( .not.( (bead_thermostat_type .eq. 'Langevin') .or. (bead_thermostat_type .e
 	.or. (bead_thermostat_type .eq. 'none') ) ) then
 		write(*,*) "ERROR: Invalid bead thermostat selection. Possible options: "
 		write(*,*) "		'Nose-Hoover', 'Langevin', or 'none'  " 
-	stop
+	call abort()
 endif
 
 if ((CENTROIDTHERMOSTAT .or. BEADTHERMOSTAT) .and. (Nbeads .eq. 1)) then
@@ -270,51 +270,51 @@ endif
 if (CENTROIDTHERMOSTAT.and. .not. (BEADTHERMOSTAT)) then
 	write(lunTP_out,*) "WARNING: You are thermostating the centroid but not thermostating the other modes."
 	write(lunTP_out,*) "There is not really any good reason for doing this. Consider a different scheme." 
-	stop 
+	call abort()
 endif
 
 if ( Rc .gt. minval(box)/2 ) then
 	write(*,*) 'ERROR: cutoff radius is greater than half the smallest box dimension (', minval(box), ')'
 	write(*,*) 'suggest changing to', minval(box)/2.0
-	stop
+	call abort()
 endif  
 if (rc1 .lt. 0) then
  	write(*,*) "ERROR: start of shifted cutoff cannot be less than zero!!"
-	stop
+	call abort()
 endif
 if (Rc .lt. 0) then
  	write(*,*) "ERROR: Coloumb cutoff cannot be less than zero!!"
-	stop
+	call abort()
 endif
 if (rc1 .gt. Rc) then
  	write(*,*) "ERROR: start of shifted cutoff cannot be greater than Coloumb cuttoff!!"
-	stop
+	call abort()
 endif
 if ( (massH .lt. 0) .or. (massO .lt. 0)) then
  	write(*,*) "Invalid mass!!"
-	stop
+	call abort()
 endif
 
 if ( Nnodes .gt. Nbeads) then 
 	write(*,*) "ERROR : The number of processors is greater than the number of beads! Assuming this is an error! "
-	stop
+	call abort()
 endif
 
 if ( (pot_model .gt. 6) .or. (pot_model .lt. 1) ) then 
 	write(*,*) "ERROR: Invalid potential model !"
-	stop
+	call abort()
 endif
 
 if (.not. (CONTRACTION) ) then
 	if (.not. (mod(Nbeads,Nnodes) .eq. 0)) then
 		write(*,*) "ERROR: the number of beads must be a multiple of the number of nodes."
      	   write(*,'(a,i4,a,i4,a)') "To run on ", Nnodes, " nodes I suggest using ", Nbeads - mod(Nbeads,Nnodes), " beads"
-	stop
+	call abort()
 	endif
 else
 	if (Nnodes .gt. 1) then 
 		write(*,*) "ERROR: When running with ring polymer contraction, a maximum of 1 nodes can be used."
-		stop
+		call abort()
 	endif
 endif
 
@@ -433,7 +433,7 @@ else
 		enddo
 	else 
 		write(*,*) "ERROR: Invalid read method!!"
-		stop
+		call abort()
 	endif 
 	
 	avgRR = avgRR/Natoms
@@ -464,8 +464,8 @@ subroutine open_files
  endif 
 
  if (coord_out)      call io_open(luncoord_out,'out_'//TRIM(fsave)//'_coord.xyz',APPEND=RESTART)
- if (momenta_out)        call io_open(lunmomenta_out,'out_'//TRIM(fsave)//'_momenta.dat',APPEND=RESTART)
- if (images_out)   call io_open(lunimages_out,'out_'//TRIM(fsave)//'_images_coord.xyz',APPEND=RESTART)
+ if (momenta_out)    call io_open(lunmomenta_out,'out_'//TRIM(fsave)//'_momenta.dat',APPEND=RESTART)
+ if (images_out)     call io_open(lunimages_out,'out_'//TRIM(fsave)//'_images_coord.xyz',APPEND=RESTART)
  if (dip_out)        call io_open(lundip_out,'out_'//TRIM(fsave)//'_dip.dat',APPEND=RESTART)
  if (TD_out)         call io_open(lunTD_out,'out_'//TRIM(fsave)//'_tot_dip.dat',APPEND=RESTART)
  if  (Edip_out)      call io_open(lunEdip_out,'out_'//TRIM(fsave)//'_Edip.dat',APPEND=RESTART)
@@ -803,7 +803,7 @@ subroutine print_run
 
  !write Temp/Press file header
  call date_and_time(DATE=date,TIME=time)
- write(lunTP_out,'(a)'), " stopped on  "//date(1:4)//"-"//date(5:6)//"-"//date(7:8)//&
+ write(lunTP_out,'(a)'), " call abort()ped on  "//date(1:4)//"-"//date(5:6)//"-"//date(7:8)//&
            " at "//time(1:2)//":"//time(3:4)//":"//time(5:10) 
  call print_basic_run_info
  call print_timing_report(lunTP_out)

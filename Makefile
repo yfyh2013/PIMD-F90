@@ -1,6 +1,6 @@
 TTM=pot_ttm
 
-FILES=four1 pxf fsiesta_pipes system_mod lun_management geometry_calculator diffusion_calculator dans_timer consts math spectral_properties Nose_Hoover NormalModes $(TTM)/pot_mod Langevin main_stuff estimators $(TTM)/find_neigh $(TTM)/nasa_mod $(TTM)/nasa $(TTM)/ewald $(TTM)/pot_spc $(TTM)/pot_ttm $(TTM)/potential $(TTM)/smear dip_ttm  input_file_reader InputOutput  force_calc MD PIMD
+FILES=four1 pflush fsiesta_pipes system_mod lun_management geometry_calculator diffusion_calculator dans_timer consts math spectral_properties Nose_Hoover NormalModes $(TTM)/pot_mod Langevin main_stuff estimators $(TTM)/find_neigh $(TTM)/nasa_mod $(TTM)/nasa $(TTM)/ewald $(TTM)/pot_spc $(TTM)/pot_ttm $(TTM)/potential $(TTM)/smear dip_ttm  input_file_reader InputOutput  force_calc MD PIMD
 
 OBJS=$(addsuffix .o, $(FILES))
 
@@ -11,7 +11,7 @@ FC=mpif90
 ##Note : -DFC_HAVE_FLUSH -DFC_HAVE_ABORT  flags are for SIESTA pipes support  
 
 #FFLAGS=-fpp  -O3 -C -debug -traceback 
-FFLAGS = -O3  -cpp -Dsiesta -Dparallel -DFC_HAVE_FLUSH -DFC_HAVE_ABORT 
+FFLAGS = -O3  -cpp -Dsiesta -Dparallel -DFC_HAVE_FLUSH 
 
 all: PIMD.x
 
@@ -25,7 +25,7 @@ profile: PIMD.x
 
 #serial compilation commands
 serial: FC=gfortran  #ifort not working on Handy!
-serial: FFLAGS = -O3  -cpp -Dsiesta -DFC_HAVE_FLUSH -DFC_HAVE_ABORT # --debug --backtrace -fbounds-check 
+serial: FFLAGS = -O3  -cpp -Dsiesta -DFC_HAVE_FLUSH - # --debug --backtrace -fbounds-check 
 serial: PIMD_serial.x 
 
 

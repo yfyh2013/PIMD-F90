@@ -41,19 +41,22 @@ subroutine calc_diff_RMSD(RRc, num_timesteps)
  double precision, dimension(3,Nwaters) :: disps, Oxy2
  double precision, dimension(:,:), allocatable, save :: netdisp
  double precision, dimension(:,:), allocatable, save :: Oxy
- integer, save :: t
+ integer, save :: t=0 
 
  ntimes = floor(real(num_timesteps)/real(t_out))
- 
+
  do ia = 1, Nwaters
 	Oxy2(:,ia) = RRc(:,3*ia) 
  enddo
 
+ t = t  + 1
+
+ 
  if (.not. allocated(aMS)) then 
+    t=0
 	allocate(netdisp(3,Nwaters))
 	allocate(Oxy(3,Nwaters))
 	allocate(aMS(ntimes))
-	t = 1
 	Oxy = Oxy2
  endif 
  
@@ -78,7 +81,6 @@ subroutine calc_diff_RMSD(RRc, num_timesteps)
  !Copy current Oxygen coordinates to old 
  Oxy = Oxy2
  
- t = t  + 1
 endsubroutine calc_diff_RMSD
 
 !-------------------------------------------------------------
@@ -90,13 +92,13 @@ subroutine write_out_diffusion(lun_out, timestep, fsave)
  character(len=*) :: fsave
  double precision :: xbar,ybar,sumSQx,sumSQy, crossprod, b, a, errb, erra, D, errD, timestep
  real, dimension(:), allocatable :: times
- integer :: ntimesfit, ft, lun_out, iun_dif, t
+ integer :: ntimesfit, ft, lun_out, iun_dif, i
  real, parameter :: frac=0.5!fraction of data to use
  
  allocate(times(ntimes))
  
- do t = 1, ntimes
-	times(t) = t*t_out*timestep
+ do i = 1, ntimes
+	times(i) = i*t_out*timestep
  enddo
 
  !----------- Peform linear regression to last 50% of aMS(t) data ------------
@@ -134,8 +136,8 @@ subroutine write_out_diffusion(lun_out, timestep, fsave)
  write(iun_dif,*) '@ xaxis  label "t (ps)"  '
  write(iun_dif,*) '@ yaxis  label "<d^2>(t)"  '
  write(iun_dif,'(A16,f10.5,A5,f10.5,A17)') '@ subtitle "D = ', D ,' +/- ', errD, ' 10^(-5) cm^2/s "'
- do t  = 1,ntimes 
-	write(iun_dif,'(3f16.4)') times(t), aMS(t), b*times(t) + a
+ do i  = 1,ntimes 
+	write(iun_dif,'(3f16.4)') times(i), aMS(i), b*times(i) + a
  enddo
 
 #ifdef FC_HAVE_FLUSH
