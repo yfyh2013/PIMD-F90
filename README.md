@@ -1,6 +1,7 @@
-#Path Integral Molecular Dynamics in Fortran 90
+#Fast and accurate ab-initio Path Integral Molecular Dynamics
+##in Fortran 90
 
-2015 Daniel C. Elton 
+2015 Daniel C. Elton
 
 PIMD-F90 implements path integral molecular dynamics (PIMD) to capture the nuclear quantum effects in water.
 
@@ -17,7 +18,7 @@ TTM-2F ref: J. Phys. Chem. A. vol 110, page 4100-4106, (2006)
 
 ### SIESTA 
 The PIMD code can obtain forces & energies from the density functional theory package [SIESTA](http://departments.icmab.es/leem/siesta/). 
-It uses unix pipes to communicate with SIESTA. A working flush() routine is required for this. 
+It uses unix pipes to communicate with SIESTA. A working flush() routine is required for this (see pflush.f90). 
 
 
 ## Features 
@@ -29,12 +30,6 @@ It uses unix pipes to communicate with SIESTA. A working flush() routine is requ
 * Option to not thermostat the centroid 
 * Option to perform the PIMD on the monomer only (a subcase of the ring polymer contraction scheme ref: [JCP 129, 024105 (2008)](http://dx.doi.org/10.1063/1.2953308) )
 
-## Notes on the program: 
 
-### Periodic Boundary Conditions
-PBCs only work for a cubic box, but could be modified for arbitrary box. 
-The box is automatically centered so that molecules span [-L/2, L/2]
-The periodic boundary conditions follow the bead centroid - if the bead centroid crosses the edge of the box,
-then all the beads move with it. This means that at any time, some beads may lie outside the box.
-The potential(RR, ...) subroutine must be able to handle situations where beads are outside the box.
-All places in the code where PBEs are 
+## Input file specification 
+See [manual/PIMD_manual.pdf](manual/PIMD_manual.pdf) 

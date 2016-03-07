@@ -105,10 +105,12 @@ subroutine read_inputfile()
  RESTART = .false.    ! restart? (append to previous files) 
 
  SIESTA_MON_CALC = .false. !SIESTA monomer calculation 
+ 
+ Nbeads       = 1      ! Number of beads 
+
 
  !---- Required variables ------------------------------------- 
  fconfig      = '-1'    ! input filename - either a centroid .xyz or a full bead configuration
- Nbeads       = -1      ! Number of beads 
  fsave        = '-1'    ! run name - this will be appended to all the output files
  eq_timesteps = -1      ! number of steps to equilibrate		 
  run_timesteps = -1      ! number of steps to run 
