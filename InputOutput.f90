@@ -193,7 +193,7 @@ subroutine init_siesta
  endif 
 
  pot_model = 3
- guess_initdip = .f. !disable this, because it could cause problems
+ guess_initdip = .false. !disable this, because it could cause problems
  call init_pot !initialize ttm for dipoles calculations
  pot_model = 6
 
