@@ -79,7 +79,7 @@ subroutine read_inputfile()
  polar_maxiter = 15    !max polarization dipole iterations
  polar_sor     = 0.7   !TTM pol factor
  polar_eps     = 1.d-3 !accuracy to converge dipoles to 
- guess_initdip = .false.   !guess initial dipoles (this is normal for ttm calculations, but may cause errors in other cases) 
+ guess_initdip = .true.   !guess initial dipoles (this is normal for ttm calculations, but may cause errors in other cases) 
  print_dipiters = .false.  !print info about polarization dipole convergence for debugging 
  
  GENVEL = .true.	       !generate velocities 

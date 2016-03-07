@@ -132,22 +132,26 @@ subroutine potential(RR, RRc, Upot, dRR, virt, virialc, dip_momI, Edip_mom, chg,
  siesta_box(2,2) = box(2)
  siesta_box(3,3) = box(3) 
 
- !All the stuff that depends on volume needs to be rescaled if using the barostat
- if (BAROSTAT) p4V = FOURPI/volume
+ if (BAROSTAT) then 
+	!All the stuff that depends on volume needs to be rescaled if using the barostat
+	p4V = FOURPI/volume
 
- !scale VdW long range correction due to box size change and add correction
- !multiplying by a correction factor is slightly more efficient than recalculating the entire Uvdw_lrc term each timestep
- if (BAROSTAT) Uvdw_lrc = Uvdw_lrc0*(volume_init/volume)
+	!scale VdW long range correction due to box size change and add correction
+	!multiplying by a correction factor is slightly more efficient than recalculating the entire Uvdw_lrc term each timestep
+	Uvdw_lrc = Uvdw_lrc0*(volume_init/volume)
 
- !If the volume is changing than the Ewald k-vectors have to be reset every timestep
- !if (BAROSTAT) call ewald_set(.false.)
+	!If the volume is changing than the Ewald k-vectors have to be reset every timestep
+	call ewald_set(.false.)
+ endif!(BAROSTAT)
 
 if (pot_model==2 .or. pot_model==3) then
-    call pot_ttm(RR, RRc, Upot, dRR, virt, virialc, dip_momI, Edip_mom, chg,t)
-    !write(*,*) "foces (ev/Ang): ", -1.0*dRR/EVTOKCALPERMOLE
+
+	call pot_ttm(RR, RRc, Upot, dRR, virt, virialc, dip_momI, Edip_mom, chg,t)
 
  else if (pot_model==4 .or. pot_model==5) then
-     call pot_spc(RR, Upot, dRR, virt, dip_momI, chg)
+ 
+	call pot_spc(RR, Upot, dRR, virt, dip_momI, chg)
+
  else if (pot_model==6) then 
 
 	call start_timer("SIESTA")
@@ -158,6 +162,7 @@ if (pot_model==2 .or. pot_model==3) then
     !write(*,*) "foces (ev/Ang): ", -1.0*dRR
     
     Upot = Upot*EVTOKCALPERMOLE
+    !negative sign is to be consistent with rest of code: dRR is potenial derivative, not force
     dRR = -1d0*dRR*EVTOKCALPERMOLE    
 
  endif

@@ -193,6 +193,7 @@ subroutine init_siesta
  endif 
 
  pot_model = 3
+ guess_initdip = .f. !disable this, because it could cause problems
  call init_pot !initialize ttm for dipoles calculations
  pot_model = 6
 
@@ -838,7 +839,7 @@ subroutine print_run
  endif
  
  if (CALCGEOMETRY)  call write_out_geometry(lunTP_out,Nbeads)
- if (CALCDIFFUSION) call write_out_diffusion(lunTP_out, delt, fsave)
+ if (CALCDIFFUSION .and. (run_timesteps.gt.3)) call write_out_diffusion(lunTP_out, delt, fsave)
  
  if (DIELECTRICOUT) then 
     write(lunTP_out,'(a50 )')         "#---------- dielectric constant data  ---------------"
@@ -947,27 +948,27 @@ integer :: iun, read_method
 write(iun,'(i10)') Natoms !, angle
 write(iun,*) ""
 !write(iun,'(f12.6,2x,f12.6,3(1x,f12.6))') t*delt, box
-if (read_method==0) then
+!if (read_method==0) then
+!    do i=1, Nwaters
+!       iO = 3*i-2
+!       write(iun,'(a2,3(1x,f12.6))')'O ',RR(:, iO)
+!    enddo
+!    do i=1, Nwaters
+!       ih1 = 3*i-1
+!       ih2 = 3*i
+!       write(iun,'(a2,3(1x,f12.6))')'H ',RR(:, ih1)
+!       write(iun,'(a2,3(1x,f12.6))')'H ',RR(:, ih2)
+!    enddo
+! else if (read_method==1) then
    do i=1, Nwaters
       iO = 3*i-2
-      write(iun,'(a2,3(1x,f12.6))')'O ',RR(:, iO)
-   enddo
-   do i=1, Nwaters
       ih1 = 3*i-1
       ih2 = 3*i
+      write(iun,'(a2,3(1x,f12.6))')'O ',RR(:, iO)
       write(iun,'(a2,3(1x,f12.6))')'H ',RR(:, ih1)
       write(iun,'(a2,3(1x,f12.6))')'H ',RR(:, ih2)
    enddo
-else if (read_method==1) then
-   do i=1, Nwaters
-      iO = 3*i-2
-      ih1 = 3*i-1
-      ih2 = 3*i
-      write(iun,'(a2,3(1x,f12.6))')'O ',RR(:, iO)
-      write(iun,'(a2,3(1x,f12.6))')'H ',RR(:, ih1)
-      write(iun,'(a2,3(1x,f12.6))')'H ',RR(:, ih2)
-   enddo
-endif
+!endif
 end subroutine save_XYZ
 
 

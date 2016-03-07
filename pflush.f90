@@ -66,7 +66,7 @@ subroutine pflush(unit)
     call flush(unit)
 #endif
 
-ret = fsync(fnum(unit))
-if (ret /= 0) stop "see pflush.f90: Error calling POSIX FSYNC"
+!ret = fsync(fnum(unit))
+!if (ret /= 0) stop "see pflush.f90: Error calling POSIX FSYNC"
 
 end subroutine pflush
