@@ -474,8 +474,7 @@ subroutine open_files
  if (CHARGESOUT)     call io_open(lunCHARGESOUT,'out_'//TRIM(fsave)//'_chgs.dat',APPEND=RESTART)
  if(IMAGEDIPOLESOUT) call io_open(lunIMAGEDIPOLESOUT,'out_'//TRIM(fsave)//'_images_dip.dat',APPEND=RESTART)
  if (ENERGYOUT)      call io_open(lunENERGYOUT,'out_'//TRIM(fsave)//'_energy.dat',APPEND=RESTART)
- !if (HISTOUT)        call io_open(lunHISTOUT,'out_'//TRIM(fsave)//'_histogram.dat',APPEND=RESTART)
-
+ if (HISTOUT)        call io_open(lunHISTOUT,'out_'//TRIM(fsave)//'_histogram.dat',APPEND=RESTART)
 
 end subroutine open_files
 
@@ -759,11 +758,11 @@ subroutine write_out
 		call io_close(lun)
     endif
     
-	if ((mod(t,500) .eq. 0).and.(HISTOUT)) then 
-		!call write_out_geometry(lunTP_out, Nbeads)]\
-		call io_open(lunHISTOUT,'out_'//TRIM(fsave)//'_histogram.dat',REPLACE=.true.)
+	if ((mod(t,hist_out_freq) .eq. 0).and.(HISTOUT).and.(t.gt.200)) then 
+		if (CALCGEOMETRY) call write_out_geometry(lunTP_out,Nbeads)
 		call write_out_histogram(lunHISTOUT, Nbeads)
-		call io_close(lunHISTOUT)
+		if (CALCDIFFUSION .and. (t.gt.10)) call write_out_diffusion(lunTP_out, delt, fsave)
+        if (CALCDOS .and. (t .gt. 10))    call calc_DOS(Hvelocities(:,1:tr,:),box,delt,fsave,avg_temp/Nbeads)
 	endif 
     
     !energy output to file
@@ -839,7 +838,7 @@ subroutine print_run
  endif
  
  if (CALCGEOMETRY)  call write_out_geometry(lunTP_out,Nbeads)
- if (CALCDIFFUSION .and. (run_timesteps.gt.3)) call write_out_diffusion(lunTP_out, delt, fsave)
+ if (CALCDIFFUSION .and. (run_timesteps.gt.10)) call write_out_diffusion(lunTP_out, delt, fsave)
  
  if (DIELECTRICOUT) then 
     write(lunTP_out,'(a50 )')         "#---------- dielectric constant data  ---------------"

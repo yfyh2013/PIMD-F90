@@ -49,9 +49,9 @@ double precision ::  isotherm_compress
 integer, dimension(:), allocatable :: seed
 character(len=125) :: dip_file
 character(len=11)  :: bead_thermostat_type
-integer :: checkpoint_freq
+integer :: checkpoint_freq, hist_out_freq
 integer :: run_timesteps, t, t_freq, tp_freq, td_freq, ti_freq, m, clock, eq_timesteps, ttt, tr 
-logical :: dip_out, coord_out, TD_out, momenta_out, TP_out, Edip_out 
+logical :: dip_out, coord_out, TD_out, momenta_out, TP_out, Edip_out
 logical :: BAROSTAT, PEQUIL, BOXSIZEOUT, THERMOSTAT, GENVEL, INPCONFIGURATION, IMAGEDIPOLESOUT
 logical :: DIELECTRICOUT, WRITECHECKPOINTS, images_out 
 logical :: CALCIRSPECTRA, CALCDIFFUSION, CALCDOS, RESTART, ENERGYOUT, HISTOUT, SIESTA_MON_CALC

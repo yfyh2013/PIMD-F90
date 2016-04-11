@@ -52,6 +52,7 @@ subroutine read_inputfile()
  TP_out      = .false.     ! Temp/Press (.true. = to file, .false. = to terminal)
  ENERGYOUT     = .true.   ! output total energy to seperate file
  HISTOUT       = .true.   ! output OH histograms to seperate file 
+ hist_out_freq = 1000 
  
  CALCGEOMETRY  = .true. !computes averge geometry of h2o molecules and outputs at end
  CALCDIFFUSION = .true. !computes diffusion constant of oxygen atoms
@@ -327,6 +328,9 @@ subroutine read_inputfile()
 		
 		case('mon_siesta_name')
 		READ(buffer, * )  mon_siesta_name
+		
+		case('hist_out_freq')
+		READ(buffer, * )  hist_out_freq
 		
 		case('old_style','OLD_STYLE','OLD','old') 
 		rewind(lun) 
