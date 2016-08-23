@@ -34,7 +34,7 @@ subroutine read_input_file
  call getarg(1, finp)
  narg = command_argument_count()
  if (narg .eq. 0) then
-	write(*,*) "ERROR: no input file argument."
+    write(*,*) "ERROR: no input file argument."
 	call abort()
  endif 
 
@@ -256,21 +256,21 @@ if ( .not.( (bead_thermostat_type .eq. 'Langevin') .or. (bead_thermostat_type .e
 endif
 
 if ((CENTROIDTHERMOSTAT .or. BEADTHERMOSTAT) .and. (Nbeads .eq. 1)) then
-	write(lunTP_out,*) "InputOutput: WARNING: Bead/centroid thermostating does not make much sense with 1 bead."
-	write(lunTP_out,*) "InputOutput: WARNING: The dynamics will be unphysical since every atomic DOF will be thermostated. "
-	write(lunTP_out,*) "InputOutput: WARNING: --- The bead thermostat is being turned off !! ----"
+	write(*,*) "InputOutput: WARNING: Bead/centroid thermostating does not make much sense with 1 bead."
+	write(*,*) "InputOutput: WARNING: The dynamics will be unphysical since every atomic DOF will be thermostated. "
+	write(*,*) "InputOutput: WARNING: --- The bead thermostat is being turned off !! ----"
 	if (CENTROIDTHERMOSTAT) CENTROIDTHERMOSTAT = .false.
 	if (BEADTHERMOSTAT) BEADTHERMOSTAT = .false.
 endif
 
 if (BEADTHERMOSTAT .and. .not. (THERMOSTAT)) then
-	write(lunTP_out,*) "WARNING: running bead thermostating without a global thermostat is not recommended."
-	write(lunTP_out,*) "You may observe abnormally large temperature fluctuations in the system."
+	write(*,*) "WARNING: running bead thermostating without a global thermostat is not recommended."
+	write(*,*) "You may observe abnormally large temperature fluctuations in the system."
 endif
 
 if (CENTROIDTHERMOSTAT.and. .not. (BEADTHERMOSTAT)) then
-	write(lunTP_out,*) "WARNING: You are thermostating the centroid but not thermostating the other modes."
-	write(lunTP_out,*) "There is not really any good reason for doing this. Consider a different scheme." 
+	write(*,*) "WARNING: You are thermostating the centroid but not thermostating the other modes."
+	write(*,*) "There is not really any good reason for doing this. Consider a different scheme." 
 	call abort()
 endif
 

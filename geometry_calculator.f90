@@ -1,6 +1,7 @@
 !---------------------- calc geometry module --------------------------------------
 ! this is a self contained module for calculating the avg. geometry during a run
 ! it is designed to be callable by any MD program 
+!
 !-----------------------------------------------------------------------------------
 ! Copyright (c) 2015-2016 Daniel C. Elton 
 !
@@ -255,9 +256,7 @@ subroutine binit(hist, thing_to_bin)
 	hist(bin) = hist(bin) + 1
 	
  endif 
+ 
 endsubroutine binit
 
-
-
- 
 endmodule geometry_calculator
