@@ -523,7 +523,7 @@ subroutine write_out
 
  !---- write columns header ------------------------------------------------------------------ 
  if ((t .eq. 1) .or. (t .eq. eq_timesteps + 1)) then 
-	write(lunTP_out,'(a)',advance='no') "|time (ps)"
+	write(lunTP_out,'(a)',advance='no') " |time (ps)"
 	write(lunTP_out,'(a)',advance='no') "|temp (K)"
 	!write(lunTP_out,'(a)',advance='no') "|press.(bar)|"
 	!write(lunTP_out,'(a)',advance='no') "|AvgTemp|" 
@@ -623,7 +623,8 @@ subroutine write_out
  !print out temperature, pressure, average press, energies & dielectric constant
  !-------------------------------------------------------------
   if (mod(t,tp_freq) == 0) then
-	write(lunTP_out,'(1f10.3)',advance='no')  tr*delt + init_time
+    write(lunTP_out,'(1a)',advance='no')    "@"
+    write(lunTP_out,'(1f10.3)',advance='no')  tr*delt + init_time
 	write(lunTP_out,'(1f10.2)',advance='no')  sys_temp
 	!write(lunTP_out,'(1f10.2)',advance='no') sys_press
 	!write(lunTP_out,'(1f10.2)',advance='no') sum_temp/tr

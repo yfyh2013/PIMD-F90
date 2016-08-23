@@ -6,7 +6,7 @@ OBJS=$(addsuffix .o, $(FILES))
 
 #VPATH=/home/dan/Dropbox/RESEARCH/SIESTA_myMonomerCorrected/Src
 
-FC=mpif90 
+FC=mpif90	 
 
 ##Note : -DFC_HAVE_FLUSH -DFC_HAVE_ABORT  flags are for SIESTA pipes support  
 
@@ -25,12 +25,12 @@ profile: PIMD.x
 
 #serial compilation commands
 serial: FC=gfortran  #ifort not working on Handy!
-serial: FFLAGS = -O3  -cpp -Dsiesta -DFC_HAVE_FLUSH - # --debug --backtrace -fbounds-check 
+serial: FFLAGS = -O3  -cpp -Dsiesta -DFC_HAVE_FLUSH # --debug --backtrace -fbounds-check 
 serial: PIMD_serial.x 
 
 
 PIMD_serial.x: MPI.o $(OBJS)
-	$(FC) $(FFLAGS) MPI.o  $(OBJS) -o  ./PIMD_serial.x
+	$(FC) $(FFLAGS) MPI.o  $(OBJS) -o ./PIMD_serial.x
 
 PIMD.x: $(OBJS)
 	$(FC) $(FFLAGS) $(OBJS) -o  ./PIMD.x
