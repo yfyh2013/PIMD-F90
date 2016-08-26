@@ -768,7 +768,7 @@ subroutine write_out
     
     !energy output to file
     if ( (mod(t,10) .eq. 0) .and. (ENERGYOUT) ) then 
-		write(lunENERGYOUT,'(1f16.4)') tot_energy
+		write(lunENERGYOUT,'(1f16.4)') simple_energy
 	endif
     
  endif!t .gt. eq_timesteps
