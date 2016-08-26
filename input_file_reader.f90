@@ -140,6 +140,9 @@ subroutine read_inputfile()
 
 	select case (key)
 	
+        case('checkpoint_freq')
+		READ(buffer, * ) checkpoint_freq
+	
 		case('CALC_RADIUS_GYRATION')
 		READ(buffer, * ) CALC_RADIUS_GYRATION
 		
@@ -336,6 +339,7 @@ subroutine read_inputfile()
 		rewind(lun) 
 		read(lun,*)
 		call read_old_style_input_file()
+		checkpoint_freq = t_freq
 		
 	    case default	
 		write(*,'(a)') "ERROR: could not understand the following line: ", buffer
