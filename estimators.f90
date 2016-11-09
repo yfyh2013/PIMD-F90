@@ -90,7 +90,7 @@ subroutine simple_quantum_estimators(RRt, virial, qEnergy, qPress, sys_temp, Upo
  KE = 1.5*Natoms*Nbeads*kb*sys_temp*Nbeads !kinetic energy of the beads in kcal/mol
  K0 = .5*K0*(omegan**2)*MASSCONi   !quantum correction to kinetic energy - convert from Ang,amu,ps to kcal/mol
 
- qEnergy = (KE - K0 + Upot )/(Nwaters*Nbeads)   		    !kcal/(mole of mol)
+ qEnergy = (KE - K0 + Upot )/(Nwaters*Nbeads)   !kcal/(mole of mol)
  qPress  = PRESSCON2*(1/(3*volume))*(  2*(KE - K0) - virial )/Nwaters  !subtract virial to convert derivative to force
 
 end subroutine simple_quantum_estimators
