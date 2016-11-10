@@ -32,7 +32,7 @@ MD OPTIONS
 6                ! Model: 2=ttm21f 3=ttm3f 4= qspcfw 5=spcf 6=SIESTA
 'siesta','5h2o', 1		!name of siesta executable, system label, number of siesta nodes
 7d0 3d0 1.d-6           ! realspace cutoff (Ang), start of VdW force switch (Ang) (TTM3F only), eps for aewald
-15  0.7  1.d-2 .f.  .t. ! params for dipole iterative procedure: Max iterations, pol factor, accuracy, guess initial?, debug output
+15  0.7  1.d-5 .t.  .f. ! params for dipole iterative procedure: Max iterations, pol factor, accuracy, guess initial?, debug output
 .t.					 	! generate initial velocities? 
 .t.    			 		! Global thermostat? t/f
 .t.      				! Thermostat non-centroid modes ? 

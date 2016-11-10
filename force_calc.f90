@@ -44,7 +44,7 @@ subroutine full_bead_forces
 	k = bat*Nnodes + Nnodes  
 
 	call potential(RRt(:,:,k), RRc, Upott(k), dRRt(:,:,k), virt, virialct(k), &
-			dip_momIt(:,:,k), dip_momEt(:,:,k), chg, t, BAROSTAT,trim(sys_label)//trim(str(pid)))
+			dip_momIt(:,:,k), dip_momEt(:,:,k), chg, t, BAROSTAT, trim(sys_label)//trim(str(pid)))
 
 	virialt(k) = virt(1,1) + virt(2,2) + virt(3,3)	
 
