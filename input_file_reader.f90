@@ -90,8 +90,8 @@ subroutine read_inputfile()
  bead_thermostat_type = 'none' !type of bead thermostat - 'Nose-Hoover', 'Langevin' or 'none'
  tau = .1               !  tau for global thermostat (ps)
  tau_centroid = .1      !  tau for centroid thermostat (ps)
- global_chain_length = 4  ! global Nose-Hoover chain length
- bead_chain_length = 4    ! bead Nose-Hoover chain length
+ global_chain_length = 2  ! global Nose-Hoover chain length
+ bead_chain_length = 2    ! bead Nose-Hoover chain length
  temp = 300           ! Temperature (Kelvin) 
  BAROSTAT = .false.       ! Berendson barostat ?
  tau_P = .2           ! tau for barostat (ps)

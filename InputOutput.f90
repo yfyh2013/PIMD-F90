@@ -384,7 +384,16 @@ endif
 	else
 		call InitNormalModes(Nbeads, omegan, delt, setNMfreq, lunTP_out)
 	endif
-
+	
+    if (.not.(bead_chain_length==2)) then 
+        write(*,*) "NOTE:  bead Nose Hoover chain lenght must =2. Setting to 2" 
+        bead_chain_length = 2
+    endif
+    if (.not.(global_chain_length==2)) then 
+        write(*,*) "NOTE: global  Nose Hoover chain lenght must =2. Setting to 2" 
+        global_chain_length = 2
+    endif
+	
 	if (THERMOSTAT)  then
 		allocate(vxi_global(global_chain_length))
 		vxi_global = 1 !set chain velocities to zero initially
