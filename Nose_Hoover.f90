@@ -50,6 +50,11 @@ subroutine Nose_Hoover(s, uk, chain_length, vxi, tau, delt2, L, temp)
  !	 stop 
  !endif
  
+ 
+ !code only has been validated for chain length = 2
+ !the part for higher chain lenght has been commented out
+ !longer chains may need a different mass (M3, M4, etc) 
+ 
  chain_length = 2
 
  delt4 = delt2/2d0
@@ -58,7 +63,7 @@ subroutine Nose_Hoover(s, uk, chain_length, vxi, tau, delt2, L, temp)
  kT  = KB_amuA2ps2perK*temp 
  M1  = L*kT*tau**2 !tau = 1/omega
 !! M2  = /(kT*(32/hbar)**2) ! = kt/omegan**2 massive thermostating scheme recommended by Tuckerman book assuming 32 beads here. (pg 476)
- M2 = M1/L !Traditional thermostating 
+ M2 = M1!/L !Traditional thermostating 
 
  !if (chain_length .gt. 2) then
  !	i = chain_length
@@ -78,6 +83,8 @@ subroutine Nose_Hoover(s, uk, chain_length, vxi, tau, delt2, L, temp)
  vxi(1) = vxi(1) + (2*uk - L*kT)*delt4/M1
  vxi(1) = vxi(1)*dExp(-vxi(2)*delt8)
 
+ !we don't bother calculating chain positions, as they are not needed
+ 
  s = dExp(-vxi(1)*delt2)
 
  !VV(i) = VV(i)*s
