@@ -2,7 +2,7 @@
 # Test liquid system with 32 molecules of H2O 
 #
 SystemName	32H2O 
-SystemLabel	32h2o
+SystemLabel	32h2o1
 NumberOfSpecies		2
 NumberOfAtoms	       96
 %block ChemicalSpeciesLabel
