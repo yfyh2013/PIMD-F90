@@ -6,27 +6,27 @@ OBJS=$(addsuffix .o, $(FILES))
 
 #VPATH=/home/dan/Dropbox/RESEARCH/SIESTA_myMonomerCorrected/Src
 
-FC=mpif90	 
+FC=mpif90
 
-##Note : -DFC_HAVE_FLUSH -DFC_HAVE_ABORT  flags are for SIESTA pipes support  
+##Note : -DFC_HAVE_FLUSH -DFC_HAVE_ABORT  flags are for SIESTA pipes support
 
-#FFLAGS=-fpp  -O3 -C -debug -traceback 
-FFLAGS = -O3  -cpp -Dsiesta -Dparallel -DFC_HAVE_FLUSH 
+#FFLAGS=-fpp  -O3 -C -debug -traceback
+FFLAGS = -O3  -cpp -Dsiesta -Dparallel -DFC_HAVE_FLUSH
 
 all: PIMD.x
 
 #compilation for debugging
-debug: FFLAGS += --debug --backtrace -fbounds-check 
+debug: FFLAGS += --debug --backtrace -fbounds-check
 debug: PIMD.x
 
 #compilation for profiling
 profile: FFLAGS += -p
-profile: PIMD.x 
+profile: PIMD.x
 
 #serial compilation commands
 serial: FC=gfortran  #ifort not working on Handy!
-serial: FFLAGS = -O3  -cpp -Dsiesta -DFC_HAVE_FLUSH # --debug --backtrace -fbounds-check 
-serial: PIMD_serial.x 
+serial: FFLAGS = -O3  -cpp -Dsiesta -DFC_HAVE_FLUSH # --debug --backtrace -fbounds-check
+serial: PIMD_serial.x
 
 
 PIMD_serial.x: MPI.o $(OBJS)
@@ -37,18 +37,18 @@ PIMD.x: $(OBJS)
 
 %.o : %.f
 	$(FC) $(FFLAGS) -c $< -o $@
-	
+
 %.o : %.f90
 	$(FC) $(FFLAGS) -c $< -o $@
-	
+
 %.o : %.F90
 	$(FC) $(FFLAGS) -c $< -o $@
-	
-MPI.o:  
+
+MPI.o:
 	$(FC) $(FFLAGS) -c MPI.f90 -o MPI.o
 
-clean: 
-	rm -rf *.o *.mod $(TTM)/*.o $(TTM)/*.mod 
-	
-pristine: 
-	rm -rf *.o *.mod $(TTM)/*.o $(TTM)/*.mod INPUT_TMP* *.log *.xml *.x 
+clean:
+	rm -rf *.o *.mod $(TTM)/*.o $(TTM)/*.mod
+
+pristine:
+	rm -rf *.o *.mod $(TTM)/*.o $(TTM)/*.mod INPUT_TMP* *.log *.xml *.x
